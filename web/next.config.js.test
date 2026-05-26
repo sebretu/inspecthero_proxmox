@@ -1,0 +1,40 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Allow development origins
+  allowedDevOrigins: [
+    "http://192.168.178.4:3000",
+  ],
+
+  // Exclude private_tiles from Turbopack's file tracing (58k+ PNG files causing slow builds)
+  outputFileTracingExcludes: {
+    '*': ["**/private_tiles/**"],
+  },
+
+  // Enable static export for mobile builds
+  ...(process.env.NEXT_PUBLIC_PLATFORM === 'mobile' && {
+    output: 'export',
+    images: {
+      unoptimized: true, // Required for static export
+    },
+    // Disable features incompatible with static export
+    trailingSlash: true,
+  }),
+  
+  ...(process.env.NEXT_PUBLIC_PLATFORM !== 'mobile' && {
+    async headers() {
+      return [
+        {
+          source: "/api/:path*",
+          headers: [
+            { key: "Access-Control-Allow-Credentials", value: "true" },
+            { key: "Access-Control-Allow-Origin", value: "*" }, // Allow all origins for capacitor
+            { key: "Access-Control-Allow-Methods", value: "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+            { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-App-Token" },
+          ]
+        }
+      ]
+    }
+  })
+};
+
+module.exports = nextConfig;

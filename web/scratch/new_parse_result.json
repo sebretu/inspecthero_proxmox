@@ -1,0 +1,110 @@
+{
+  "boardName": "UV Allgemein Technik 4",
+  "einspeisung": {
+    "name": "0Q1",
+    "rating": 63,
+    "characteristic": "gL/gG",
+    "kabelDesignation": "W1",
+    "kabeltyp": "NYM-J",
+    "leiterAnzahl": "5",
+    "leiterQuerschnitt": "1x5x16"
+  },
+  "fuses": [
+    {
+      "name": "F1.1",
+      "rating": 16,
+      "characteristic": "C",
+      "description": "Hebeanlage",
+      "rcd": false,
+      "phases": 3
+    },
+    {
+      "name": "F1.2",
+      "rating": 16,
+      "characteristic": "C",
+      "description": "Beleuchtung Mastleuchten",
+      "rcd": false,
+      "phases": 3
+    },
+    {
+      "name": "F1.3",
+      "rating": 16,
+      "characteristic": "C",
+      "description": "Beleuchtung Eingang + Strahler MU04",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "F1.4",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Sprechanlage",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "F1.5",
+      "rating": 10,
+      "characteristic": "B",
+      "description": "Reserve",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "F1.6",
+      "rating": 6,
+      "characteristic": "B",
+      "description": "Zeitschaltuhr Außenbeleuchtung",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "F2.1",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Licht + Steckd. Technikzentrale",
+      "rcd": true,
+      "phases": 3
+    },
+    {
+      "name": "F2.2",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Fahrradladestation",
+      "rcd": true,
+      "phases": 3
+    },
+    {
+      "name": "F2.3",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Fahrradladestation",
+      "rcd": true,
+      "phases": 3
+    },
+    {
+      "name": "F2.4",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Reserve",
+      "rcd": true,
+      "phases": 3
+    },
+    {
+      "name": "F2.5",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Reserve",
+      "rcd": true,
+      "phases": 3
+    },
+    {
+      "name": "F2.6",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Reserve",
+      "rcd": true,
+      "phases": 3
+    }
+  ]
+}

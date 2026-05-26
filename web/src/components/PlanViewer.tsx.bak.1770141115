@@ -1,0 +1,137 @@
+"use client";
+
+import "leaflet/dist/leaflet.css";
+import { useEffect, useMemo, useState } from "react";
+
+type Meta = {
+  tileSize: number;
+  minZoom: number;
+  maxZoom: number;
+
+  // liczba kafli na maxZoom (czyli maxX+1 / maxY+1)
+  gridW: number;
+  gridH: number;
+
+  format?: string;
+  limits?: Record<string, { maxX: number; maxY: number }>;
+};
+
+type RL = {
+  MapContainer: any;
+  TileLayer: any;
+};
+
+export default function PlanViewer({ planId }: { planId: string }) {
+  const [meta, setMeta] = useState<Meta | null>(null);
+  const [rl, setRl] = useState<RL | null>(null);
+  const [L, setL] = useState<any>(null);
+
+  // 1) meta.json z public/tiles/<planId>/meta.json
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const r = await fetch(`/tiles/${planId}/meta.json`, { cache: "no-store" });
+      if (!r.ok) throw new Error(`meta.json fetch failed: ${r.status}`);
+      const j = (await r.json()) as Meta;
+
+      if (
+        typeof j?.tileSize !== "number" ||
+        typeof j?.minZoom !== "number" ||
+        typeof j?.maxZoom !== "number" ||
+        typeof j?.gridW !== "number" ||
+        typeof j?.gridH !== "number"
+      ) {
+        throw new Error("meta.json ma zły format");
+      }
+
+      if (mounted) setMeta(j);
+    })().catch(console.error);
+
+    return () => {
+      mounted = false;
+    };
+  }, [planId]);
+
+  // 2) dynamic import leaflet + react-leaflet (SSR-safe)
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const leaflet = await import("leaflet");
+      const reactLeaflet = await import("react-leaflet");
+      if (!mounted) return;
+
+      setL(leaflet);
+      setRl({
+        MapContainer: reactLeaflet.MapContainer,
+        TileLayer: reactLeaflet.TileLayer,
+      });
+    })().catch(console.error);
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // 3) bounds w px na maxZoom (najprostsze i stabilne)
+  const bounds = useMemo(() => {
+    if (!meta) return null;
+    const wPx = meta.gridW * meta.tileSize;
+    const hPx = meta.gridH * meta.tileSize;
+    return [
+      [0, 0],
+      [hPx, wPx],
+    ] as [[number, number], [number, number]];
+  }, [meta]);
+
+  if (!meta || !rl || !L || !bounds) {
+    return <div style={{ padding: 16 }}>Loading…</div>;
+  }
+
+  const { MapContainer, TileLayer } = rl;
+
+  return (
+    <div style={{ height: "80vh", width: "100%" }}>
+      <MapContainer
+        key={planId}
+        crs={L.CRS.Simple}
+        maxBounds={bounds}
+        maxBoundsViscosity={1.0}
+        minZoom={meta.minZoom}
+        maxZoom={meta.maxZoom}
+        zoomSnap={1}
+        zoomDelta={1}
+        zoomControl={true}
+        scrollWheelZoom={true}
+        doubleClickZoom={true}
+        preferCanvas={true}
+        style={{ height: "100%", width: "100%", background: "#f2f2f2" }}
+        whenCreated={(map: any) => {
+          // fitBounds dopiero po renderze (kontener musi mieć rozmiar)
+          setTimeout(() => {
+            map.invalidateSize();
+            map.fitBounds(bounds, { padding: [10, 10] });
+          }, 0);
+          setTimeout(() => map.invalidateSize(), 150);
+        }}
+      >
+        <TileLayer
+          url={`/api/tiles/${planId}/{z}/{x}/{y}.png`}
+          tileSize={meta.tileSize}
+          minZoom={meta.minZoom}
+          maxZoom={meta.maxZoom}
+          minNativeZoom={meta.minZoom}
+          maxNativeZoom={meta.maxZoom}
+          // KLUCZ: Twoje kafle są w układzie TMS (Y od góry/dół odwrotnie)
+          noWrap={true}
+          keepBuffer={2}
+          updateWhenZooming={false}
+          updateWhenIdle={true}
+          bounds={bounds}
+          errorTileUrl={`/tiles/${planId}/blank.png`}
+        />
+      </MapContainer>
+    </div>
+  );
+}

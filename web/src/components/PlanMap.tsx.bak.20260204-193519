@@ -1,0 +1,173 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+/* =========================
+   FIX: IKONY LEAFLET (MUSI BYĆ)
+========================= */
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "/leaflet/images/marker-icon-2x.png",
+  iconUrl: "/leaflet/images/marker-icon.png",
+  shadowUrl: "/leaflet/images/marker-shadow.png",
+});
+
+/* ========================= */
+
+type Meta = {
+  tileSize: number;
+  minZoom: number;
+  maxZoom: number;
+  gridW: number;
+  gridH: number;
+};
+
+type TaskRow = {
+  id: string;
+  x_norm: number;
+  y_norm: number;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: string;
+};
+
+const CRS = L.CRS.Simple;
+
+function clamp01(n: number) {
+  return Math.max(0, Math.min(1, n));
+}
+
+export default function PlanMap({ planId, meta }: { planId: string; meta: Meta }) {
+  const PROJECT_ID = "55555555-5555-5555-5555-555555555555";
+  const CREATED_BY = "44444444-4444-4444-4444-444444444444";
+
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [map, setMap] = useState<L.Map | null>(null);
+
+  const worldPxW = meta.gridW * meta.tileSize;
+  const worldPxH = meta.gridH * meta.tileSize;
+
+  const bounds = useMemo(() => {
+    const sw = CRS.pointToLatLng(L.point(0, worldPxH), meta.maxZoom);
+    const ne = CRS.pointToLatLng(L.point(worldPxW, 0), meta.maxZoom);
+    return L.latLngBounds(sw, ne);
+  }, [worldPxW, worldPxH, meta.maxZoom]);
+
+  const center = bounds.getCenter();
+
+  const loadTasks = useCallback(async () => {
+    const r = await fetch(
+      `/api/tasks?projectId=${PROJECT_ID}&planId=${planId}&limit=200`,
+      { cache: "no-store" }
+    );
+    const j = await r.json();
+    if (j?.ok) setTasks(j.data || []);
+  }, [PROJECT_ID, planId]);
+
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
+
+  /* =========================
+     KLIK NA MAPĘ = NOWY TASK
+  ========================= */
+  function ClickToCreate() {
+    useMapEvents({
+      click: async (e) => {
+        const p = CRS.latLngToPoint(e.latlng, meta.maxZoom);
+        const x_norm = clamp01(p.x / worldPxW);
+        const y_norm = clamp01(p.y / worldPxH);
+
+        const r = await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_id: PROJECT_ID,
+            plan_id: planId,
+            x_norm,
+            y_norm,
+            title: "Nowy task",
+            created_by: CREATED_BY,
+          }),
+        });
+
+        const j = await r.json();
+        if (j?.data?.id) {
+          window.location.assign(`/task/${j.data.id}`);
+        }
+      },
+    });
+    return null;
+  }
+
+  return (
+    <MapContainer
+      crs={CRS}
+      whenCreated={setMap}
+      center={center}
+      zoom={meta.minZoom}
+      minZoom={meta.minZoom}
+      maxZoom={meta.maxZoom}
+      bounds={bounds}
+      maxBounds={bounds}
+      maxBoundsViscosity={1.0}
+      style={{ width: "100%", height: "100vh" }}
+    >
+      <TileLayer
+        url={`/api/tiles/${planId}/{z}/{x}/{y}.png`}
+        tileSize={meta.tileSize}
+        noWrap
+      />
+
+      <ClickToCreate />
+
+      {tasks.map((t) => {
+        const ll = CRS.pointToLatLng(
+          L.point(t.x_norm * worldPxW, t.y_norm * worldPxH),
+          meta.maxZoom
+        );
+
+        return (
+          <Marker key={t.id} position={ll}>
+            <Popup autoPan keepInView closeButton={false}>
+              <div style={{ minWidth: 220, color: "#111827" }}>
+                <div style={{ fontWeight: 800 }}>{t.title}</div>
+
+                {t.description && (
+                  <div style={{ fontSize: 12, marginTop: 4 }}>
+                    {t.description}
+                  </div>
+                )}
+
+                <div style={{ marginTop: 8, fontSize: 12 }}>
+                  <b>Status:</b> {t.status}<br />
+                  <b>Priorytet:</b> {t.priority}
+                </div>
+
+                <button
+                  onClick={() => window.location.assign(`/task/${t.id}`)}
+                  style={{
+                    marginTop: 10,
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    background: "#111827",
+                    color: "#fff",
+                    border: "none",
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
+                  Otwórz task
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
+    </MapContainer>
+  );
+}

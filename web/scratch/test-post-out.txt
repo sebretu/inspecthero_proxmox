@@ -1,0 +1,15 @@
+[dotenv@17.3.1] injecting env (11) from .env.local -- tip: ⚡️ secrets for agents: https://dotenvx.com/as2
+Data: {
+  id: '5d9a421a-ccda-49c1-9beb-e5f475e60cca',
+  project_id: 'cab8c3c0-b32a-48d1-984a-62e3af918ca4',
+  task_id: null,
+  photo_id: null,
+  name: 'Test',
+  description: null,
+  status: 'draft',
+  is_active: true,
+  created_by: null,
+  updated_by: null,
+  created_at: '2026-05-14T20:19:24.05042+00:00',
+  updated_at: '2026-05-14T20:19:24.05042+00:00'
+} Error: null

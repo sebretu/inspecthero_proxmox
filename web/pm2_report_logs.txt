@@ -1,0 +1,205 @@
+[1m[90m[TAILING] Tailing last 100 lines for [inspecthero] process (change the value with --lines option)[39m[22m
+[90m/home/sebretu/.pm2/logs/inspecthero-error.log last 100 lines:[39m
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m0|inspecth | [39m    at JSON.parse (<anonymous>)
+[31m0|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:6951)
+[31m0|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__cee00ece._.js:1:11614)
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+[31m0|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m0|inspecth | [39m    at ignore-listed frames
+
+[90m/home/sebretu/.pm2/logs/inspecthero-out.log last 100 lines:[39m
+[32m0|inspecth | [39m  role: 'ADMIN',
+[32m0|inspecth | [39m  isAdmin: true,
+[32m0|inspecth | [39m  isMod: false
+[32m0|inspecth | [39m}
+[32m0|inspecth | [39m[tasks api] FETCH START {
+[32m0|inspecth | [39m  projectId: '9134fda1-dbb9-4a8d-af1a-8dfba002dcd1',
+[32m0|inspecth | [39m  planId: '',
+[32m0|inspecth | [39m  status: '',
+[32m0|inspecth | [39m  priority: '',
+[32m0|inspecth | [39m  isMod: false,
+[32m0|inspecth | [39m  isAdmin: true,
+[32m0|inspecth | [39m  assignedUserId: '',
+[32m0|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb'
+[32m0|inspecth | [39m}
+[32m0|inspecth | [39m[tasks api] Admin/Mod query bypass applied
+[32m0|inspecth | [39m[tasks api] User role check: {
+[32m0|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m0|inspecth | [39m  role: 'ADMIN',
+[32m0|inspecth | [39m  isAdmin: true,
+[32m0|inspecth | [39m  isMod: false
+[32m0|inspecth | [39m}
+[32m0|inspecth | [39m[tasks api] FETCH START {
+[32m0|inspecth | [39m  projectId: '9134fda1-dbb9-4a8d-af1a-8dfba002dcd1',
+[32m0|inspecth | [39m  planId: '',
+[32m0|inspecth | [39m  status: 'APPROVED',
+[32m0|inspecth | [39m  priority: '',
+[32m0|inspecth | [39m  isMod: false,
+[32m0|inspecth | [39m  isAdmin: true,
+[32m0|inspecth | [39m  assignedUserId: '',
+[32m0|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb'
+[32m0|inspecth | [39m}
+[32m0|inspecth | [39m[tasks api] Admin/Mod query bypass applied
+[32m0|inspecth | [39m[tasks api] User role check: {
+[32m0|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m0|inspecth | [39m  role: 'ADMIN',
+[32m0|inspecth | [39m  isAdmin: true,
+[32m0|inspecth | [39m  isMod: false
+[32m0|inspecth | [39m}
+[32m0|inspecth | [39m[tasks api] FETCH START {
+[32m0|inspecth | [39m  projectId: '9134fda1-dbb9-4a8d-af1a-8dfba002dcd1',
+[32m0|inspecth | [39m  planId: '',
+[32m0|inspecth | [39m  status: 'APPROVED',
+[32m0|inspecth | [39m  priority: '',
+[32m0|inspecth | [39m  isMod: false,
+[32m0|inspecth | [39m  isAdmin: true,
+[32m0|inspecth | [39m  assignedUserId: '',
+[32m0|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb'
+[32m0|inspecth | [39m}
+[32m0|inspecth | [39m[tasks api] Admin/Mod query bypass applied
+[32m0|inspecth | [39m[tasks api] User role check: {
+[32m0|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m0|inspecth | [39m  role: 'ADMIN',
+[32m0|inspecth | [39m  isAdmin: true,
+[32m0|inspecth | [39m  isMod: false
+[32m0|inspecth | [39m}
+[32m0|inspecth | [39m[tasks api] FETCH START {
+[32m0|inspecth | [39m  projectId: '9134fda1-dbb9-4a8d-af1a-8dfba002dcd1',
+[32m0|inspecth | [39m  planId: '',
+[32m0|inspecth | [39m  status: '',
+[32m0|inspecth | [39m  priority: '',
+[32m0|inspecth | [39m  isMod: false,
+[32m0|inspecth | [39m  isAdmin: true,
+[32m0|inspecth | [39m  assignedUserId: '',
+[32m0|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb'
+[32m0|inspecth | [39m}
+[32m0|inspecth | [39m[tasks api] Admin/Mod query bypass applied
+[32m0|inspecth | [39m[tasks api] User role check: {
+[32m0|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m0|inspecth | [39m  role: 'ADMIN',
+[32m0|inspecth | [39m  isAdmin: true,
+[32m0|inspecth | [39m  isMod: false
+[32m0|inspecth | [39m}
+[32m0|inspecth | [39m[tasks api] FETCH START {
+[32m0|inspecth | [39m  projectId: '9134fda1-dbb9-4a8d-af1a-8dfba002dcd1',
+[32m0|inspecth | [39m  planId: '',
+[32m0|inspecth | [39m  status: '',
+[32m0|inspecth | [39m  priority: '',
+[32m0|inspecth | [39m  isMod: false,
+[32m0|inspecth | [39m  isAdmin: true,
+[32m0|inspecth | [39m  assignedUserId: '',
+[32m0|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb'
+[32m0|inspecth | [39m}
+[32m0|inspecth | [39m[tasks api] Admin/Mod query bypass applied
+[32m0|inspecth | [39m[tasks api] User role check: {
+[32m0|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m0|inspecth | [39m  role: 'ADMIN',
+[32m0|inspecth | [39m  isAdmin: true,
+[32m0|inspecth | [39m  isMod: false
+[32m0|inspecth | [39m}
+[32m0|inspecth | [39m[tasks api] FETCH START {
+[32m0|inspecth | [39m  projectId: '9134fda1-dbb9-4a8d-af1a-8dfba002dcd1',
+[32m0|inspecth | [39m  planId: '',
+[32m0|inspecth | [39m  status: '',
+[32m0|inspecth | [39m  priority: '',
+[32m0|inspecth | [39m  isMod: false,
+[32m0|inspecth | [39m  isAdmin: true,
+[32m0|inspecth | [39m  assignedUserId: '',
+[32m0|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb'
+[32m0|inspecth | [39m}
+[32m0|inspecth | [39m[tasks api] Admin/Mod query bypass applied
+

@@ -1,0 +1,341 @@
+--- Page 1 ---
+          1                        2                           3                            4                           5                           6                           7                            8                           9                           10                       11
+              EtecProjekt+Bau GmbH                                                                                                                                                                                                                                                  CE
+                                                                                                                                                            SCHALTSCHRANKBAU
+ A            Heinrich-Hertz-Straße 22a
+                                                                                                                                                                                                                                                                                                       A
+              40699 Erkrath
+                                                                                                                                                           NICHT REVIDIERT!
+              021121023300                               info@etecprojekt.de
+                                                                                                                                                                                                            Farbkennzeichnung der Leiter (in Anlehnung an VDE0113 Teil1):
+              Projektname:                                                SEGRO Park Düsseldorf Flingern
+ B                                                                                                                                                                                                                                                                                                     B
+                                                                                                                                                                                                            Außenleiter:                                   schwarz
+              Kom-Nr./Angebots-NR.:                                       A2024-2543                                                               Ausführungsplan                                          Neutralleiter:                                 hellblau
+                                                                                                                                                                                                            Steuerspannung 230V AC:                        rot
+              Bezeichnung Ort:                                            UV OG Unit ..... (LI03)                                                                                                           Steuerspannung 24V DC:                         dunkelblau
+                                                                                                                                                                                                            Steuerspannung 24V AC:                         braun
+              Auftragsnummer:                                             AB2024-1049
+                                                                                                                                                                                                            Fremdspannung:                                 orange
+                                                                                                                                                   Klemmenfabrikat:
+                                                                                                                                                                                                            Messung:                                       weiss
+              Baujahr:                                                    04 / 2025
+                                                                                                                                                   WAGO / HAGER                                             Sensorleitung:                                 violett
+ C                                                                                                                                                                                                                                                                                                     C
+              Technische Daten der Schaltgerätekombination:
+              Bemessungsbetriebsspannung / -Frequenz:                                                                               Un:          400V / 50Hz                                               Netzform:                             TN-S
+              Bemessungsstrom der Schaltgerätekombination:                                                                          InA:         50A
+ D                                                                                                                                                                                                                                                                                                     D
+              Bemessungsstoßspannungsfestigkeit:                                                                                    Uimp:        4kV                                                       Schutzklasse:                         1 geerdet
+              Bemessungsisolationsspannung:                                                                                         Ui:          230V                                                      Schutzart:                            IP44
+              Bemessungsbelastungsfaktor:                                                                                           RDF:         0.6                                                       Schranktiefe:                         205mm
+              Bemessungsstoßstromfestigkeit:                                                                                        Ipk:         7,56 kA                                                   Farbe:                                RAL7035
+              Bemessungskurzzeitstromfestigkeit:                                                                                    Icw:         3,44 kA                                                   Umgebungs-
+ E                                                                                                                                                                                                                                               25°C                                                  E
+              Bedingte Bemessungskurzschlußstromfestigkeit:                                                                         Icc:         0 kA                                                      temperatur:
+              (Ik3 nur bei Kurzschlußschutzeinrichtung (SCPD) in Einspeisung)
+              Bemessungsschaltvermögen Leitungsschutzschalter:                                                                                   6 kA
+              Installationsverteiler, nach DIN EN 61439-1/-3
+ F                                                                                                                                                                                                                                                                                                     F
+              Für dieses Dokument und den darin dargestellten Inhalt behalten wir uns alle Rechte vor. Die Vervielfältigung des Inhaltes ist ohne unsere ausdrückliche Zustimmung nicht gestattet.
+ G                                                                                                                                                                                                                                                                                                     G
+    3                                                                                    Angebotsnr.    A2024-2543                                             Projektname:                                                                              Index:  a
+    2                                                                                    Datum          27.03.2025
+                                                                                                                                                                                                                                                         = LI03
+                                                                                                                                                     SEGRO Park Düsseldorf Flingern
+    1                                                                                    Erstellt       Schwarte Kevin
+                                                                                                                                                                                                                                                         + UV OG Unit ..... (LI03)
+    Änderung                                 Änderungsdatum           Geändert           Bestätigt      Thiele Christian
+                                                                                                                                                                Deckblatt
+    Massstab:      1                         Ik3:  0 kA               Ik1: 0 kA                          TN-S                                                                                                                                            Blatt:         1 / 6
+          1                        2                           3                           4                            5                           6                           7                            8                           9                           10                       11
+
+--- Page 2 ---
+          1                        2                           3                            4                           5                           6                           7                            8                           9                           10                       11
+                                                                                                                                                                                                                                                                            L1     1
+                                                                                                                                                                                                                                                                                        3-A,1
+                                                                                                                                                                                                                                                                            L2     2
+                                                                                                                                                                                                                                                                                        3-A,1
+                                                                                                                                                                                                                                                                            L3     3
+                                                                                                                                                                                                                                                                                        3-A,1
+                                                                                                                                                                                                                                                                             N     4
+                                                                                                                                                                                                                                                                                        3-A,1
+ A
+                                                                                                                                                                                                                                                                                                       A
+                       CU1
+                      KH23C
+                        80 A
+                               1   3   5
+                       0Q1
+                        SH3
+ B                                                                                                                                                                                                                                                                                                     B
+                        63 A
+                               2   4   6
+ C                                                                                                                                                                                                                                                                                                     C
+                                                        F01                N
+                                                                 L1 L2  L3
+                                                         SPB
+                                                       20 kA
+                                                       40 kA
+                                                      1,35 kV       PE
+                                                     2/ C/ T2
+ D                                                                                                                                                                                                                                                                                                     D
+                        CU2
+                      KH25C
+                        80 A
+                      PE1
+                                                                                                                                                                                                                                                                            PE     5
+                                                                                                                                                                                                                                                                                        3-E,1
+                               L1 L2  L3 N   PE
+ E                                                                                                                                                                                                                                                                                                     E
+    Kabel BMK                     W1
+    Kabel Typ                    NYM-J
+    Querschnitt                 1x5x16
+    Abgang BMK                    E1
+ F                                                                                                                                                                                                                                                                                                     F
+            BezAbgängeg
+                                  EinspHV Unitaus             ÜbersTyp 2ngsschutz
+ G                                                                                                                                                                                                                                                                                                     G
+    3                                                                                    Angebotsnr.    A2024-2543                                             Projektname:                                                                              Index:  a
+    2                                                                                    Datum          27.03.2025
+                                                                                                                                                                                                                                                         = LI03
+                                                                                                                                                     SEGRO Park Düsseldorf Flingern
+    1                                                                                    Erstellt       Schwarte Kevin
+                                                                                                                                                                                                                                                         + UV OG Unit ..... (LI03)
+    Änderung                                 Änderungsdatum           Geändert           Bestätigt      Thiele Christian
+                                                                                                                                                          Hauptstromlaufplan
+    Massstab:      1                         Ik3:  0 kA               Ik1: 0 kA                          TN-S                                                                                                                                            Blatt:         2 / 6
+          1                        2                           3                           4                            5                           6                           7                            8                           9                           10                       11
+
+--- Page 3 ---
+          1                        2                           3                            4                           5                           6                           7                            8                           9                           10                       11
+                      1     L1                                                                                                                                                                                                                                              L1     6
+             2-A,11                                                                                                                                                                                                                                                                     4-A,1
+                      2     L2                                                                                                                                                                                                                                              L2     7
+             2-A,11                                                                                                                                                                                                                                                                     4-A,1
+                      3     L3                                                                                                                                                                                                                                              L3     8
+             2-A,11                                                                                                                                                                                                                                                                     4-A,1
+                      4     N                                                                                                                                                                                                                                                N     9
+             2-A,11                                                                                                                                                                                                                                                                     4-A,1
+ A                             1                            1                           1                           1                            1                           1
+                      1F1.1                       1F1.2                       1F1.3                       1F1.4                        1F1.5                       1F1.6                                                                                                                               A
+                       MBN                          MBN                         MBN                         MBN                         MBN                          MBN
+                           B                           B                           B                            B                           B                           B
+                        16 A                        16 A                        16 A                         16 A                        16 A                        16 A
+                        6 kA                        6 kA                        6 kA                         6 kA                        6 kA                        6 kA
+                               2                            2                           2                           2                            2                           2
+ B                                                                                                                                                                                                                                                                                                     B
+ C                                                                                                                                                                                                                                                                                                     C
+ D                                                                                                                                                                                                                                                                                                     D
+                      5     PE                                                                                                                                                                                                                                              PE    10
+             2-E,11                                                                                                                                                                                                                                                                     4-E,1
+ E                             1   2   3  N   PE            4  N   PE                   5   N  PE                   6   N   PE                   7  N   PE                   8   N  PE                                                                                                                 E
+                                       1X1                  1X1                          1X1                         1X1                         1X1                          1X1
+    Kabel BMK                            W2                   W3                           W4                          W5                          W6                           W7
+    Kabel Typ                           NYM-J                NYM-J                       NYM-J                        NYM-J                       NYM-J                       NYM-J
+    Querschnitt                        1x5x2.5              1x3x2.5                      1x3x2.5                     1x3x2.5                     1x3x2.5                      1x3x2.5
+    Abgang BMK                           A1                    A2                          A3                          A4                           A5                          A6
+ F                                                                                                                                                                                                                                                                                                     F
+            BezAbgängeg
+                                         BeleuMezzanine       BeleuWC'sng               Fluleuchten                 HygSpülung                     Sonnenschutz                 Reserve
+ G                                                                                                                                                                                                                                                                                                     G
+    3                                                                                    Angebotsnr.    A2024-2543                                             Projektname:                                                                              Index:  a
+    2                                                                                    Datum          27.03.2025
+                                                                                                                                                                                                                                                         = LI03
+                                                                                                                                                     SEGRO Park Düsseldorf Flingern
+    1                                                                                    Erstellt       Schwarte Kevin
+                                                                                                                                                                                                                                                         + UV OG Unit ..... (LI03)
+    Änderung                                 Änderungsdatum           Geändert           Bestätigt      Thiele Christian
+                                                                                                                                                          Hauptstromlaufplan
+    Massstab:      1                         Ik3:  0 kA               Ik1: 0 kA                          TN-S                                                                                                                                            Blatt:         3 / 6
+          1                        2                           3                           4                            5                           6                           7                            8                           9                           10                       11
+
+--- Page 4 ---
+          1                        2                           3                            4                           5                           6                           7                            8                           9                           10                       11
+                      6     L1                                                                                                                                                                                                                                              L1    11
+             3-A,11                                                                                                                                                                                                                                                                     5-A,1
+                      7     L2                                                                                                                                                                                                                                              L2    12
+             3-A,11                                                                                                                                                                                                                                                                     5-A,1
+                      8     L3                                                                                                                                                                                                                                              L3    13
+             3-A,11                                                                                                                                                                                                                                                                     5-A,1
+                      9     N                                                                                                                                                                                                                                                N    14
+             3-A,11                                                                                                                                                                                                                                                                     5-A,1
+ A                             1   3   5  7
+                        2Q1                                                                                                                                                                                                                                                                            A
+                         CDA
+                        40 A
+                       30 mA
+                           A
+                               2   4   6  8
+                  CU3
+ B                                                          1  3   5                    1                           1                            1                                                                                                                                                     B
+                                                  2F1.1                       2F1.2                       2F1.3                        2F1.4
+                                                    MBN                         MBN                         MBN                         MBN
+                                                       B                           B                            B                           B
+                                                    16 A                        16 A                         16 A                        16 A
+                                                    6 kA                        6 kA                         6 kA                        6 kA
+                                                            2  4   6                    2                           2                            2
+ C                                                                                                                                                                                                                                                                                                     C
+ D                                                                                                                                                                                                                                                                                                     D
+                      10    PE                                                                                                                                                                                                                                              PE    15
+             3-E,11                                                                                                                                                                                                                                                                     5-E,1
+ E                                                          1  2   3  N   PE            4   N  PE                   5   N   PE                   6  N   PE                                                                                                                                             E
+                                                            2X1                          2X1                         2X1                         2X1
+    Kabel BMK                                                 W8                           W9                         W10                          W11
+    Kabel Typ                                                NYM-J                       NYM-J                        NYM-J                       NYM-J
+    Querschnitt                                             1x5x2.5                      1x3x2.5                     1x3x2.5                     1x3x2.5
+    Abgang BMK                                                 A7                          A8                          A9                          A10
+ F                                                                                                                                                                                                                                                                                                     F
+            BezAbgängeg
+                               Fehl40A - 30mAutzschalter      FestaHerdluss                SteckArbeitsbereich         SteckSpülmaschine           SteckMikrowelle
+ G                                                                                                                                                                                                                                                                                                     G
+    3                                                                                    Angebotsnr.    A2024-2543                                             Projektname:                                                                              Index:  a
+    2                                                                                    Datum          27.03.2025
+                                                                                                                                                                                                                                                         = LI03
+                                                                                                                                                     SEGRO Park Düsseldorf Flingern
+    1                                                                                    Erstellt       Schwarte Kevin
+                                                                                                                                                                                                                                                         + UV OG Unit ..... (LI03)
+    Änderung                                 Änderungsdatum           Geändert           Bestätigt      Thiele Christian
+                                                                                                                                                          Hauptstromlaufplan
+    Massstab:      1                         Ik3:  0 kA               Ik1: 0 kA                          TN-S                                                                                                                                            Blatt:         4 / 6
+          1                        2                           3                           4                            5                           6                           7                            8                           9                           10                       11
+
+--- Page 5 ---
+          1                        2                           3                            4                           5                           6                           7                            8                           9                           10                       11
+                      11    L1                                                                                                                                                                                                                                              L1    16
+             4-A,11                                                                                                                                                                                                                                                                     6-A,1
+                      12    L2                                                                                                                                                                                                                                              L2    17
+             4-A,11                                                                                                                                                                                                                                                                     6-A,1
+                      13    L3                                                                                                                                                                                                                                              L3    18
+             4-A,11                                                                                                                                                                                                                                                                     6-A,1
+                      14    N                                                                                                                                                                                                                                                N    19
+             4-A,11                                                                                                                                                                                                                                                                     6-A,1
+ A                             1   3   5  7
+                        2Q2                                                                                                                                                                                                                                                                            A
+                         CDA
+                        40 A
+                       30 mA
+                           A
+                               2   4   6  8
+                  CU4
+ B                                                          1                           1                           1                            1                           1                           1                                                                                             B
+                                                  2F2.1                       2F2.2                       2F2.3                        2F2.4                       2F2.5                       2F2.6
+                                                    MBN                         MBN                         MBN                         MBN                          MBN                         MBN
+                                                       B                           B                            B                           B                           B                           B
+                                                    16 A                        16 A                         16 A                        16 A                        16 A                         16 A
+                                                    6 kA                        6 kA                         6 kA                        6 kA                        6 kA                         6 kA
+                                                            2                           2                           2                            2                           2                           2
+ C                                                                                                                                                                                                                                                                                                     C
+ D                                                                                                                                                                                                                                                                                                     D
+                      15    PE                                                                                                                                                                                                                                              PE    20
+             4-E,11                                                                                                                                                                                                                                                                     6-E,1
+ E                                                          1  N   PE                   2   N  PE                   3   N   PE                   4  N   PE                   5   N  PE                   6   N  PE                                                                                     E
+                                                            2X2                          2X2                         2X2                         2X2                          2X2                         2X2
+    Kabel BMK                                                 W12                         W13                         W14                          W15                         W16                         W17
+    Kabel Typ                                                NYM-J                       NYM-J                        NYM-J                       NYM-J                       NYM-J                        NYM-J
+    Querschnitt                                             1x3x2.5                      1x3x2.5                     1x3x2.5                     1x3x2.5                      1x3x2.5                     1x3x2.5
+    Abgang BMK                                                A11                         A12                          A13                         A14                         A15                          A16
+ F                                                                                                                                                                                                                                                                                                     F
+            BezAbgängeg
+                               Fehl40A - 30mAutzschalter      SteckUntertischgerät         SteckKühlschrank / KaffemascSteckWC Herreneizung        SteckWC DamenHeizung         Reserve                     Reserve
+ G                                                                                                                                                                                                                                                                                                     G
+    3                                                                                    Angebotsnr.    A2024-2543                                             Projektname:                                                                              Index:  a
+    2                                                                                    Datum          27.03.2025
+                                                                                                                                                                                                                                                         = LI03
+                                                                                                                                                     SEGRO Park Düsseldorf Flingern
+    1                                                                                    Erstellt       Schwarte Kevin
+                                                                                                                                                                                                                                                         + UV OG Unit ..... (LI03)
+    Änderung                                 Änderungsdatum           Geändert           Bestätigt      Thiele Christian
+                                                                                                                                                          Hauptstromlaufplan
+    Massstab:      1                         Ik3:  0 kA               Ik1: 0 kA                          TN-S                                                                                                                                            Blatt:         5 / 6
+          1                        2                           3                           4                            5                           6                           7                            8                           9                           10                       11
+
+--- Page 6 ---
+          1                        2                           3                            4                           5                           6                           7                            8                           9                           10                       11
+                      16    L1
+             5-A,11
+                      17    L2
+             5-A,11
+                      18    L3
+             5-A,11
+                      19    N
+             5-A,11
+ A                             1   3   5                    1  3   5
+                      3F1.1                       3F1.2                                                                                                                                                                                                                                                A
+                       MBN                          MBN
+                           B                           B
+                        32 A                        32 A
+                        6 kA                        6 kA
+                               2   4   6                    2  4   6
+ B                                                                                                                                                                                                                                                                                                     B
+ C                                                                                                                                                                                                                                                                                                     C
+ D                                                                                                                                                                                                                                                                                                     D
+                      20    PE
+             5-E,11
+ E                             1   2   3  N   PE            4  5   6  N   PE                                                                                                                                                                                                                           E
+                                3X1                         3X1
+    Kabel BMK                    W18                          W19
+    Kabel Typ                    NYM-J                       NYM-J
+    Querschnitt                  1x5x6                       1x5x6
+    Abgang BMK                    A17                         A18
+ F                                                                                                                                                                                                                                                                                                     F
+            BezAbgängeg
+                               Dur18kWuWC Herren           Dur18kWuWC Damenr
+ G                                                                                                                                                                                                                                                                                                     G
+    3                                                                                    Angebotsnr.    A2024-2543                                             Projektname:                                                                              Index:  a
+    2                                                                                    Datum          27.03.2025
+                                                                                                                                                                                                                                                         = LI03
+                                                                                                                                                     SEGRO Park Düsseldorf Flingern
+    1                                                                                    Erstellt       Schwarte Kevin
+                                                                                                                                                                                                                                                         + UV OG Unit ..... (LI03)
+    Änderung                                 Änderungsdatum           Geändert           Bestätigt      Thiele Christian
+                                                                                                                                                          Hauptstromlaufplan
+    Massstab:      1                         Ik3:  0 kA               Ik1: 0 kA                          TN-S                                                                                                                                            Blatt:         6 / 6
+          1                        2                           3                           4                            5                           6                           7                            8                           9                           10                       11
+
+--- Page 7 ---
+             1                             2                             3                             4                             5                             6                             7                             8                             9                             10                            11     121314
+  A
+                                                                                                                                                                                                                                                                                                                                A
+  B                                                                                                                                                                                                                                                                                                                             B
+  C                                                                                                                                                                                                                                                                                                                             C
+  D                                                                                                                                                                                                                                                                                                                             D
+  E                                                                                                                                                                                                                                                                                                                             E
+  F                                                                                                                                                                                                                                                                                                                             F
+                                                                                                                                                                                                 ohne Abdeckung
+  G                                                                                                                                                                                                                                                                                                                             G
+      3                                                                                                                       Angebotsnr.         A2024-2543                                                                     Projektname:
+                                                                                                                                                                                                                                                                                                                                Index:a
+      2                                                                                                                       Datum               27.03.2025
+                                                                                                                                                                                                                                                                                                                                =LI03
+                                                                                                                                                                                                                  SEGRO Park Düsseldorf Flingern
+      1                                                                                                                       Erstellt            Schwarte Kevin
+                                                                                                                                                                                                                                                                                                                                +UV OG Unit ..... (LI03)
+      Änderung                                                  Änderungsdatum                    Geändert                    Bestätigt           Thiele Christian
+                                                                                                                                                                                                                                Zeichnungen
+      Massstab:           1/4                                   Ik3:     kA                       Ik1:     kA                                        TN-S                                                                                                                                                                       Blatt:1/2
+             1                             2                             3                             4                             5                             6                             7                             8                             9                             10                            11     121314
+
+--- Page 8 ---
+             1                             2                             3                             4                             5                             6                             7                             8                             9                             10                            11     121314
+  A
+                                                                                                                                                                                                                                                                                                                                A
+  B                                                                                                                                                                                                                                                                                                                             B
+  C                                                                                                                                                                                                                                                                                                                             C
+  D                                                                                                                                                                                                                                                                                                                             D
+  E                                                                                                                                                                                                                                                                                                                             E
+  F                                                                                                                                                                                                                                                                                                                             F
+                                                                                                                                                                                                   mit Abdeckung
+  G                                                                                                                                                                                                                                                                                                                             G
+      3                                                                                                                       Angebotsnr.         A2024-2543                                                                     Projektname:
+                                                                                                                                                                                                                                                                                                                                Index:a
+      2                                                                                                                       Datum               27.03.2025
+                                                                                                                                                                                                                                                                                                                                =LI03
+                                                                                                                                                                                                                  SEGRO Park Düsseldorf Flingern
+      1                                                                                                                       Erstellt            Schwarte Kevin
+                                                                                                                                                                                                                                                                                                                                +UV OG Unit ..... (LI03)
+      Änderung                                                  Änderungsdatum                    Geändert                    Bestätigt           Thiele Christian
+                                                                                                                                                                                                                                Zeichnungen
+      Massstab:           1/4                                   Ik3:     kA                       Ik1:     kA                                        TN-S                                                                                                                                                                       Blatt:2/2
+             1                             2                             3                             4                             5                             6                             7                             8                             9                             10                            11     121314
+

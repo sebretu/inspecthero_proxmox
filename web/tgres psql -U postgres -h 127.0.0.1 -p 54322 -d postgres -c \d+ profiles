@@ -1,0 +1,46 @@
+                                                        Table "public.profiles"
+   Column   |           Type           | Collation | Nullable |      Default      | Storage  | Compression | Stats target | Description 
+------------+--------------------------+-----------+----------+-------------------+----------+-------------+--------------+-------------
+ id         | uuid                     |           | not null |                   | plain    |             |              | 
+ company_id | uuid                     |           | not null |                   | plain    |             |              | 
+ email      | text                     |           | not null |                   | extended |             |              | 
+ full_name  | text                     |           | not null |                   | extended |             |              | 
+ role       | user_role                |           | not null | 'USER'::user_role | plain    |             |              | 
+ language   | text                     |           | not null | 'pl'::text        | extended |             |              | 
+ is_active  | boolean                  |           | not null | true              | plain    |             |              | 
+ created_at | timestamp with time zone |           | not null | now()             | plain    |             |              | 
+ updated_at | timestamp with time zone |           | not null | now()             | plain    |             |              | 
+Indexes:
+    "profiles_pkey" PRIMARY KEY, btree (id)
+    "idx_profiles_active" btree (is_active) WHERE is_active = true
+    "idx_profiles_company" btree (company_id)
+    "idx_profiles_role" btree (company_id, role)
+    "profiles_company_id_email_key" UNIQUE CONSTRAINT, btree (company_id, email)
+Foreign-key constraints:
+    "profiles_company_id_fkey" FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE RESTRICT
+    "profiles_id_fkey" FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "plans" CONSTRAINT "plans_uploaded_by_fkey" FOREIGN KEY (uploaded_by) REFERENCES profiles(id) ON DELETE SET NULL
+    TABLE "project_members" CONSTRAINT "project_members_added_by_fkey" FOREIGN KEY (added_by) REFERENCES profiles(id) ON DELETE SET NULL
+    TABLE "project_members" CONSTRAINT "project_members_user_id_fkey" FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
+    TABLE "projects" CONSTRAINT "projects_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(id) ON DELETE SET NULL
+    TABLE "task_comments" CONSTRAINT "task_comments_user_id_fkey" FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
+    TABLE "task_history" CONSTRAINT "task_history_changed_by_fkey" FOREIGN KEY (changed_by) REFERENCES profiles(id) ON DELETE RESTRICT
+    TABLE "task_photos" CONSTRAINT "task_photos_uploaded_by_fkey" FOREIGN KEY (uploaded_by) REFERENCES profiles(id) ON DELETE RESTRICT
+    TABLE "tasks" CONSTRAINT "tasks_approved_by_fkey" FOREIGN KEY (approved_by) REFERENCES profiles(id) ON DELETE SET NULL
+    TABLE "tasks" CONSTRAINT "tasks_assigned_user_id_fkey" FOREIGN KEY (assigned_user_id) REFERENCES profiles(id) ON DELETE SET NULL
+    TABLE "tasks" CONSTRAINT "tasks_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(id) ON DELETE RESTRICT
+    TABLE "tasks" CONSTRAINT "tasks_done_reported_by_fkey" FOREIGN KEY (done_reported_by) REFERENCES profiles(id) ON DELETE SET NULL
+    TABLE "tasks" CONSTRAINT "tasks_rejected_by_fkey" FOREIGN KEY (rejected_by) REFERENCES profiles(id) ON DELETE SET NULL
+Policies:
+    POLICY "Allow user to insert own profile" FOR INSERT
+      WITH CHECK ((id = auth.uid()))
+    POLICY "profiles_select_company" FOR SELECT
+      USING ((company_id = current_company_id()))
+    POLICY "profiles_update_self" FOR UPDATE
+      USING ((id = auth.uid()))
+      WITH CHECK ((id = auth.uid()))
+Triggers:
+    trg_profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION set_updated_at()
+Access method: heap
+

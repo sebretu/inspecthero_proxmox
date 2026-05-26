@@ -1,0 +1,44 @@
+                                      Table "public.plans"
+      Column      |           Type           | Collation | Nullable |          Default          
+------------------+--------------------------+-----------+----------+---------------------------
+ id               | uuid                     |           | not null | gen_random_uuid()
+ project_id       | uuid                     |           | not null | 
+ floor_id         | uuid                     |           | not null | 
+ version          | integer                  |           | not null | 1
+ status           | plan_status              |           | not null | 'PROCESSING'::plan_status
+ pdf_path         | text                     |           | not null | 
+ image_path       | text                     |           |          | 
+ image_width      | integer                  |           |          | 
+ image_height     | integer                  |           |          | 
+ is_current       | boolean                  |           | not null | true
+ uploaded_by      | uuid                     |           |          | 
+ processing_error | text                     |           |          | 
+ created_at       | timestamp with time zone |           | not null | now()
+ updated_at       | timestamp with time zone |           | not null | now()
+ storage_bucket   | text                     |           | not null | 'plans'::text
+ storage_path     | text                     |           |          | 
+Indexes:
+    "plans_pkey" PRIMARY KEY, btree (id)
+    "idx_plans_floor_current" btree (floor_id, is_current) WHERE is_current = true
+    "idx_plans_project" btree (project_id)
+    "idx_plans_status" btree (status)
+    "idx_plans_storage_path" btree (storage_bucket, storage_path) WHERE storage_path IS NOT NULL
+    "plans_floor_id_version_key" UNIQUE CONSTRAINT, btree (floor_id, version)
+Foreign-key constraints:
+    "plans_floor_id_fkey" FOREIGN KEY (floor_id) REFERENCES floors(id) ON DELETE CASCADE
+    "plans_project_id_fkey" FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    "plans_uploaded_by_fkey" FOREIGN KEY (uploaded_by) REFERENCES profiles(id) ON DELETE SET NULL
+Referenced by:
+    TABLE "tasks" CONSTRAINT "tasks_plan_id_fkey" FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE RESTRICT
+Policies:
+    POLICY "plans_mutate" FOR INSERT
+      WITH CHECK (is_project_admin_or_mod(project_id))
+    POLICY "plans_select" FOR SELECT
+      USING (is_project_member(project_id))
+    POLICY "plans_update_admin_mod" FOR UPDATE
+      USING (is_project_admin_or_mod(project_id))
+      WITH CHECK (is_project_admin_or_mod(project_id))
+Triggers:
+    trg_ensure_single_current_plan AFTER INSERT OR UPDATE OF is_current ON plans FOR EACH ROW EXECUTE FUNCTION ensure_single_current_plan()
+    trg_plans_updated_at BEFORE UPDATE ON plans FOR EACH ROW EXECUTE FUNCTION set_updated_at()
+

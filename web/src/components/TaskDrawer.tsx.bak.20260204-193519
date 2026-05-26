@@ -1,0 +1,312 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+/* =========================
+   TYPES
+========================= */
+type ApiOk<T> = { ok: true; data: T };
+type ApiErr = { ok: false; error: { code: string; message: string; meta?: any } };
+
+type TaskRow = {
+  id: string;
+  project_id: string;
+  plan_id: string;
+  title: string;
+  description: string | null;
+  priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  status: "OPEN" | "IN_PROGRESS" | "DONE_WAITING_APPROVAL" | "APPROVED" | "REJECTED";
+  assigned_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type TaskPhoto = {
+  id: string;
+  task_id: string;
+  url: string;
+  caption: string | null;
+  uploaded_by: string;
+  created_at: string;
+};
+
+/* =========================
+   HELPERS
+========================= */
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+/* ===== FIX STORAGE URL ===== */
+const PUBLIC_SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") ||
+  "http://188.245.42.178:54321";
+
+function fixPhotoUrl(url: string) {
+  if (!url) return url;
+  if (url.startsWith("http://127.0.0.1")) {
+    return url.replace("http://127.0.0.1:54321", PUBLIC_SUPABASE_URL);
+  }
+  return url;
+}
+
+/* ===== COMMON INPUT STYLE ===== */
+const fieldStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  borderRadius: 12,
+  border: "1px solid rgba(0,0,0,0.15)",
+  background: "#fff",
+  color: "#111827",
+  fontSize: 14,
+  outline: "none",
+};
+
+/* =========================
+   COMPONENT
+========================= */
+export default function TaskDrawer({
+  open,
+  taskId,
+  onClose,
+  uploadedBy,
+}: {
+  open: boolean;
+  taskId: string | null;
+  onClose: () => void;
+  uploadedBy: string;
+}) {
+  const [task, setTask] = useState<TaskRow | null>(null);
+  const [photos, setPhotos] = useState<TaskPhoto[]>([]);
+  const [err, setErr] = useState<string | null>(null);
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [assignedUserId, setAssignedUserId] = useState("");
+
+  const [caption, setCaption] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const canShow = open && !!taskId;
+
+  const headerTitle = useMemo(
+    () => (task?.title ? `Task: ${task.title}` : "Task"),
+    [task?.title]
+  );
+
+  /* ===== LOAD ===== */
+  async function loadAll(id: string) {
+    try {
+      setErr(null);
+
+      const r1 = await fetch(`/api/task?id=${id}`, { cache: "no-store" });
+      const j1 = (await r1.json()) as ApiOk<TaskRow> | ApiErr;
+      if (!j1.ok) throw new Error(j1.error.message);
+
+      setTask(j1.data);
+      setTitle(j1.data.title || "");
+      setDescription(j1.data.description || "");
+      setAssignedUserId(j1.data.assigned_user_id || "");
+
+      const r2 = await fetch(`/api/task-photos?taskId=${id}`, { cache: "no-store" });
+      const j2 = (await r2.json()) as ApiOk<TaskPhoto[]> | ApiErr;
+      if (!j2.ok) throw new Error(j2.error.message);
+
+      setPhotos(j2.data || []);
+    } catch (e: any) {
+      setErr(e.message || "Błąd ładowania");
+    }
+  }
+
+  useEffect(() => {
+    if (canShow && taskId) loadAll(taskId);
+  }, [canShow, taskId]);
+
+  /* ===== SAVE ===== */
+  async function save() {
+    if (!taskId || !isUuid(uploadedBy)) return;
+
+    setSaving(true);
+    setErr(null);
+    try {
+      const r = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: taskId,
+          changed_by: uploadedBy,
+          title,
+          description: description || null,
+          assigned_user_id: assignedUserId || null,
+        }),
+      });
+
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error?.message || "save failed");
+    } catch (e: any) {
+      setErr(e.message || "Błąd zapisu");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /* ===== UPLOAD PHOTO ===== */
+  async function uploadPhoto(file: File) {
+    if (!taskId) return;
+
+    setUploading(true);
+    setErr(null);
+    try {
+      const base64 = await fileToBase64(file);
+      const r = await fetch("/api/task-photos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task_id: taskId,
+          uploaded_by: uploadedBy,
+          file_name: file.name,
+          caption: caption || null,
+          base64,
+        }),
+      });
+
+      const j = (await r.json()) as ApiOk<TaskPhoto> | ApiErr;
+      if (!j.ok) throw new Error(j.error.message);
+
+      setPhotos((p) => [j.data, ...p]);
+      setCaption("");
+    } catch (e: any) {
+      setErr(e.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <>
+      {/* OVERLAY */}
+      <div
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 9998 }}
+      />
+
+      {/* DRAWER */}
+      <div
+        style={{
+          position: "fixed",
+          top: 24,
+          right: 24,
+          bottom: 24,
+          width: "min(560px, 96vw)",
+          background: "linear-gradient(180deg, #ffffff, #f9fafb)",
+          borderRadius: 18,
+          boxShadow: "0 25px 60px rgba(0,0,0,0.35)",
+          zIndex: 9999,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          color: "#111827",
+        }}
+      >
+        {/* HEADER */}
+        <div
+          style={{
+            padding: "14px 16px",
+            borderBottom: "1px solid rgba(0,0,0,0.08)",
+            fontWeight: 900,
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          {headerTitle}
+          <button onClick={onClose}>✕</button>
+        </div>
+
+        {/* BODY */}
+        <div style={{ padding: 16, overflow: "auto", display: "grid", gap: 14 }}>
+          {err && <div style={{ color: "#b91c1c" }}>{err}</div>}
+
+          <input placeholder="Tytuł" value={title} onChange={(e) => setTitle(e.target.value)} style={fieldStyle} />
+
+          <textarea
+            placeholder="Opis"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            style={{ ...fieldStyle, minHeight: 90 }}
+          />
+
+          <input
+            placeholder="assigned_user_id (UUID)"
+            value={assignedUserId}
+            onChange={(e) => setAssignedUserId(e.target.value)}
+            style={fieldStyle}
+          />
+
+          <button onClick={save} disabled={saving}>
+            {saving ? "Zapisuję…" : "Zapisz"}
+          </button>
+
+          <hr />
+
+          <input
+            placeholder="Podpis zdjęcia"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            style={fieldStyle}
+          />
+
+          <input
+            type="file"
+            accept="image/*"
+            disabled={uploading}
+            onChange={(e) => {
+              const f = e.currentTarget.files?.[0];
+              e.currentTarget.value = "";
+              if (f) uploadPhoto(f);
+            }}
+          />
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+            {photos.map((p) => (
+              <img
+                key={p.id}
+                src={fixPhotoUrl(p.url)}
+                onClick={() => setPreviewUrl(fixPhotoUrl(p.url))}
+                style={{ width: "100%", borderRadius: 10, cursor: "pointer" }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* PREVIEW */}
+      {previewUrl && (
+        <div
+          onClick={() => setPreviewUrl(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.8)",
+            zIndex: 10000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <img src={previewUrl} style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: 16 }} />
+        </div>
+      )}
+    </>
+  );
+}

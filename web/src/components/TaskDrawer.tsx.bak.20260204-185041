@@ -1,0 +1,446 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type ApiOk<T> = { ok: true; data: T };
+type ApiErr = { ok: false; error: { code: string; message: string; meta?: any } };
+
+type TaskRow = {
+  id: string;
+  project_id: string;
+  plan_id: string;
+  title: string;
+  description: string | null;
+  priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  status: "OPEN" | "IN_PROGRESS" | "DONE_WAITING_APPROVAL" | "APPROVED" | "REJECTED";
+  due_date: string | null;
+  assigned_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type TaskPhoto = {
+  id: string;
+  task_id: string;
+  url: string;
+  caption: string | null;
+  uploaded_by: string;
+  created_at: string;
+};
+
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+async function readApi<T>(r: Response): Promise<ApiOk<T> | ApiErr> {
+  const txt = await r.text();
+  try {
+    return JSON.parse(txt);
+  } catch {
+    return { ok: false, error: { code: "BAD_RESPONSE", message: `Nie-JSON z API (${r.status}): ${txt.slice(0, 200)}` } };
+  }
+}
+
+export default function TaskDrawer({
+  open,
+  taskId,
+  onClose,
+  uploadedBy,
+}: {
+  open: boolean;
+  taskId: string | null;
+  onClose: () => void;
+  uploadedBy: string; // DEV: UUID profilu
+}) {
+  const [task, setTask] = useState<TaskRow | null>(null);
+  const [photos, setPhotos] = useState<TaskPhoto[]>([]);
+  const [err, setErr] = useState<string | null>(null);
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<TaskRow["priority"]>("MEDIUM");
+  const [status, setStatus] = useState<TaskRow["status"]>("OPEN");
+  const [assignedUserId, setAssignedUserId] = useState("");
+
+  const [caption, setCaption] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const canShow = open && !!taskId;
+
+  const headerTitle = useMemo(() => (task?.title ? `Task: ${task.title}` : "Task"), [task?.title]);
+
+  async function loadAll(id: string) {
+    setErr(null);
+    try {
+      const r1 = await fetch(`/api/task?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+      const j1 = (await readApi<TaskRow>(r1)) as ApiOk<TaskRow> | ApiErr;
+      if (!r1.ok || !j1.ok) throw new Error((j1 as any)?.error?.message || `task fetch failed (${r1.status})`);
+      setTask(j1.data);
+
+      setTitle(j1.data.title || "");
+      setDescription(j1.data.description || "");
+      setPriority(j1.data.priority);
+      setStatus(j1.data.status);
+      setAssignedUserId(j1.data.assigned_user_id || "");
+
+      const r2 = await fetch(`/api/task-photos?taskId=${encodeURIComponent(id)}`, { cache: "no-store" });
+      const j2 = (await readApi<TaskPhoto[]>(r2)) as ApiOk<TaskPhoto[]> | ApiErr;
+      if (!r2.ok || !j2.ok) throw new Error((j2 as any)?.error?.message || `photos fetch failed (${r2.status})`);
+      setPhotos(j2.data || []);
+    } catch (e: any) {
+      setErr(e?.message || String(e));
+    }
+  }
+
+  useEffect(() => {
+    if (canShow && taskId) loadAll(taskId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canShow, taskId]);
+
+  async function save() {
+    setErr(null);
+
+    if (!taskId) {
+      setErr("Brak taskId");
+      return;
+    }
+    if (!isUuid(taskId)) {
+      setErr("taskId nie jest UUID");
+      return;
+    }
+    if (!uploadedBy || !isUuid(uploadedBy)) {
+      setErr(`uploadedBy jest puste lub nie-UUID. W PlanMap musisz przekazać uploadedBy={CREATED_BY}. Teraz: "${uploadedBy}"`);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const r = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: taskId,
+          changed_by: uploadedBy,
+          title: title.trim(),
+          description: description.trim() === "" ? null : description.trim(),
+          priority,
+          status,
+          assigned_user_id: assignedUserId.trim() === "" ? null : assignedUserId.trim(),
+        }),
+      });
+
+      const j = (await readApi<TaskRow>(r)) as ApiOk<TaskRow> | ApiErr;
+      if (!r.ok || !j.ok) throw new Error((j as any)?.error?.message || `save failed (${r.status})`);
+
+      setTask(j.data);
+    } catch (e: any) {
+      setErr(e?.message || String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function uploadPhoto(file: File) {
+    setErr(null);
+
+    if (!taskId) {
+      setErr("Brak taskId");
+      return;
+    }
+    if (!isUuid(taskId)) {
+      setErr("taskId nie jest UUID");
+      return;
+    }
+    if (!uploadedBy || !isUuid(uploadedBy)) {
+      setErr(`uploadedBy jest puste lub nie-UUID. Teraz: "${uploadedBy}"`);
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const base64 = await fileToBase64(file);
+
+      const r = await fetch("/api/task-photos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task_id: taskId,
+          uploaded_by: uploadedBy,
+          file_name: file.name || "photo.jpg",
+          caption: caption.trim() === "" ? null : caption.trim(),
+          base64,
+        }),
+      });
+
+      const j = (await readApi<TaskPhoto>(r)) as ApiOk<TaskPhoto> | ApiErr;
+      if (!r.ok || !j.ok) throw new Error((j as any)?.error?.message || `upload failed (${r.status})`);
+
+      setPhotos((p) => [j.data, ...p]);
+      setCaption("");
+    } catch (e: any) {
+      setErr(e?.message || String(e));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <>
+      {/* overlay */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.45)",
+          zIndex: 9998,
+        }}
+      />
+
+      {/* CARD */}
+      <div
+        style={{
+          position: "fixed",
+          top: 24,
+          right: 24,
+          bottom: 24,
+          width: "min(560px, 96vw)",
+          background: "linear-gradient(180deg, #ffffff, #f9fafb)",
+          borderRadius: 18,
+          boxShadow: "0 25px 60px rgba(0,0,0,0.35)",
+          border: "1px solid rgba(0,0,0,0.08)",
+          zIndex: 9999,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          color: "#111827",
+        }}
+      >
+        {/* HEADER */}
+        <div
+          style={{
+            padding: "14px 16px",
+            borderBottom: "1px solid rgba(0,0,0,0.08)",
+            fontWeight: 900,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <div>{headerTitle}</div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              border: "1px solid rgba(0,0,0,0.12)",
+              background: "#fff",
+              borderRadius: 10,
+              padding: "6px 10px",
+              cursor: "pointer",
+            }}
+            aria-label="Zamknij"
+            title="Zamknij"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* BODY */}
+        <div style={{ padding: 16, overflow: "auto", display: "grid", gap: 14 }}>
+          {err && (
+            <div
+              style={{
+                color: "#991b1b",
+                background: "rgba(185,28,28,0.08)",
+                border: "1px solid rgba(185,28,28,0.18)",
+                padding: "10px 12px",
+                borderRadius: 12,
+                fontSize: 13,
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {err}
+            </div>
+          )}
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>Tytuł</div>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.14)",
+                fontSize: 14,
+              }}
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>Opis</div>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={4}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.14)",
+                fontSize: 14,
+                resize: "vertical",
+              }}
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>assigned_user_id (na razie UUID)</div>
+            <input
+              value={assignedUserId}
+              onChange={(e) => setAssignedUserId(e.target.value)}
+              placeholder="uuid albo puste"
+              style={{
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.14)",
+                fontSize: 14,
+                fontFamily: "monospace",
+              }}
+            />
+          </label>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <label style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>Priority</div>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as any)}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.14)",
+                  fontSize: 14,
+                  background: "#fff",
+                }}
+              >
+                <option value="LOW">LOW</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="HIGH">HIGH</option>
+                <option value="CRITICAL">CRITICAL</option>
+              </select>
+            </label>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>Status</div>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.14)",
+                  fontSize: 14,
+                  background: "#fff",
+                }}
+              >
+                <option value="OPEN">OPEN</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="DONE_WAITING_APPROVAL">DONE_WAITING_APPROVAL</option>
+                <option value="APPROVED">APPROVED</option>
+                <option value="REJECTED">REJECTED</option>
+              </select>
+            </label>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => save().catch(() => {})}
+            disabled={saving}
+            style={{
+              padding: "10px 12px",
+              borderRadius: 14,
+              border: "1px solid rgba(0,0,0,0.12)",
+              background: "#111827",
+              color: "#fff",
+              fontWeight: 800,
+              cursor: "pointer",
+              opacity: saving ? 0.7 : 1,
+            }}
+          >
+            {saving ? "Zapisuję…" : "Zapisz"}
+          </button>
+
+          <hr style={{ border: "none", borderTop: "1px solid rgba(0,0,0,0.08)" }} />
+
+          <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ fontWeight: 900 }}>Zdjęcia</div>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>Podpis (opcjonalnie)</div>
+              <input
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.14)",
+                  fontSize: 14,
+                }}
+              />
+            </label>
+
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+              <input
+                type="file"
+                accept="image/*"
+                disabled={uploading || !taskId}
+                onChange={async (e) => {
+                  const input = e.currentTarget;
+                  const f = input.files?.[0];
+                  if (!f) return;
+
+                  // reset od razu (bez await)
+                  input.value = "";
+
+                  await uploadPhoto(f);
+                }}
+              />
+              <span style={{ fontSize: 12, opacity: 0.7 }}>{uploading ? "Wysyłam…" : ""}</span>
+            </label>
+
+            {photos.length === 0 ? <div style={{ fontSize: 12, opacity: 0.7 }}>Brak zdjęć.</div> : null}
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+              {photos.map((p) => (
+                <img
+                  key={p.id}
+                  src={p.url}
+                  alt={p.caption || "photo"}
+                  style={{
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    objectFit: "cover",
+                    borderRadius: 12,
+                    border: "1px solid rgba(0,0,0,0.10)",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

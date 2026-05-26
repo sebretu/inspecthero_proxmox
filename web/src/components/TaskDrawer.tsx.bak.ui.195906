@@ -1,0 +1,134 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type Task = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+};
+
+export default function TaskDrawer({
+  open,
+  taskId,
+  uploadedBy,
+  onClose,
+}: {
+  open: boolean;
+  taskId: string | null;
+  uploadedBy: string;
+  onClose: () => void;
+}) {
+  const [task, setTask] = useState<Task | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [status, setStatus] = useState("OPEN");
+
+  useEffect(() => {
+    if (!open || !taskId) return;
+    fetch(`/api/task?id=${taskId}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j?.ok) {
+          setTask(j.data);
+          setTitle(j.data.title);
+          setDescription(j.data.description || "");
+          setStatus(j.data.status);
+        }
+      });
+  }, [open, taskId]);
+
+  async function save() {
+    await fetch("/api/tasks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: taskId,
+        changed_by: uploadedBy,
+        title,
+        description,
+        status,
+      }),
+    });
+    onClose();
+  }
+
+  async function upload(file: File) {
+    const b64 = await file.arrayBuffer().then((b) => btoa(String.fromCharCode(...new Uint8Array(b))));
+    await fetch("/api/task-photos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        task_id: taskId,
+        uploaded_by: uploadedBy,
+        file_name: file.name,
+        base64: b64,
+      }),
+    });
+
+    /** 🔔 informujemy PlanMap */
+    window.dispatchEvent(new CustomEvent("task-photo-added", { detail: { taskId } }));
+  }
+
+  async function remove() {
+    await fetch("/api/tasks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: taskId,
+        changed_by: uploadedBy,
+        status: "REJECTED",
+      }),
+    });
+    onClose();
+  }
+
+  if (!open) return null;
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)" }} />
+      <div
+        style={{
+          position: "fixed",
+          right: 20,
+          top: 20,
+          bottom: 20,
+          width: 420,
+          background: "#fff",
+          padding: 16,
+          borderRadius: 14,
+          zIndex: 9999,
+          display: "grid",
+          gap: 10,
+          color: "#111",
+        }}
+      >
+        <b>Task</b>
+
+        <input value={title} onChange={(e) => setTitle(e.target.value)} />
+        <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+
+        <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="OPEN">OPEN</option>
+          <option value="IN_PROGRESS">IN_PROGRESS</option>
+          <option value="DONE_WAITING_APPROVAL">DONE_WAITING_APPROVAL</option>
+          <option value="APPROVED">APPROVED</option>
+          <option value="REJECTED">REJECTED</option>
+        </select>
+
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => e.target.files && upload(e.target.files[0])}
+        />
+
+        <button onClick={save}>Zapisz</button>
+        <button onClick={remove} style={{ color: "#b91c1c" }}>
+          Usuń task
+        </button>
+      </div>
+    </>
+  );
+}

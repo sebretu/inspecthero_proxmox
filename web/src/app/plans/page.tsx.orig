@@ -1,0 +1,396 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { apiDelete, apiGet, apiPatch, getToken } from "@/lib/apiClient";
+import { supabase } from "@/lib/supabase";
+import { useLanguage } from "@/contexts/LanguageContext";
+import PlanCompositeThumbnail from "@/components/PlanCompositeThumbnail";
+
+type Project = { id: string; name: string };
+type Building = { id: string; name: string };
+
+type Floor = {
+  id: string;
+  building_id: string;
+  name: string;
+  level: number;
+};
+
+type Plan = {
+  id: string;
+  project_id: string;
+  floor_id: string;
+  version: number;
+  status: string;
+  pdf_path: string;
+  storage_bucket: string;
+  storage_path: string | null;
+  is_current: boolean;
+  image_width: number | null;
+  image_height: number | null;
+};
+
+// use `getToken` and `apiGet` from lib/apiClient
+
+export default function PlansPage() {
+  const router = useRouter();
+  const { t } = useLanguage();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectId, setProjectId] = useState("");
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [floors, setFloors] = useState<Floor[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  const [editingFloorId, setEditingFloorId] = useState<string | null>(null);
+  const [editingFloorName, setEditingFloorName] = useState("");
+  const [savingFloorName, setSavingFloorName] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [viewerProfile, setViewerProfile] = useState<{ id: string; role: string | null; company_id: string | null } | null>(null);
+
+  const normalizedRole = (viewerProfile?.role || "").toUpperCase();
+  const isAdmin = normalizedRole === "ADMIN";
+
+  const selectedProject = useMemo(() => {
+    return projects.find((p) => p.id === projectId);
+  }, [projects, projectId]);
+
+  async function loadAll(pid?: string) {
+    setErr(null);
+    const token = await getToken();
+    if (!token) {
+      setErr(t("plansPage", "sessionMissing", "Missing active session."));
+      router.push("/auth/login");
+      return;
+    }
+
+    const ps = await apiGet<Project[]>("/api/projects", token);
+    setProjects(ps);
+
+    const usePid = pid || projectId || ps[0]?.id;
+    if (!usePid) {
+      setProjectId("");
+      setBuildings([]);
+      setFloors([]);
+      setPlans([]);
+      setSelectedPlanId("");
+      return;
+    }
+    setProjectId(usePid);
+
+    // Run fetches in parallel for speed
+    const [bs, fs, pls] = await Promise.all([
+      apiGet<Building[]>(`/api/buildings?projectId=${encodeURIComponent(usePid)}`, token),
+      apiGet<Floor[]>(`/api/floors?projectId=${encodeURIComponent(usePid)}`, token),
+      apiGet<Plan[]>(`/api/plans?projectId=${encodeURIComponent(usePid)}&current=true`, token)
+    ]);
+
+    setBuildings(bs);
+    setFloors(fs);
+    setPlans(pls);
+
+    if (usePid !== projectId) {
+      setSelectedPlanId("");
+    }
+  }
+
+  async function handleDeletePlan(planId: string) {
+    if (!planId || !isAdmin) return;
+    const confirmMessage = t("plansPage", "deletePlanConfirm", "Delete plan and tiles?");
+    const confirmed = typeof window !== "undefined" ? window.confirm(confirmMessage) : false;
+    if (!confirmed) return;
+
+    setErr(null);
+    setDeletingPlanId(planId);
+    try {
+      const token = await getToken();
+      if (!token) {
+        setErr(t("plansPage", "sessionMissing", "Missing active session."));
+        router.push("/auth/login");
+        return;
+      }
+      await apiDelete(`/api/plans?id=${encodeURIComponent(planId)}`, token);
+      await loadAll(projectId || undefined);
+    } catch (e: any) {
+      const fallback = t("plansPage", "deletePlanError", "Failed to delete plan.");
+      setErr(e?.message || fallback);
+    } finally {
+      setDeletingPlanId(null);
+    }
+  }
+
+  async function handleSaveFloorName(floorId: string, newName: string) {
+    if (!newName.trim()) return;
+    setSavingFloorName(true);
+    setErr(null);
+    try {
+      const token = await getToken();
+      if (!token) {
+        setErr(t("plansPage", "sessionMissing", "Missing active session."));
+        router.push("/auth/login");
+        return;
+      }
+      await apiPatch(`/api/floors`, { id: floorId, name: newName }, token);
+      setFloors(floors.map(f => f.id === floorId ? { ...f, name: newName } : f));
+    } catch (e: any) {
+      const fallback = t("plansPage", "saveNameError", "Failed to save name.");
+      setErr(e?.message || fallback);
+    } finally {
+      setSavingFloorName(false);
+      setEditingFloorId(null);
+    }
+  }
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!isMounted) return;
+
+        if (!data?.session) {
+          router.replace("/auth/login");
+          return;
+        }
+
+        const authId = data.session.user.id;
+
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id, role, company_id")
+            .eq("id", authId)
+            .single();
+
+          if (!isMounted) return;
+          setViewerProfile(profile || null);
+        } catch {
+          if (!isMounted) return;
+          setViewerProfile(null);
+        } finally {
+          if (!isMounted) return;
+          setSessionChecked(true);
+        }
+      } catch {
+        if (!isMounted) return;
+        router.replace("/auth/login");
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
+  useEffect(() => {
+    if (!sessionChecked) return;
+    loadAll().catch((e: any) => {
+      const fallback = t("plansPage", "loadError", "Failed to load plans.");
+      const message = e?.message || fallback;
+      setErr(message);
+      if (typeof message === "string" && message.toLowerCase().includes("token")) {
+        router.push("/auth/login");
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionChecked, router]);
+
+  if (!sessionChecked) {
+    return <div style={{ padding: 48, textAlign: "center", color: "var(--home-muted)" }}>{t("plansPage", "pageLoading", "Loading plans...")}</div>;
+  }
+
+  return (
+    <main className="home-main">
+      {err && <div className="home-card-error plans-error">{err}</div>}
+      <section className="home-task-panel">
+        <div className="home-section-header">
+          <div>
+            <div className="home-hero-kicker">{t("plansPage", "kicker", "Library")}</div>
+            <h2>{t("plansPage", "title", "Plans library")}</h2>
+            <p>{t("plansPage", "subtitle", "Review and manage your project plans.")}</p>
+          </div>
+        </div>
+
+        <div className="plans-content" style={{ display: "grid", gap: 32 }}>
+          {/* Project Selection Card */}
+          <div className="upload-card">
+            <div className="upload-section">
+              <div className="upload-section-header">
+                <span className="upload-section-title">{t("plansPage", "projectCardTitle", "Project")}</span>
+              </div>
+              <div className="upload-field" style={{ marginBottom: 24 }}>
+                <div className="upload-input-group">
+                  <select
+                    className="upload-select"
+                    value={projectId}
+                    onChange={(e) => loadAll(e.target.value)}
+                    disabled={projects.length === 0}
+                  >
+                    {projects.length === 0 && (
+                      <option value="">{t("plansPage", "projectSelectPlaceholder", "-- Select project --")}</option>
+                    )}
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Plan Selection Dropdown */}
+              <div className="upload-section-header">
+                <span className="upload-section-title">{t("plansPage", "planCardTitle", "Plan")}</span>
+              </div>
+              <div className="upload-field">
+                <div className="upload-input-group" style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                  <select
+                    className="upload-select"
+                    defaultValue=""
+                    onChange={(e) => {
+                      setSelectedPlanId(e.target.value);
+                      setEditingFloorId(null);
+                    }}
+                    disabled={plans.length === 0}
+                    style={{ flex: 1 }}
+                  >
+                    <option value="" disabled>{t("plansPage", "planSelectPlaceholder", "-- Select plan --")}</option>
+                    {plans.map((p) => {
+                      const floor = floors.find(f => f.id === p.floor_id);
+                      const building = buildings.find(b => b.id === floor?.building_id);
+                      const project = projects.find(proj => proj.id === p.project_id);
+
+                      const locationParts = [
+                        project?.name,
+                        building?.name,
+                        floor?.name
+                      ].filter(Boolean);
+
+                      const locationString = locationParts.join(" - ");
+
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {locationString || `Plan v${p.version}`} (v{p.version} - {p.status})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        {selectedPlanId && (() => {
+          const p = plans.find(plan => plan.id === selectedPlanId);
+          if (!p) return null;
+          const floor = floors.find(f => f.id === p.floor_id);
+          const building = buildings.find(b => b.id === floor?.building_id);
+          const project = projects.find(proj => proj.id === p.project_id);
+
+          const locationParts = [
+            project?.name,
+            building?.name,
+            floor?.name
+          ].filter(Boolean);
+
+          const locationString = locationParts.join(" - ");
+          const isEditing = editingFloorId === floor?.id;
+
+          return (
+            <div className="upload-card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <Link href={`/plan/${p.id}`} className="plan-card-link" style={{ padding: 24, display: "flex", flexDirection: "column", alignItems: "center", textDecoration: "none", color: "inherit", cursor: "pointer", borderBottom: "1px solid var(--border)" }}>
+                <PlanCompositeThumbnail
+                  planId={p.id}
+                  size={600}
+                  alt={locationString || "Plan"}
+                />
+              </Link>
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16, background: "var(--home-bg-secondary)" }}>
+                {/* Name Edit Row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {isEditing ? (
+                    <>
+                      <input
+                        type="text"
+                        value={editingFloorName}
+                        onChange={(e) => setEditingFloorName(e.target.value)}
+                        disabled={savingFloorName}
+                        style={{ flex: 1, padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: "var(--home-bg)", color: "var(--home-foreground)" }}
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveFloorName(floor!.id, editingFloorName);
+                          if (e.key === "Escape") setEditingFloorId(null);
+                        }}
+                      />
+                      <button
+                        onClick={() => handleSaveFloorName(floor!.id, editingFloorName)}
+                        disabled={savingFloorName || !editingFloorName.trim()}
+                        style={{ padding: "8px 16px", background: "var(--primary)", color: "#fff", border: "none", borderRadius: "var(--radius)", cursor: "pointer", fontWeight: 600 }}
+                      >
+                        {t("plansPage", "saveBtn", "Save")}
+                      </button>
+                      <button
+                        onClick={() => setEditingFloorId(null)}
+                        disabled={savingFloorName}
+                        style={{ padding: "8px", background: "transparent", color: "var(--home-muted)", border: "none", cursor: "pointer" }}
+                      >
+                        {t("plansPage", "cancelBtn", "Cancel")}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ flex: 1, fontWeight: 600, fontSize: 16, color: "var(--home-foreground)" }}>
+                        {locationString || `Plan v${p.version}`}
+                      </div>
+                      {isAdmin && floor && (
+                        <button
+                          onClick={() => {
+                            setEditingFloorId(floor.id);
+                            setEditingFloorName(floor.name || "");
+                          }}
+                          style={{ padding: "6px 12px", background: "var(--home-bg)", border: "1px solid var(--border)", borderRadius: "var(--radius)", cursor: "pointer", fontSize: 13, color: "var(--home-foreground)" }}
+                        >
+                          {t("plansPage", "editNameBtn", "Edit Name")}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Info & Admin Row */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: "var(--home-muted)", marginTop: 4 }}>
+                  <div>v{p.version} ({p.status})</div>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleDeletePlan(p.id);
+                        setSelectedPlanId("");
+                      }}
+                      disabled={deletingPlanId === p.id}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        color: "var(--danger)",
+                        cursor: deletingPlanId === p.id ? "not-allowed" : "pointer",
+                        opacity: deletingPlanId === p.id ? 0.5 : 1,
+                        padding: 0
+                      }}
+                    >
+                      {deletingPlanId === p.id ? "..." : t("plansPage", "deletePlan", "Delete")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    </section>
+    </main >
+  );
+}

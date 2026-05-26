@@ -1,0 +1,200 @@
+}
+[tasks api] User role check: {
+  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+  role: 'ADMIN',
+  isAdmin: true
+}
+[tasks api] User role check: {
+  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+  role: 'ADMIN',
+  isAdmin: true
+}
+[tasks api] User role check: {
+  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+  role: 'ADMIN',
+  isAdmin: true
+}
+[tasks api] User role check: {
+  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+  role: 'ADMIN',
+  isAdmin: true
+}
+[tasks api] User role check: {
+  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+  role: 'ADMIN',
+  isAdmin: true
+}
+[tasks api] User role check: {
+  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+  role: 'ADMIN',
+  isAdmin: true
+}
+[tasks api] User role check: {
+  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+  role: 'ADMIN',
+  isAdmin: true
+}
+[tasks api] User role check: {
+  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+  role: 'ADMIN',
+  isAdmin: true
+}
+[tasks api] User role check: {
+  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+  role: 'ADMIN',
+  isAdmin: true
+}
+[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+[tasks api] User role check: {
+  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+  role: 'ADMIN',
+  isAdmin: true
+}
+[tasks api] User role check: {
+  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+  role: 'ADMIN',
+  isAdmin: true
+}
+[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+[BMA Scan] Starting scan... {
+  useExisting: true,
+  planId: 'c1f34460-659f-4303-b928-8762bae47fb7',
+  fileName: undefined
+}
+[BMA Scan] Downloading from storage: plans projects/76530312-bc7b-4681-a760-84c0c7765084/floors/65da8c5d-7774-4779-8402-404074069527/v1.pdf
+[BMA Scan] Downloaded buffer size: 698001
+[BMA Scan] Applied precision scaling from metadata: { scaleX: 0.9794921875, scaleY: 0.9701171875 }
+[BMA Scan] PDF loaded. Pages: 1
+[BMA Scan] Page 1 matches found in dense text: 137
+[BMA Scan] Starting scan... {
+  useExisting: true,
+  planId: 'c1f34460-659f-4303-b928-8762bae47fb7',
+  fileName: undefined
+}
+[BMA Scan] Downloading from storage: plans projects/76530312-bc7b-4681-a760-84c0c7765084/floors/65da8c5d-7774-4779-8402-404074069527/v1.pdf
+[BMA Scan] Downloaded buffer size: 698001
+[BMA Scan] Applied precision scaling from metadata: { scaleX: 0.9794921875, scaleY: 0.9701171875 }
+[BMA Scan] PDF loaded. Pages: 1
+[BMA Scan] Page 1 matches found in dense text: 137
+
+> web@0.1.0 start
+> next start
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3000
+- Network:       http://192.168.178.4:3000
+
+✓ Starting...
+✓ Ready in 604ms
+[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+[scan-loops] Extracted 6 loops and 189 device occurrences.
+[BMA Scan] Starting scan... {
+  useExisting: true,
+  planId: 'c1f34460-659f-4303-b928-8762bae47fb7',
+  fileName: undefined
+}
+[BMA Scan] Downloading from storage: plans projects/76530312-bc7b-4681-a760-84c0c7765084/floors/65da8c5d-7774-4779-8402-404074069527/v1.pdf
+[BMA Scan] Downloaded buffer size: 698001
+[BMA Scan] Applied precision scaling from metadata: { scaleX: 0.9794921875, scaleY: 0.9701171875 }
+[BMA Scan] PDF loaded. Pages: 1
+[BMA Scan] Page 1 matches found in dense text: 137
+[scan-loops] Extracted 6 loops and 189 device occurrences.
+[BMA Scan] Starting scan... {
+  useExisting: true,
+  planId: 'c1f34460-659f-4303-b928-8762bae47fb7',
+  fileName: undefined
+}
+[BMA Scan] Downloading from storage: plans projects/76530312-bc7b-4681-a760-84c0c7765084/floors/65da8c5d-7774-4779-8402-404074069527/v1.pdf
+[BMA Scan] Downloaded buffer size: 698001
+[BMA Scan] Applied precision scaling from metadata: { scaleX: 0.9794921875, scaleY: 0.9701171875 }
+[BMA Scan] PDF loaded. Pages: 1
+[BMA Scan] Page 1 matches found in dense text: 137
+[scan-loops] Extracted 6 loops and 189 device occurrences.
+[BMA Scan] Starting scan... {
+  useExisting: true,
+  planId: 'c1f34460-659f-4303-b928-8762bae47fb7',
+  fileName: undefined
+}
+[BMA Scan] Downloading from storage: plans projects/76530312-bc7b-4681-a760-84c0c7765084/floors/65da8c5d-7774-4779-8402-404074069527/v1.pdf
+[BMA Scan] Downloaded buffer size: 698001
+[BMA Scan] Applied precision scaling from metadata: { scaleX: 0.9794921875, scaleY: 0.9701171875 }
+[BMA Scan] PDF loaded. Pages: 1
+[BMA Scan] Page 1 matches found in dense text: 137
+[scan-loops] Extracted 6 loops and 189 device occurrences.
+[BMA Scan] Starting scan... {
+  useExisting: true,
+  planId: 'c1f34460-659f-4303-b928-8762bae47fb7',
+  fileName: undefined
+}
+[BMA Scan] Downloading from storage: plans projects/76530312-bc7b-4681-a760-84c0c7765084/floors/65da8c5d-7774-4779-8402-404074069527/v1.pdf
+[BMA Scan] Downloaded buffer size: 698001
+[BMA Scan] Applied precision scaling from metadata: { scaleX: 0.9794921875, scaleY: 0.9701171875 }
+[BMA Scan] PDF loaded. Pages: 1
+[BMA Scan] Page 1 matches found in dense text: 137
+[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+[scan-loops] Extracted 6 loops and 189 device occurrences.
+[BMA Scan] Starting scan... {
+  useExisting: true,
+  planId: 'c1f34460-659f-4303-b928-8762bae47fb7',
+  fileName: undefined
+}
+[BMA Scan] Downloading from storage: plans projects/76530312-bc7b-4681-a760-84c0c7765084/floors/65da8c5d-7774-4779-8402-404074069527/v1.pdf
+[BMA Scan] Downloaded buffer size: 698001
+[BMA Scan] Applied precision scaling from metadata: { scaleX: 0.9794921875, scaleY: 0.9701171875 }
+[BMA Scan] PDF loaded. Pages: 1
+[BMA Scan] Page 1 matches found in dense text: 137
+[scan-loops] Extracted 6 loops and 189 device occurrences.
+[BMA Scan] Starting scan... {
+  useExisting: true,
+  planId: 'c1f34460-659f-4303-b928-8762bae47fb7',
+  fileName: undefined
+}
+[BMA Scan] Downloading from storage: plans projects/76530312-bc7b-4681-a760-84c0c7765084/floors/65da8c5d-7774-4779-8402-404074069527/v1.pdf
+[BMA Scan] Downloaded buffer size: 698001
+[BMA Scan] Applied precision scaling from metadata: { scaleX: 0.9794921875, scaleY: 0.9701171875 }
+[BMA Scan] PDF loaded. Pages: 1
+[BMA Scan] Page 1 matches found in dense text: 137
+
+> web@0.1.0 start
+> next start
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3000
+- Network:       http://192.168.178.4:3000
+
+✓ Starting...
+✓ Ready in 605ms
+[BMA Scan] Starting scan... {
+  useExisting: true,
+  planId: 'c1f34460-659f-4303-b928-8762bae47fb7',
+  fileName: undefined
+}
+[BMA Scan] Downloading from storage: plans projects/76530312-bc7b-4681-a760-84c0c7765084/floors/65da8c5d-7774-4779-8402-404074069527/v1.pdf
+[BMA Scan] Downloaded buffer size: 698001
+[BMA Scan] Applied precision scaling from metadata: { scaleX: 0.9794921875, scaleY: 0.9701171875 }
+[BMA Scan] PDF loaded. Pages: 1
+[BMA Scan] Page 1 matches found in dense text: 137
+[scan-loops] Extracted 6 loops and 189 device occurrences.
+[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+[scan-loops] Extracted 6 loops and 189 device occurrences.
+[BMA Scan] Starting scan... {
+  useExisting: true,
+  planId: 'c1f34460-659f-4303-b928-8762bae47fb7',
+  fileName: undefined
+}
+[BMA Scan] Downloading from storage: plans projects/76530312-bc7b-4681-a760-84c0c7765084/floors/65da8c5d-7774-4779-8402-404074069527/v1.pdf
+[BMA Scan] Downloaded buffer size: 698001
+[BMA Scan] Applied precision scaling from metadata: { scaleX: 0.9794921875, scaleY: 0.9701171875 }
+[BMA Scan] PDF loaded. Pages: 1
+[BMA Scan] Page 1 matches found in dense text: 137
+[BMA Scan] Starting scan... {
+  useExisting: true,
+  planId: 'c1f34460-659f-4303-b928-8762bae47fb7',
+  fileName: undefined
+}
+[BMA Scan] Downloading from storage: plans projects/76530312-bc7b-4681-a760-84c0c7765084/floors/65da8c5d-7774-4779-8402-404074069527/v1.pdf
+[BMA Scan] Downloaded buffer size: 698001
+[BMA Scan] Applied precision scaling from metadata: { scaleX: 0.9794921875, scaleY: 0.9701171875 }
+[BMA Scan] PDF loaded. Pages: 1
+[BMA Scan] Page 1 matches found in dense text: 137

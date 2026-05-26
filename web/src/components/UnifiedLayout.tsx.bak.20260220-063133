@@ -1,0 +1,173 @@
+"use client";
+import React, { useMemo, useState, useEffect } from "react";
+import { useNotification } from "@/contexts/NotificationContext";
+import Link from "next/link";
+import styles from "./UnifiedLayout.module.css";
+import { usePathname } from "next/navigation";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { LogoutButton } from "@/components/LogoutButton";
+
+
+import { supabase } from "@/lib/supabase";
+
+export default function UnifiedLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const { showNotification } = useNotification();
+  const hideChrome = pathname?.startsWith("/task/");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { t } = useLanguage();
+  const currentYear = new Date().getFullYear();
+  const footerTagline = t("footer", "tagline", "Inspection and reporting platform");
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const isAdmin = (userRole || "").toUpperCase() === "ADMIN";
+
+
+  // Load role via /api/me (no direct profiles query in browser)
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+
+        if (!token) {
+          if (alive) setUserRole(null);
+          return;
+        }
+
+        const r = await fetch("/api/me", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+
+        if (!r.ok) {
+          if (alive) setUserRole(null);
+          return;
+        }
+
+        const j = await r.json();
+        if (alive) setUserRole(j.profile?.role || "USER");
+      } catch {
+        if (alive) setUserRole(null);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Listen for task submitted for approval event (depends on role)
+  useEffect(() => {
+    function handleTaskSubmitted(e: any) {
+      if ((userRole || "").toUpperCase() === "ADMIN") {
+        const taskTitle = e?.detail?.title || "";
+        showNotification(
+          taskTitle ? `Zadanie "${taskTitle}" zgłoszone do akceptacji.` : "Zadanie zgłoszone do akceptacji.",
+          "info"
+        );
+      }
+    }
+
+    window.addEventListener("task-submitted-for-approval", handleTaskSubmitted as any);
+    return () => {
+      window.removeEventListener("task-submitted-for-approval", handleTaskSubmitted as any);
+    };
+  }, [userRole, showNotification]);
+
+
+
+  const navLinks = useMemo(() => {
+    const links = [
+      { href: "/", label: t("nav", "tasks", "Aufgaben") },
+      { href: "/plans", label: t("nav", "plans", "Pläne") },
+    ];
+    if (isAdmin) {
+      links.push(
+        { href: "/users", label: t("nav", "users", "Benutzer") },
+        { href: "/companies", label: t("nav", "companies", "Unternehmen") },
+        { href: "/reports", label: t("nav", "reports", "Raporty") }
+      );
+    }
+    return links;
+  }, [t, isAdmin]);
+
+  if (hideChrome) {
+    // Task preview uses its own fullscreen chrome and should not show the global navigation.
+    return <>{children}</>;
+  }
+
+  return (
+    <div className={styles.layoutRoot}>
+      <header className={`topbar ${menuOpen ? "is-open" : ""}`}>
+        <div className="topbar__inner container">
+          <div className="topbar__brand">
+            <Link href="/" className="topbar__logo" aria-label="InspectHero home">
+              <img src="/inspecthero-logo.png" alt="InspectHero logo" />
+            </Link>
+          </div>
+
+          <button
+            className="topbar__toggle"
+            type="button"
+            aria-label="Toggle navigation"
+            onClick={() => setMenuOpen((prev) => !prev)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+
+          <nav className="topbar__nav" aria-label="Primary">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`topbar__link ${isActive ? "is-active" : ""}`}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      </header>
+      <nav className={styles.navStrip} aria-label="Primary">
+        <div className={`${styles.navStripInner} container`}>
+          <div className={styles.navStripLinks}>
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={`strip-${link.href}`}
+                  href={link.href}
+                  className={`${styles.navStripLink} ${isActive ? styles.navStripLinkActive : ""}`.trim()}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+          <div className={styles.navStripControls}>
+            {isAdmin && (
+              <Link href="/plans/upload" className={styles.navUpload}>
+                Upload plan
+              </Link>
+            )}
+            <LanguageSwitcher />
+            <LogoutButton className={styles.navLogout} />
+          </div>
+        </div>
+      </nav>
+      <main className={styles.main}>{children}</main>
+      <footer className={styles.footer}>
+        InspectHero © {currentYear} — {footerTagline}
+      </footer>
+    </div>
+  );
+}

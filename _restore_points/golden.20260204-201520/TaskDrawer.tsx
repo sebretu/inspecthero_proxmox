@@ -1,0 +1,444 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type ApiOk<T> = { ok: true; data: T };
+type ApiErr = { ok: false; error: { code: string; message: string; meta?: any } };
+
+type TaskRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: "OPEN" | "IN_PROGRESS" | "DONE_WAITING_APPROVAL" | "APPROVED" | "REJECTED";
+  assigned_user_id: string | null;
+};
+
+type TaskPhoto = {
+  id: string;
+  task_id: string;
+  url: string;
+  caption: string | null;
+  created_at: string;
+};
+
+function isUuid(v: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  const buf = await file.arrayBuffer();
+  let binary = "";
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+export default function TaskDrawer({
+  open,
+  taskId,
+  onClose,
+  uploadedBy,
+}: {
+  open: boolean;
+  taskId: string | null;
+  onClose: () => void;
+  uploadedBy: string;
+}) {
+  const [task, setTask] = useState<TaskRow | null>(null);
+  const [photos, setPhotos] = useState<TaskPhoto[]>([]);
+  const [err, setErr] = useState<string | null>(null);
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [status, setStatus] = useState<TaskRow["status"]>("OPEN");
+  const [assignedUserId, setAssignedUserId] = useState("");
+
+  const [caption, setCaption] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const canShow = open && !!taskId;
+
+  const headerTitle = useMemo(() => {
+    if (!taskId) return "Task";
+    return task?.title ? `Task: ${task.title}` : `Task: ${taskId}`;
+  }, [taskId, task?.title]);
+
+  async function loadAll(id: string) {
+    setErr(null);
+    try {
+      const r1 = await fetch(`/api/task?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+      const j1 = (await r1.json()) as ApiOk<TaskRow> | ApiErr;
+      if (!r1.ok || !j1.ok) throw new Error((j1 as any)?.error?.message || "task fetch failed");
+
+      setTask(j1.data);
+      setTitle(j1.data.title || "");
+      setDescription(j1.data.description || "");
+      setStatus(j1.data.status || "OPEN");
+      setAssignedUserId(j1.data.assigned_user_id || "");
+
+      const r2 = await fetch(`/api/task-photos?taskId=${encodeURIComponent(id)}`, { cache: "no-store" });
+      const j2 = (await r2.json()) as ApiOk<TaskPhoto[]> | ApiErr;
+      if (!r2.ok || !j2.ok) throw new Error((j2 as any)?.error?.message || "photos fetch failed");
+      setPhotos(j2.data || []);
+    } catch (e: any) {
+      setErr(e?.message || String(e));
+    }
+  }
+
+  useEffect(() => {
+    if (!canShow || !taskId) return;
+    loadAll(taskId).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canShow, taskId]);
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(17,24,39,0.15)",
+    background: "#fff",
+    color: "#111827",
+    fontSize: 14,
+    outline: "none",
+  };
+
+  const labelStyle: React.CSSProperties = { display: "grid", gap: 6, fontSize: 12, color: "#111827" };
+
+  async function save() {
+    if (!taskId) return;
+    setErr(null);
+
+    if (!isUuid(taskId)) return setErr("taskId nie jest UUID");
+    if (!isUuid(uploadedBy)) return setErr("changed_by(uploadedBy) nie jest UUID");
+
+    // assigned_user_id: puste => null, a jak wpisane to UUID
+    const trimmed = assignedUserId.trim();
+    if (trimmed && !isUuid(trimmed)) return setErr("assigned_user_id musi być UUID albo puste");
+
+    setSaving(true);
+    try {
+      const r = await fetch("/api/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: taskId,
+          changed_by: uploadedBy,
+          title: title.trim(),
+          description: description.trim() === "" ? null : description.trim(),
+          status,
+          assigned_user_id: trimmed ? trimmed : null,
+        }),
+      });
+
+      const j = await r.json();
+      if (!r.ok || !j?.ok) throw new Error(j?.error?.message || "save failed");
+
+      window.dispatchEvent(new CustomEvent("task-saved"));
+      onClose();
+    } catch (e: any) {
+      setErr(e?.message || String(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function uploadPhoto(file: File) {
+    if (!taskId) return;
+    setErr(null);
+    if (!isUuid(taskId)) return setErr("taskId nie jest UUID");
+    if (!isUuid(uploadedBy)) return setErr("uploadedBy nie jest UUID");
+
+    setUploading(true);
+    try {
+      const base64 = await fileToBase64(file);
+      const r = await fetch("/api/task-photos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task_id: taskId,
+          uploaded_by: uploadedBy,
+          file_name: file.name || "photo.jpg",
+          caption: caption.trim() === "" ? null : caption.trim(),
+          base64,
+        }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j?.ok) throw new Error(j?.error?.message || "upload failed");
+
+      setCaption("");
+      // odśwież listę zdjęć (żeby miniatury były pewne)
+      await loadAll(taskId);
+
+      // 🔔 popup na mapie ma się zaktualizować
+      window.dispatchEvent(new CustomEvent("task-photo-added", { detail: { taskId } }));
+    } catch (e: any) {
+      setErr(e?.message || String(e));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function removeTask() {
+    if (!taskId) return;
+    setErr(null);
+    if (!isUuid(taskId)) return setErr("taskId nie jest UUID");
+
+    if (!confirm("Na pewno usunąć task? (usunie też zdjęcia)")) return;
+
+    try {
+      const r = await fetch(`/api/task?id=${encodeURIComponent(taskId)}`, { method: "DELETE" });
+      const j = await r.json().catch(() => null);
+
+      if (!r.ok || !j?.ok) throw new Error(j?.error?.message || `delete failed (${r.status})`);
+
+      window.dispatchEvent(new CustomEvent("task-deleted"));
+      onClose();
+    } catch (e: any) {
+      setErr(e?.message || String(e));
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <>
+      {/* overlay */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.45)",
+          zIndex: 9998,
+        }}
+      />
+
+      {/* CARD */}
+      <div
+        style={{
+          position: "fixed",
+          top: 24,
+          right: 24,
+          bottom: 24,
+          width: "min(560px, 96vw)",
+          background: "linear-gradient(180deg, #ffffff, #f9fafb)",
+          borderRadius: 18,
+          boxShadow: "0 25px 60px rgba(0,0,0,0.35)",
+          border: "1px solid rgba(0,0,0,0.08)",
+          zIndex: 9999,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          color: "#111827",
+        }}
+      >
+        {/* HEADER */}
+        <div
+          style={{
+            padding: "14px 16px",
+            borderBottom: "1px solid rgba(0,0,0,0.08)",
+            fontWeight: 900,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <div style={{ fontSize: 14 }}>{headerTitle}</div>
+          <button
+            onClick={onClose}
+            style={{
+              padding: "6px 10px",
+              borderRadius: 10,
+              border: "1px solid rgba(17,24,39,0.18)",
+              background: "#fff",
+              color: "#111827",
+              cursor: "pointer",
+              fontWeight: 800,
+            }}
+          >
+            Zamknij ✕
+          </button>
+        </div>
+
+        {/* BODY */}
+        <div style={{ padding: 16, overflow: "auto", display: "grid", gap: 14 }}>
+          {err ? (
+            <div
+              style={{
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(185,28,28,0.25)",
+                background: "rgba(185,28,28,0.06)",
+                color: "#b91c1c",
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              {err}
+            </div>
+          ) : null}
+
+          {!taskId ? (
+            <div style={{ fontSize: 13, opacity: 0.8 }}>Brak taskId</div>
+          ) : null}
+
+          <label style={labelStyle}>
+            <div style={{ fontWeight: 800 }}>Tytuł</div>
+            <input style={inputStyle} value={title} onChange={(e) => setTitle(e.target.value)} />
+          </label>
+
+          <label style={labelStyle}>
+            <div style={{ fontWeight: 800 }}>Opis</div>
+            <textarea
+              style={{ ...inputStyle, minHeight: 110, resize: "vertical" }}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </label>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <label style={labelStyle}>
+              <div style={{ fontWeight: 800 }}>Status</div>
+              <select style={inputStyle} value={status} onChange={(e) => setStatus(e.target.value as any)}>
+                <option value="OPEN">OPEN</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="DONE_WAITING_APPROVAL">DONE_WAITING_APPROVAL</option>
+                <option value="APPROVED">APPROVED</option>
+                <option value="REJECTED">REJECTED</option>
+              </select>
+            </label>
+
+            <label style={labelStyle}>
+              <div style={{ fontWeight: 800 }}>assigned_user_id</div>
+              <input
+                style={inputStyle}
+                value={assignedUserId}
+                onChange={(e) => setAssignedUserId(e.target.value)}
+                placeholder="UUID lub puste"
+              />
+            </label>
+          </div>
+
+          <button
+            onClick={save}
+            disabled={saving}
+            style={{
+              padding: "12px 14px",
+              borderRadius: 14,
+              border: "1px solid rgba(17,24,39,0.18)",
+              background: saving ? "rgba(17,24,39,0.06)" : "#111827",
+              color: saving ? "#111827" : "#fff",
+              cursor: saving ? "default" : "pointer",
+              fontWeight: 900,
+              fontSize: 14,
+            }}
+          >
+            {saving ? "Zapisuję…" : "Zapisz"}
+          </button>
+
+          <button
+            onClick={removeTask}
+            style={{
+              padding: "12px 14px",
+              borderRadius: 14,
+              border: "1px solid rgba(185,28,28,0.35)",
+              background: "rgba(185,28,28,0.06)",
+              color: "#b91c1c",
+              cursor: "pointer",
+              fontWeight: 900,
+              fontSize: 14,
+            }}
+          >
+            Usuń task
+          </button>
+
+          <hr style={{ border: "none", borderTop: "1px solid rgba(17,24,39,0.08)" }} />
+
+          {/* PHOTOS */}
+          <div style={{ display: "grid", gap: 10 }}>
+            <div style={{ fontWeight: 900 }}>Zdjęcia</div>
+
+            <label style={labelStyle}>
+              <div style={{ fontWeight: 800 }}>Podpis (opcjonalnie)</div>
+              <input style={inputStyle} value={caption} onChange={(e) => setCaption(e.target.value)} />
+            </label>
+
+            <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <input
+                type="file"
+                accept="image/*"
+                disabled={uploading || !taskId}
+                onChange={async (e) => {
+                  const input = e.currentTarget;
+                  const f = input.files?.[0];
+                  input.value = "";
+                  if (!f) return;
+                  await uploadPhoto(f);
+                }}
+              />
+              <span style={{ fontSize: 12, opacity: 0.75 }}>{uploading ? "Wysyłam…" : ""}</span>
+            </label>
+
+            {photos.length === 0 ? <div style={{ fontSize: 12, opacity: 0.75 }}>Brak zdjęć.</div> : null}
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+              {photos.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setPreviewUrl(p.url)}
+                  style={{
+                    border: "1px solid rgba(17,24,39,0.12)",
+                    borderRadius: 12,
+                    padding: 0,
+                    overflow: "hidden",
+                    background: "#fff",
+                    cursor: "pointer",
+                  }}
+                  title={p.caption || ""}
+                >
+                  <img
+                    src={p.url}
+                    alt={p.caption || ""}
+                    style={{ width: "100%", height: 88, objectFit: "cover", display: "block" }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* PREVIEW */}
+      {previewUrl ? (
+        <div
+          onClick={() => setPreviewUrl(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.72)",
+            zIndex: 10000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <img
+            src={previewUrl}
+            alt=""
+            style={{
+              maxWidth: "min(980px, 96vw)",
+              maxHeight: "min(92vh, 920px)",
+              borderRadius: 14,
+              boxShadow: "0 25px 60px rgba(0,0,0,0.45)",
+              background: "#fff",
+            }}
+          />
+        </div>
+      ) : null}
+    </>
+  );
+}

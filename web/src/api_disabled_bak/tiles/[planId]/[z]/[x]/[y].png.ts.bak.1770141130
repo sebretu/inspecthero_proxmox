@@ -1,0 +1,83 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+import fs from "fs";
+import path from "path";
+
+type Meta = {
+  tileSize: number;
+  minZoom: number;
+  maxZoom: number;
+  gridW: number;
+  gridH: number;
+  limits?: Record<string, { maxX: number; maxY: number }>;
+};
+
+function sendPng(res: NextApiResponse, filePath: string) {
+  const stat = fs.statSync(filePath);
+  res.statusCode = 200;
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "public, max-age=0");
+  res.setHeader("X-TILES-HANDLER", "1");
+  res.setHeader("X-TILE-PATH", filePath);
+  res.setHeader("Content-Length", String(stat.size));
+  fs.createReadStream(filePath).pipe(res);
+}
+
+function sendJson(res: NextApiResponse, code: number, payload: any) {
+  res.statusCode = code;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.end(JSON.stringify(payload));
+}
+
+export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    const { planId, z, x, y: yRaw } = req.query;
+
+    const planIdStr = String(planId);
+    const zNum = parseInt(String(z), 10);
+    const xNum = parseInt(String(x), 10);
+    const yStr = String(yRaw).replace(/\.png$/i, "");
+    const yNum = parseInt(yStr, 10);
+
+    if (!Number.isFinite(zNum) || !Number.isFinite(xNum) || !Number.isFinite(yNum)) {
+      sendJson(res, 400, { error: "bad params" });
+      return;
+    }
+
+    const base = path.join(process.cwd(), "public", "tiles", planIdStr);
+    const metaPath = path.join(base, "meta.json");
+    if (!fs.existsSync(metaPath)) {
+      sendJson(res, 404, { error: "meta.json missing" });
+      return;
+    }
+
+    let meta: Meta;
+    try {
+      meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as Meta;
+    } catch {
+      sendJson(res, 500, { error: "meta.json invalid" });
+      return;
+    }
+
+    const lim = meta.limits?.[String(zNum)];
+    const maxX = lim?.maxX ?? meta.gridW - 1;
+    const maxY = lim?.maxY ?? meta.gridH - 1;
+
+    // UWAGA: nasze kafle są generowane jako 0..maxX oraz 0..maxY (bez minusów)
+    if (xNum < 0 || yNum < 0 || xNum > maxX || yNum > maxY) {
+      res.statusCode = 404;
+      res.end();
+      return;
+    }
+
+    const tilePath = path.join(base, String(zNum), String(xNum), `${yNum}.png`);
+    if (!fs.existsSync(tilePath)) {
+      res.statusCode = 404;
+      res.end();
+      return;
+    }
+
+    sendPng(res, tilePath);
+  } catch (e: any) {
+    sendJson(res, 500, { error: e?.message ?? "server error" });
+  }
+}

@@ -1,0 +1,120 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+
+type Project = { id: string; name: string };
+type Task = {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  due_date: string | null;
+};
+
+async function getToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
+async function apiGet<T>(path: string, token: string): Promise<T> {
+  const r = await fetch(path, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j?.error?.message || "api error");
+  return j.data as T;
+}
+
+export default function Home() {
+  const [email, setEmail] = useState("admin@demo.local");
+  const [password, setPassword] = useState("Password123!");
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectId, setProjectId] = useState("");
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function loadAll() {
+    setErr(null);
+    const token = await getToken();
+    if (!token) return;
+
+    const ps = await apiGet<Project[]>("/api/projects", token);
+    setProjects(ps);
+
+    const pid = projectId || ps[0]?.id;
+    if (!pid) return;
+    setProjectId(pid);
+
+    const statusQ = statusFilter ? `&status=${statusFilter}` : "";
+    const ts = await apiGet<Task[]>(
+      `/api/tasks?projectId=${encodeURIComponent(pid)}&limit=50&offset=0${statusQ}`,
+      token
+    );
+    setTasks(ts);
+  }
+
+  
+useEffect(() => {
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
+
+  return (
+    <main style={{ padding: 24 }}>
+      <h1>Tasks</h1>
+
+      <div style={{ marginBottom: 12 }}>
+        <input value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button
+          onClick={async () => {
+            await supabase.auth.signInWithPassword({ email, password });
+            await loadAll();
+          }}
+        >
+          Sign in
+        </button>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        {[null, "OPEN", "DONE_WAITING_APPROVAL", "APPROVED"].map((s) => (
+          <button
+            key={s ?? "ALL"}
+            onClick={() => setStatusFilter(s)}
+            style={{
+              marginRight: 8,
+              fontWeight: statusFilter === s ? "bold" : "normal",
+            }}
+          >
+            {s ?? "ALL"}
+          </button>
+        ))}
+      </div>
+
+      <ul>
+  {tasks.map((t) => (
+    <li key={t.id}>
+      <Link
+        href={`/task/${t.id}`}
+        style={{ textDecoration: "none", color: "inherit" }}
+      >
+        [{t.status}] {t.title}
+      </Link>
+    </li>
+  ))}
+</ul>
+
+      
+
+      {err && <p style={{ color: "red" }}>{err}</p>}
+    </main>
+  );
+}

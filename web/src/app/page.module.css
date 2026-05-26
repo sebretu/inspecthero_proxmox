@@ -56,8 +56,7 @@
 }
 
 .intro a {
-  font-weight: 500;
-  color: var(--text-primary);
+  /* styl linków globalnie */
 }
 
 .ctas {
@@ -75,12 +74,22 @@
   align-items: center;
   height: 40px;
   padding: 0 16px;
-  border-radius: 128px;
-  border: 1px solid transparent;
-  transition: 0.2s;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--light);
+  color: var(--accent);
+  font-weight: 600;
   cursor: pointer;
   width: fit-content;
-  font-weight: 500;
+  box-shadow: none;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+
+.ctas a:hover, .ctas a:focus {
+  background: linear-gradient(135deg, #2F6BFF 0%, #5A8BFF 100%);
+  color: #111827;
+  box-shadow: var(--shadow-accent);
+  outline: none;
 }
 
 a.primary {

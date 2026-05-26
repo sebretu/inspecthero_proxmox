@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - Task Manager</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      max-width: 400px;
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    p {
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .status {
+      padding: 15px;
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 6px;
+      color: #856404;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    button {
+      padding: 12px 24px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #5568d3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌐 Brak połączenia</h1>
+    <p>Jesteś offline. Sprawdź połączenie internetowe i odśwież stronę.</p>
+    
+    <div class="status">
+      ℹ️ Zainstalowana aplikacja będzie działać offline
+    </div>
+
+    <p>Przywrócone dane:</p>
+    <ul style="text-align: left; color: #666; font-size: 14px;">
+      <li>🗂️ Projekty</li>
+      <li>👥 Profili użytkowników</li>
+      <li>🏢 Firmy</li>
+      <li>📸 Poprzednio pobrane zdjęcia</li>
+    </ul>
+
+    <button onclick="location.reload()">↻ Odśwież stronę</button>
+  </div>
+</body>
+</html>

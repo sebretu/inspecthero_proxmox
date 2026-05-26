@@ -1,0 +1,15 @@
+DATE_UTC=2026-02-03 18:34:03
+GIT_HEAD=7918a3b46e24782a08f0ec3c3d746da9cf495084
+GIT_TAG=tiles-working-2026-02-03
+
+FILES:
+-rw-r--r-- 1 root root  380 Feb  3 17:28 web/public/tiles/88888888-8888-8888-8888-888888888888/meta.json
+-rw-r--r-- 1 root root 4423 Feb  3 17:20 web/scripts/generate-tiles.mjs
+-rw-r--r-- 1 root root 4085 Feb  3 17:51 web/src/components/PlanViewer.tsx
+-rw-r--r-- 1 root root 2103 Feb  3 17:52 web/src/pages/api/tiles/[planId]/[z]/[x]/[y].png.ts
+
+SHA256:
+f69d38ddb0907d68d97ea06d65634084fdb7eae807eddc91bf07bf20230f89a3  web/src/components/PlanViewer.tsx
+4d80785ad485196b02a2ade77b63124f8a9eb05eaa12b55b08e7b7abae33dda1  web/src/pages/api/tiles/[planId]/[z]/[x]/[y].png.ts
+b884baba2223b6974c677eb3911a0e21810744ee7069e309f097845b3174323a  web/scripts/generate-tiles.mjs
+ab8ba757a3412dbcd213cf2771bba1a676e8f01a161d6913f9c1a0552aac03f6  web/public/tiles/88888888-8888-8888-8888-888888888888/meta.json

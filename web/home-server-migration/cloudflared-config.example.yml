@@ -1,0 +1,19 @@
+tunnel: <Twoje-UUID-Tunelu>
+credentials-file: /etc/cloudflared/<Twoje-UUID-Tunelu>.json
+
+ingress:
+  # Główna aplikacja Next.js
+  - hostname: twoja-domena.com
+    service: http://localhost:3000
+
+  # Supabase API (Kong Gateway)
+  # Ważne: W ustawieniach klienta (frontend) jako URL API podajesz https://api.twoja-domena.com
+  - hostname: api.twoja-domena.com
+    service: http://localhost:8000
+
+  # Supabase Studio (Panel Admina)
+  - hostname: studio.twoja-domena.com
+    service: http://localhost:54323
+
+  # Dla bezpieczeństwa - odrzucamy wszystko inne
+  - service: http_status:404

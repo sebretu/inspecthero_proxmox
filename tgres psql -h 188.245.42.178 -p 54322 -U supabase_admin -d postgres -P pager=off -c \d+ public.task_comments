@@ -1,0 +1,31 @@
+                                                      Table "public.task_comments"
+   Column   |           Type           | Collation | Nullable |      Default      | Storage  | Compression | Stats target | Description 
+------------+--------------------------+-----------+----------+-------------------+----------+-------------+--------------+-------------
+ id         | uuid                     |           | not null | gen_random_uuid() | plain    |             |              | 
+ task_id    | uuid                     |           | not null |                   | plain    |             |              | 
+ content    | text                     |           | not null |                   | extended |             |              | 
+ author_id  | uuid                     |           | not null |                   | plain    |             |              | 
+ created_at | timestamp with time zone |           | not null | now()             | plain    |             |              | 
+ updated_at | timestamp with time zone |           | not null | now()             | plain    |             |              | 
+Indexes:
+    "task_comments_pkey" PRIMARY KEY, btree (id)
+    "idx_task_comments_task" btree (task_id, created_at DESC)
+Foreign-key constraints:
+    "task_comments_author_id_fkey" FOREIGN KEY (author_id) REFERENCES profiles(id) ON DELETE RESTRICT
+    "task_comments_task_id_fkey" FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+Policies:
+    POLICY "task_comments_insert" FOR INSERT
+      WITH CHECK (((author_id = uid()) AND (EXISTS ( SELECT 1
+   FROM tasks t
+  WHERE ((t.id = task_comments.task_id) AND is_project_member(t.project_id))))))
+    POLICY "task_comments_select" FOR SELECT
+      USING ((EXISTS ( SELECT 1
+   FROM tasks t
+  WHERE ((t.id = task_comments.task_id) AND is_project_member(t.project_id) AND (is_project_admin_or_mod(t.project_id) OR (t.assigned_user_id = uid()) OR (t.assigned_company_id = current_company_id()) OR (t.created_by = uid()))))))
+    POLICY "task_comments_update_self" FOR UPDATE
+      USING ((author_id = uid()))
+      WITH CHECK ((author_id = uid()))
+Triggers:
+    trg_task_comments_updated_at BEFORE UPDATE ON task_comments FOR EACH ROW EXECUTE FUNCTION set_updated_at()
+Access method: heap
+

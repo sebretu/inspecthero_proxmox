@@ -1,0 +1,50 @@
+                               Table "public.floors"
+   Column    |           Type           | Collation | Nullable |      Default      
+-------------+--------------------------+-----------+----------+-------------------
+ id          | uuid                     |           | not null | gen_random_uuid()
+ building_id | uuid                     |           | not null | 
+ name        | text                     |           | not null | 
+ level       | integer                  |           | not null | 
+ created_at  | timestamp with time zone |           | not null | now()
+ updated_at  | timestamp with time zone |           | not null | now()
+Indexes:
+    "floors_pkey" PRIMARY KEY, btree (id)
+    "floors_building_id_level_key" UNIQUE CONSTRAINT, btree (building_id, level)
+    "idx_floors_building" btree (building_id, level)
+Foreign-key constraints:
+    "floors_building_id_fkey" FOREIGN KEY (building_id) REFERENCES buildings(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "plans" CONSTRAINT "plans_floor_id_fkey" FOREIGN KEY (floor_id) REFERENCES floors(id) ON DELETE CASCADE
+Policies:
+    POLICY "floors_delete_project_members" FOR DELETE
+      USING ((EXISTS ( SELECT 1
+   FROM (buildings b
+     JOIN project_members pm ON ((pm.project_id = b.project_id)))
+  WHERE ((b.id = floors.building_id) AND (pm.user_id = uid())))))
+    POLICY "floors_insert_project_members" FOR INSERT
+      WITH CHECK ((EXISTS ( SELECT 1
+   FROM (buildings b
+     JOIN project_members pm ON ((pm.project_id = b.project_id)))
+  WHERE ((b.id = floors.building_id) AND (pm.user_id = uid())))))
+    POLICY "floors_mutate"
+      USING (is_project_admin_or_mod(floor_project_id(id)))
+      WITH CHECK (is_project_admin_or_mod(floor_project_id(id)))
+    POLICY "floors_select" FOR SELECT
+      USING (is_project_member(floor_project_id(id)))
+    POLICY "floors_select_project_members" FOR SELECT
+      USING ((EXISTS ( SELECT 1
+   FROM (buildings b
+     JOIN project_members pm ON ((pm.project_id = b.project_id)))
+  WHERE ((b.id = floors.building_id) AND (pm.user_id = uid())))))
+    POLICY "floors_update_project_members" FOR UPDATE
+      USING ((EXISTS ( SELECT 1
+   FROM (buildings b
+     JOIN project_members pm ON ((pm.project_id = b.project_id)))
+  WHERE ((b.id = floors.building_id) AND (pm.user_id = uid())))))
+      WITH CHECK ((EXISTS ( SELECT 1
+   FROM (buildings b
+     JOIN project_members pm ON ((pm.project_id = b.project_id)))
+  WHERE ((b.id = floors.building_id) AND (pm.user_id = uid())))))
+Triggers:
+    trg_floors_updated_at BEFORE UPDATE ON floors FOR EACH ROW EXECUTE FUNCTION set_updated_at()
+

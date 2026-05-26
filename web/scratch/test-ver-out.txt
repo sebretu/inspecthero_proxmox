@@ -1,0 +1,7 @@
+[dotenv@17.3.1] injecting env (11) from .env.local -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+Data: null Error: {
+  code: '23502',
+  details: 'Failing row contains (74b5fab6-f14f-4a91-8c31-4a2d7203fe61, 0d5e818a-8e0a-43a9-8c57-c29f08a01099, null, [{"type": "rect"}], null, 2026-05-14 20:22:10.216925+00).',
+  hint: null,
+  message: 'null value in column "version_number" of relation "aufmass_versions" violates not-null constraint'
+}

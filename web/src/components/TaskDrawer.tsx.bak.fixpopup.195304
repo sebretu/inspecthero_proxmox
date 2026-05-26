@@ -1,0 +1,122 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type TaskRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: "OPEN" | "IN_PROGRESS" | "DONE_WAITING_APPROVAL" | "APPROVED" | "REJECTED";
+};
+
+export default function TaskDrawer({
+  open,
+  taskId,
+  uploadedBy,
+  onClose,
+}: {
+  open: boolean;
+  taskId: string | null;
+  uploadedBy: string;
+  onClose: () => void;
+}) {
+  const [task, setTask] = useState<TaskRow | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [status, setStatus] = useState<TaskRow["status"]>("OPEN");
+
+  useEffect(() => {
+    if (!open || !taskId) return;
+    fetch(`/api/task?id=${taskId}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j?.ok) {
+          setTask(j.data);
+          setTitle(j.data.title);
+          setDescription(j.data.description || "");
+          setStatus(j.data.status);
+        }
+      });
+  }, [open, taskId]);
+
+  async function save() {
+    if (!taskId) return;
+    await fetch("/api/tasks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: taskId,
+        changed_by: uploadedBy,
+        title,
+        description,
+        status,
+      }),
+    });
+    onClose(); // 👈 ZAMYKA
+  }
+
+  async function remove() {
+    if (!taskId) return;
+    if (!confirm("Usunąć task?")) return;
+    await fetch(`/api/task?id=${taskId}`, { method: "DELETE" });
+    onClose();
+  }
+
+  if (!open) return null;
+
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)" }}
+      />
+
+      <div
+        style={{
+          position: "fixed",
+          right: 24,
+          top: 24,
+          bottom: 24,
+          width: 420,
+          background: "#fff",
+          borderRadius: 16,
+          padding: 16,
+          zIndex: 9999,
+          display: "grid",
+          gap: 12,
+          color: "#111827",
+        }}
+      >
+        <b>Task</b>
+
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          style={{ padding: 8, border: "1px solid #ccc" }}
+        />
+
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          style={{ padding: 8, border: "1px solid #ccc" }}
+        />
+
+        <select value={status} onChange={(e) => setStatus(e.target.value as any)}>
+          <option value="OPEN">OPEN</option>
+          <option value="IN_PROGRESS">IN_PROGRESS</option>
+          <option value="DONE_WAITING_APPROVAL">DONE_WAITING_APPROVAL</option>
+          <option value="APPROVED">APPROVED</option>
+          <option value="REJECTED">REJECTED</option>
+        </select>
+
+        <button onClick={save} style={{ padding: 10, fontWeight: 700 }}>
+          Zapisz
+        </button>
+
+        <button onClick={remove} style={{ padding: 10, color: "#b91c1c" }}>
+          Usuń task
+        </button>
+      </div>
+    </>
+  );
+}

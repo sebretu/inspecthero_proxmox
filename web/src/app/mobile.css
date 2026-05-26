@@ -1,0 +1,386 @@
+/* =========================
+   Mobile-Specific Optimizations
+   ========================= */
+
+/* Safe area support for notched devices */
+:root {
+    --safe-area-inset-top: env(safe-area-inset-top);
+    --safe-area-inset-right: env(safe-area-inset-right);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom);
+    --safe-area-inset-left: env(safe-area-inset-left);
+}
+
+/* =========================
+   MOBILE (max-width: 767px)
+   ========================= */
+
+/* Mobile touch targets - minimum 44x44px for better accessibility */
+@media (max-width: 767px) {
+
+    button,
+    a,
+    input[type="checkbox"],
+    input[type="radio"],
+    select {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Adjust padding for safe areas on mobile - horizontal removed to prevent "bars" */
+    body {
+        padding-top: var(--safe-area-inset-top);
+        padding-bottom: var(--safe-area-inset-bottom);
+    }
+
+    /* Hero section optimization */
+    .home-hero {
+        padding: 32px 20px 24px;
+    }
+
+    .home-hero-content {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .home-hero-title {
+        font-size: 28px;
+    }
+
+    .home-hero-media {
+        min-height: 200px;
+    }
+
+    /* Main content padding */
+    .home-main {
+        padding: 1.5rem 20px 2rem;
+        gap: 32px;
+    }
+
+    /* Navigation optimization */
+    .home-topbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 12px 16px;
+    }
+
+    .home-nav {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .home-nav-link {
+        padding: 12px;
+        text-align: center;
+    }
+
+    /* Optimize task grid for mobile */
+    .tasks-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .task-card {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "body"
+            "media"
+            "map"
+            "footer";
+        gap: 16px;
+        padding: 24px;
+        min-height: auto;
+    }
+
+    .task-card__media,
+    .task-card__map {
+        min-height: 200px;
+    }
+
+    /* Mobile-friendly filters */
+    .home-filters {
+        grid-template-columns: 1fr;
+    }
+
+    /* Services grid mobile */
+    .home-services-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    /* Control cards stacking */
+    .home-control-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Form elements */
+    .home-filters input,
+    .home-filters select {
+        width: 100%;
+    }
+
+    /* Larger font sizes for readability on mobile */
+    .task-card__body h3 {
+        font-size: 1.25rem;
+    }
+
+    .task-card__description {
+        font-size: 0.95rem;
+    }
+
+    /* Improve scrolling on mobile */
+    body {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain;
+    }
+
+    /* Prevent zoom on input focus on iOS */
+    input,
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
+    /* Tables responsive - horizontal scroll */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        max-width: 100%;
+    }
+
+
+    table {
+        font-size: 14px;
+        table-layout: auto;
+        white-space: normal;
+        min-width: 100%;
+    }
+
+    td,
+    th {
+        min-width: auto;
+    }
+
+    th {
+        white-space: nowrap;
+    }
+
+    /* Pagination mobile */
+    .home-pagination {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .home-pagination button {
+        width: 100%;
+    }
+
+    /* Logo and branding */
+    .home-logo-img {
+        height: 48px;
+    }
+
+    .home-logo-title {
+        font-size: 16px;
+    }
+
+    /* Specific fix for branding logo in header */
+    header img, 
+    .app-header img {
+        height: 32px !important;
+        width: auto !important;
+        max-width: none !important;
+    }
+}
+
+/* =========================
+   TABLET (768px - 1024px)
+   ========================= */
+
+@media (min-width: 768px) and (max-width: 1024px) {
+
+    /* Hero optimization for tablets */
+    .home-hero {
+        padding: 48px 32px 32px;
+    }
+
+    .home-main {
+        padding: 2rem 32px 3rem;
+    }
+
+    /* Tasks grid - 2 columns on tablet */
+    .tasks-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 32px;
+    }
+
+    .task-card {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "body"
+            "media"
+            "map"
+            "footer";
+        gap: 20px;
+        padding: 32px;
+    }
+
+    /* Services grid - 2 columns */
+    .home-services-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
+
+    /* Filters - 2 columns */
+    .home-filters {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Touch-friendly buttons */
+    button,
+    a,
+    select {
+        min-height: 40px;
+    }
+
+    /* Table optimization */
+    table {
+        font-size: 14px;
+    }
+
+    th,
+    td {
+        padding: 12px 10px;
+    }
+}
+
+/* Capacitor-specific styles */
+.capacitor-app {
+    /* Prevent selection on native apps */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.capacitor-app input,
+.capacitor-app textarea,
+.capacitor-app [contenteditable] {
+    /* Allow selection in input fields */
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+/* Native app status bar spacing */
+@supports (padding-top: constant(safe-area-inset-top)) or (padding-top: env(safe-area-inset-top)) {
+    .app-header {
+        padding-top: max(20px, env(safe-area-inset-top));
+    }
+}
+
+/* Bottom navigation safe area */
+@supports (padding-bottom: constant(safe-area-inset-bottom)) or (padding-bottom: env(safe-area-inset-bottom)) {
+
+    .app-footer,
+    .mobile-nav {
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+    }
+}
+
+/* Improved mobile kanban view */
+@media (max-width: 1024px) {
+    .home-kanban {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .home-kanban-column {
+        min-width: 280px;
+    }
+}
+
+/* Touch-friendly hover states for mobile */
+@media (hover: none) and (pointer: coarse) {
+    .task-card:hover {
+        transform: none;
+    }
+
+    .task-card:active {
+        transform: scale(0.98);
+        transition: transform 0.1s;
+    }
+
+    button:active,
+    .home-pill:active,
+    .home-toggle:active {
+        opacity: 0.8;
+        transform: scale(0.96);
+    }
+
+    /* Remove hover effects on mobile */
+    a:hover,
+    a:focus {
+        background: none;
+        box-shadow: none;
+    }
+
+    /* Active states for touch */
+    a:active {
+        background: linear-gradient(135deg, #2F6BFF 0%, #5A8BFF 100%);
+        color: #fff;
+    }
+}
+
+/* =========================
+   Additional Mobile Fixes
+   ========================= */
+
+/* Ensure images don't overflow by default, but allow explicit overrides */
+@media (max-width: 767px) {
+    img:not(.no-auto-scale) {
+        max-width: 100%;
+        height: auto;
+    }
+
+    /* Modal/dialog full screen on mobile */
+    .modal,
+    .dialog {
+        max-width: 100%;
+        max-height: 100dvh;
+        margin: 0;
+        border-radius: 0;
+    }
+
+    /* Action buttons full width on mobile */
+    .home-hero-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .home-hero-primary,
+    .home-hero-secondary {
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Status pills wrap better */
+    .home-status-filter {
+        justify-content: flex-start;
+    }
+
+    .home-pill {
+        flex: 0 0 auto;
+    }
+
+    /* Reduce excessive nested padding */
+    .upload-card {
+        padding: 20px 16px;
+        border-radius: 20px;
+        gap: 24px;
+    }
+
+    .upload-section {
+        padding-bottom: 20px;
+        gap: 12px;
+    }
+}

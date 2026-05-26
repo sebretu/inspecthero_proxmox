@@ -216,6 +216,39 @@ with check (
   )
 );
 
+-- PHOTOS: delete if admin or (assigned user/creator AND not uploaded by admin)
+drop policy if exists task_photos_delete on public.task_photos;
+create policy task_photos_delete
+on public.task_photos for delete
+using (
+  -- must be a member of the project
+  exists (
+    select 1 from public.tasks t
+    where t.id = task_id
+      and public.is_project_member(t.project_id)
+  )
+  and (
+    -- If current user is ADMIN, can delete anything
+    (select p.role from public.profiles p where p.id = auth.uid()) = 'ADMIN'
+    or
+    -- Not an admin, but trying to delete?
+    (
+      -- Must not be uploaded by an admin
+      not exists (
+        select 1 from public.profiles p
+        where p.id = uploaded_by
+          and p.role = 'ADMIN'
+      )
+      -- AND must have basic task management rights (assignee or creator)
+      and exists (
+        select 1 from public.tasks t
+        where t.id = task_id
+          and (t.assigned_user_id = auth.uid() or t.created_by = auth.uid())
+      )
+    )
+  )
+);
+
 -- COMMENTS: same as photos
 drop policy if exists task_comments_select on public.task_comments;
 create policy task_comments_select
@@ -261,5 +294,60 @@ using (
     select 1 from public.tasks t
     where t.id = task_id
       and public.is_project_member(t.project_id)
+  )
+);
+
+-- FEHLER PHOTOS: same logic
+drop policy if exists fehler_photos_select on public.fehler_photos;
+create policy fehler_photos_select
+on public.fehler_photos for select
+using (
+  exists (
+    select 1 from public.fehler f
+    where f.id = fehler_id
+      and public.is_project_member(f.project_id)
+  )
+);
+
+drop policy if exists fehler_photos_insert on public.fehler_photos;
+create policy fehler_photos_insert
+on public.fehler_photos for insert
+with check (
+  uploaded_by = auth.uid()
+  and exists (
+    select 1 from public.fehler f
+    where f.id = fehler_id
+      and public.is_project_member(f.project_id)
+  )
+);
+
+drop policy if exists fehler_photos_delete on public.fehler_photos;
+create policy fehler_photos_delete
+on public.fehler_photos for delete
+using (
+  exists (
+    select 1 from public.fehler f
+    where f.id = fehler_id
+      and public.is_project_member(f.project_id)
+  )
+  and (
+    -- If current user is ADMIN, can delete anything
+    (select p.role from public.profiles p where p.id = auth.uid()) = 'ADMIN'
+    or
+    -- Not an admin, but trying to delete?
+    (
+      -- Must not be uploaded by an admin
+      not exists (
+        select 1 from public.profiles p
+        where p.id = uploaded_by
+          and p.role = 'ADMIN'
+      )
+      -- AND must be the creator of the fehler or assignee (logic mirrors task photos)
+      and exists (
+        select 1 from public.fehler f
+        where f.id = fehler_id
+          and (f.assigned_user_id = auth.uid() or f.created_by = auth.uid())
+      )
+    )
   )
 );

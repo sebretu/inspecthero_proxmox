@@ -1,0 +1,96 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+
+type Project = { id: string; name: string };
+type Task = {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  due_date: string | null;
+};
+
+async function getToken(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
+async function apiGet<T>(path: string, token: string): Promise<T> {
+  const r = await fetch(path, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j?.error?.message || "api error");
+  return j.data as T;
+}
+
+export default function Home() {
+  const [email, setEmail] = useState("admin@demo.local");
+  const [password, setPassword] = useState("Password123!");
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectId, setProjectId] = useState("");
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function loadAll() {
+    setErr(null);
+    const token = await getToken();
+    if (!token) return;
+
+    const ps = await apiGet<Project[]>("/api/projects", token);
+    setProjects(ps);
+
+    const pid = projectId || ps[0]?.id;
+    if (!pid) return;
+
+    setProjectId(pid);
+
+    const ts = await apiGet<Task[]>(
+      `/api/tasks?projectId=${encodeURIComponent(pid)}&limit=50&offset=0`,
+      token
+    );
+    setTasks(ts);
+  }
+
+  useEffect(() => {
+    loadAll();
+  }, []);
+
+  async function signIn() {
+    setErr(null);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) setErr(error.message);
+    else await loadAll();
+  }
+
+  return (
+    <main style={{ padding: 24 }}>
+      <h1>Tasks</h1>
+
+      <div style={{ marginBottom: 12 }}>
+        <input value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button onClick={signIn}>Sign in</button>
+      </div>
+
+      {err && <p style={{ color: "red" }}>{err}</p>}
+
+      <ul>
+        {tasks.map((t) => (
+          <li key={t.id}>
+            [{t.status}] {t.title}
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
+}

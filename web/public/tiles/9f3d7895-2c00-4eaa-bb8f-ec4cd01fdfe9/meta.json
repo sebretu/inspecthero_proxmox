@@ -1,0 +1,30 @@
+{
+  "tileSize": 256,
+  "minZoom": 1,
+  "maxZoom": 5,
+  "gridW": 57,
+  "gridH": 27,
+  "format": "png",
+  "limits": {
+    "1": {
+      "maxX": 3,
+      "maxY": 1
+    },
+    "2": {
+      "maxX": 7,
+      "maxY": 3
+    },
+    "3": {
+      "maxX": 14,
+      "maxY": 6
+    },
+    "4": {
+      "maxX": 28,
+      "maxY": 13
+    },
+    "5": {
+      "maxX": 56,
+      "maxY": 26
+    }
+  }
+}

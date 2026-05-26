@@ -1,0 +1,222 @@
+{
+  "boardName": "HV Unit ..... (LI03)",
+  "einspeisung": {
+    "name": "0F01",
+    "rating": 160,
+    "characteristic": "gG",
+    "kabelDesignation": "W1",
+    "kabeltyp": "NYY-J",
+    "leiterAnzahl": "5",
+    "leiterQuerschnitt": "1x5x16"
+  },
+  "fuses": [
+    {
+      "name": "1F1.1",
+      "rating": 16,
+      "characteristic": "C",
+      "description": "Beleuchtung Halle",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "1F1.2",
+      "rating": 16,
+      "characteristic": "C",
+      "description": "Beleuchtung Halle",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "1F1.3",
+      "rating": 16,
+      "characteristic": "C",
+      "description": "Beleuchtung EG Mezzanine",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "1F1.4",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Fluchtwegleuchten Halle",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "1F1.5",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Steuersicherung",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "1F2.1",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Durchlauferhitzer 6,5kW Halle",
+      "rcd": false,
+      "phases": 3
+    },
+    {
+      "name": "1F2.2",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Lufterhitzer Halle",
+      "rcd": false,
+      "phases": 3
+    },
+    {
+      "name": "1F2.3",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Lichtkuppeln Halle",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "1F2.4",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Fernwärme Halle",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "1F2.5",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Reserve",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "1F2.6",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Reserve",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "1F2.7",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Reserve",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "1F2.8",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "BMA Netzteil Halle",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "2F1.1",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Technikraum",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "2F1.2",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Beleuchtung / Steckdosen Mezzanine",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "2F1.3",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "MSR",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "2F1.4",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Reserve",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "2F1.5",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Reserve",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "2F1.6",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Reserve",
+      "rcd": false,
+      "phases": 1
+    },
+    {
+      "name": "2F2.1",
+      "rating": 16,
+      "characteristic": "B",
+      "description": "Datenverteilerschrank",
+      "rcd": true,
+      "phases": 1
+    },
+    {
+      "name": "3F1.1",
+      "rating": 16,
+      "characteristic": "C",
+      "description": "CEE-Steckdose Tore / Überlagebrücken Halle",
+      "rcd": false,
+      "phases": 3
+    },
+    {
+      "name": "3F1.2",
+      "rating": 16,
+      "characteristic": "C",
+      "description": "CEE-Steckdosenkombi Mezzanine Halle",
+      "rcd": false,
+      "phases": 3
+    },
+    {
+      "name": "3F1.3",
+      "rating": 16,
+      "characteristic": "C",
+      "description": "CEE-Steckdosenkombi Brandwand / Tore Halle",
+      "rcd": false,
+      "phases": 3
+    },
+    {
+      "name": "4F1.1",
+      "rating": 16,
+      "characteristic": "C",
+      "description": "CEE-Steckdosenkombi Säule Halle",
+      "rcd": false,
+      "phases": 3
+    },
+    {
+      "name": "4F1.2",
+      "rating": 16,
+      "characteristic": "C",
+      "description": "CEE-Steckdosenkombi Säule Halle Hinten",
+      "rcd": false,
+      "phases": 3
+    },
+    {
+      "name": "4F1.3",
+      "rating": 16,
+      "characteristic": "C",
+      "description": "CEE-Steckdosenkombi Halle Hinten",
+      "rcd": false,
+      "phases": 3
+    }
+  ]
+}

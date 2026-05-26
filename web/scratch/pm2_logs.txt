@@ -1,0 +1,2005 @@
+[1m[90m[TAILING] Tailing last 1000 lines for [inspecthero-web] process (change the value with --lines option)[39m[22m
+[90m/home/sebretu/.pm2/logs/inspecthero-web-error.log last 1000 lines:[39m
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: ENOENT: no such file or directory, open '/home/sebretu/building-task-manager/web/.next/prerender-manifest.json'
+[31m2|inspecth | [39m    at ignore-listed frames {
+[31m2|inspecth | [39m  errno: -2,
+[31m2|inspecth | [39m  code: 'ENOENT',
+[31m2|inspecth | [39m  syscall: 'open',
+[31m2|inspecth | [39m  path: '/home/sebretu/building-task-manager/web/.next/prerender-manifest.json'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mWarning: Please use the `legacy` build in Node.js environments.
+[31m2|inspecth | [39mWarning: Please use the `legacy` build in Node.js environments.
+[31m2|inspecth | [39m⨯ Error: Failed to load external module pdfjs-dist-29912611d2e8a9df: ReferenceError: DOMMatrix is not defined
+[31m2|inspecth | [39m    at Context.externalImport [as y] (.next/server/chunks/[turbopack]_runtime.js:518:15)
+[31m2|inspecth | [39m    at async (.next/server/chunks/[root-of-the-server]__2b390efe._.js:1:2079)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/admin/attendance-calendar" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/admin/attendance-calendar" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/admin/attendance-calendar" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/materials" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/materials" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/materials" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/questions" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/questions" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/questions" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/automation" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/automation" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/automation" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/plans" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/plans" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/plans" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m[BMA Scan] Fatal error: TypeError: Cannot read properties of undefined (reading 'toLowerCase')
+[31m2|inspecth | [39m    at l (.next/server/chunks/[root-of-the-server]__e0b28b2e._.js:1:4263)
+[31m2|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__e0b28b2e._.js:1:7077)
+[31m2|inspecth | [39m[BMA Scan] Fatal error: TypeError: Cannot read properties of undefined (reading 'toLowerCase')
+[31m2|inspecth | [39m    at l (.next/server/chunks/[root-of-the-server]__e0b28b2e._.js:1:4263)
+[31m2|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__e0b28b2e._.js:1:7077)
+[31m2|inspecth | [39m[BMA Scan] Fatal error: TypeError: Cannot read properties of undefined (reading 'toLowerCase')
+[31m2|inspecth | [39m    at l (.next/server/chunks/[root-of-the-server]__e0b28b2e._.js:1:4263)
+[31m2|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__e0b28b2e._.js:1:7077)
+[31m2|inspecth | [39m[BMA Scan] Fatal error: TypeError: Cannot read properties of undefined (reading 'toLowerCase')
+[31m2|inspecth | [39m    at l (.next/server/chunks/[root-of-the-server]__e0b28b2e._.js:1:4263)
+[31m2|inspecth | [39m    at async Module.p (.next/server/chunks/[root-of-the-server]__e0b28b2e._.js:1:7077)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/bma-automation" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/bma-automation" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/bma-automation" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m[fehler api] auth failed: AUTH_REQUIRED
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/plan/[id]" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/plan/[id]" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/plan/[id]" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/plan/[id]" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/plan/[id]" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/plan/[id]" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/plan/[id]" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/plan/[id]" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/plan/[id]" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/plan/[id]" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/plan/[id]" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/plan/[id]" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m2|inspecth | [39m    at parse (<anonymous>)
+[31m2|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cdbc2824._.js:1:6927)
+[31m2|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m2|inspecth | [39m    at parse (<anonymous>)
+[31m2|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cdbc2824._.js:1:6927)
+[31m2|inspecth | [39m[fehler api] auth failed: AUTH_REQUIRED
+[31m2|inspecth | [39m[fehler api] auth failed: AUTH_REQUIRED
+[31m2|inspecth | [39m[fehler api] auth failed: AUTH_REQUIRED
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mFailed to load meta for plan undefined TypeError: The "path" argument must be of type string. Received undefined
+[31m2|inspecth | [39m    at o (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:3041)
+[31m2|inspecth | [39m    at async Module.d (.next/server/chunks/[root-of-the-server]__ea19f2d8._.js:1:5676) {
+[31m2|inspecth | [39m  code: 'ERR_INVALID_ARG_TYPE'
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39mKilled
+[31m2|inspecth | [39mKilled
+[31m2|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m2|inspecth | [39m    at parse (<anonymous>)
+[31m2|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cdbc2824._.js:1:6927)
+[31m2|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m2|inspecth | [39m    at parse (<anonymous>)
+[31m2|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cdbc2824._.js:1:6927)
+[31m2|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m2|inspecth | [39m    at parse (<anonymous>)
+[31m2|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cdbc2824._.js:1:6927)
+[31m2|inspecth | [39m[fehler api] auth failed: AUTH_REQUIRED
+[31m2|inspecth | [39mError: Failed to find Server Action. This request might be from an older or newer deployment.
+[31m2|inspecth | [39mRead more: https://nextjs.org/docs/messages/failed-to-find-server-action
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Failed to find Server Action. This request might be from an older or newer deployment.
+[31m2|inspecth | [39mRead more: https://nextjs.org/docs/messages/failed-to-find-server-action
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Failed to find Server Action. This request might be from an older or newer deployment.
+[31m2|inspecth | [39mRead more: https://nextjs.org/docs/messages/failed-to-find-server-action
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/cables-map" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables-map" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables-map" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m[fehler api] auth failed: AUTH_REQUIRED
+[31m2|inspecth | [39m[fehler api] auth failed: AUTH_REQUIRED
+[31m2|inspecth | [39m[fehler api] auth failed: AUTH_REQUIRED
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/admin/attendance-calendar" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/admin/attendance-calendar" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/admin/attendance-calendar" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/materials" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/materials" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/materials" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/questions" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/questions" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/questions" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/plans" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/plans" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/plans" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/automation" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/automation" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/automation" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/ssr/_0efddc1b._.js:1:14172)
+[31m2|inspecth | [39m[fehler api] auth failed: AUTH_REQUIRED
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/_not-found" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The manifests singleton was not initialized. This is a bug in Next.js.
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+[31m2|inspecth | [39m⚠ Invalid next.config.ts options detected: 
+[31m2|inspecth | [39m⚠     Unrecognized key(s) in object: 'eslint'
+[31m2|inspecth | [39m⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m⨯ Error: Cannot find module '/home/sebretu/building-task-manager/web/.next/server/middleware-manifest.json'
+[31m2|inspecth | [39mRequire stack:
+[31m2|inspecth | [39m- /home/sebretu/building-task-manager/web/node_modules/next/dist/server/next-server.js
+[31m2|inspecth | [39m- /home/sebretu/building-task-manager/web/node_modules/next/dist/server/next.js
+[31m2|inspecth | [39m- /home/sebretu/building-task-manager/web/node_modules/next/dist/server/lib/start-server.js
+[31m2|inspecth | [39m- /home/sebretu/building-task-manager/web/node_modules/next/dist/cli/next-start.js
+[31m2|inspecth | [39m    at ignore-listed frames {
+[31m2|inspecth | [39m  code: 'MODULE_NOT_FOUND',
+[31m2|inspecth | [39m  requireStack: [Array]
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39m⨯ Error: Cannot find module '/home/sebretu/building-task-manager/web/.next/server/middleware-manifest.json'
+[31m2|inspecth | [39mRequire stack:
+[31m2|inspecth | [39m- /home/sebretu/building-task-manager/web/node_modules/next/dist/server/next-server.js
+[31m2|inspecth | [39m- /home/sebretu/building-task-manager/web/node_modules/next/dist/server/next.js
+[31m2|inspecth | [39m- /home/sebretu/building-task-manager/web/node_modules/next/dist/server/lib/start-server.js
+[31m2|inspecth | [39m- /home/sebretu/building-task-manager/web/node_modules/next/dist/cli/next-start.js
+[31m2|inspecth | [39m    at ignore-listed frames {
+[31m2|inspecth | [39m  code: 'MODULE_NOT_FOUND',
+[31m2|inspecth | [39m  requireStack: [Array]
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39m⨯ Error: Cannot find module '/home/sebretu/building-task-manager/web/.next/server/middleware-manifest.json'
+[31m2|inspecth | [39mRequire stack:
+[31m2|inspecth | [39m- /home/sebretu/building-task-manager/web/node_modules/next/dist/server/next-server.js
+[31m2|inspecth | [39m- /home/sebretu/building-task-manager/web/node_modules/next/dist/server/next.js
+[31m2|inspecth | [39m- /home/sebretu/building-task-manager/web/node_modules/next/dist/server/lib/start-server.js
+[31m2|inspecth | [39m- /home/sebretu/building-task-manager/web/node_modules/next/dist/cli/next-start.js
+[31m2|inspecth | [39m    at ignore-listed frames {
+[31m2|inspecth | [39m  code: 'MODULE_NOT_FOUND',
+[31m2|inspecth | [39m  requireStack: [Array]
+[31m2|inspecth | [39m}
+[31m2|inspecth | [39m[fehler api] auth failed: AUTH_REQUIRED
+[31m2|inspecth | [39m[fehler api] auth failed: AUTH_REQUIRED
+[31m2|inspecth | [39m[public-plan API] Access denied: Plan c1f34460-659f-4303-b928-8762bae47fb7 is not shared with team.
+[31m2|inspecth | [39mError [InvariantError]: Invariant: The client reference manifest for route "/cables-map" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables-map" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m⨯ Error [InvariantError]: Invariant: The client reference manifest for route "/cables-map" does not exist. This is a bug in Next.js.
+[31m2|inspecth | [39m    at Object.get (.next/server/chunks/[root-of-the-server]__8f5ebbc3._.js:5:16999)
+[31m2|inspecth | [39m[public-plan API] Access denied: Plan c1f34460-659f-4303-b928-8762bae47fb7 is not shared with team.
+[31m2|inspecth | [39m[public-plan API] Access denied: Plan db178ab3-bab6-4a5e-bd6f-5c4bad24df94 is not shared with team.
+[31m2|inspecth | [39m[public-plan API] Access denied: Plan db178ab3-bab6-4a5e-bd6f-5c4bad24df94 is not shared with team.
+[31m2|inspecth | [39mEdge Function thumbnail error SyntaxError: Unexpected token 'P', "Project no"... is not valid JSON
+[31m2|inspecth | [39m    at parse (<anonymous>)
+[31m2|inspecth | [39m    at async d (.next/server/chunks/[root-of-the-server]__cdbc2824._.js:1:6927)
+[31m2|inspecth | [39mError: Failed to find Server Action. This request might be from an older or newer deployment.
+[31m2|inspecth | [39mRead more: https://nextjs.org/docs/messages/failed-to-find-server-action
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Failed to find Server Action. This request might be from an older or newer deployment.
+[31m2|inspecth | [39mRead more: https://nextjs.org/docs/messages/failed-to-find-server-action
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Failed to find Server Action. This request might be from an older or newer deployment.
+[31m2|inspecth | [39mRead more: https://nextjs.org/docs/messages/failed-to-find-server-action
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39mError: Failed to find Server Action. This request might be from an older or newer deployment.
+[31m2|inspecth | [39mRead more: https://nextjs.org/docs/messages/failed-to-find-server-action
+[31m2|inspecth | [39m    at ignore-listed frames
+[31m2|inspecth | [39m[public-plan API] Access denied: Plan c1f34460-659f-4303-b928-8762bae47fb7 is not shared with team.
+
+[90m/home/sebretu/.pm2/logs/inspecthero-web-out.log last 1000 lines:[39m
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m> web@0.1.0 start
+[32m2|inspecth | [39m> next start
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m▲ Next.js 16.1.6
+[32m2|inspecth | [39m- Local:         http://localhost:3000
+[32m2|inspecth | [39m- Network:       http://192.168.178.4:3000
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m✓ Starting...
+[32m2|inspecth | [39m✓ Ready in 638ms
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m> web@0.1.0 start
+[32m2|inspecth | [39m> next start
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m▲ Next.js 16.1.6
+[32m2|inspecth | [39m- Local:         http://localhost:3000
+[32m2|inspecth | [39m- Network:       http://192.168.178.4:3000
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m✓ Starting...
+[32m2|inspecth | [39m✓ Ready in 610ms
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for d86f1c28-0f5f-4e95-929e-38f88ea298bc, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d3d8bc61-a22d-4818-a730-c6db35c17366, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 4627d001-a86e-4061-83f1-aa61b24eddaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for a3e2dbc2-8b48-4513-b74f-4e9062192f21, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 0484685f-5bf5-462f-b1d5-18ddcd6152a6
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 432f9dee-e54e-49c9-aadd-485c1b0c20a1
+[32m2|inspecth | [39m[orders api] userId from token: f98a1615-8314-416f-a5ff-c1092f6acbeb
+[32m2|inspecth | [39m[orders api] profile: { role: 'ADMIN' } profileErr: null
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 432f9dee-e54e-49c9-aadd-485c1b0c20a1
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 0484685f-5bf5-462f-b1d5-18ddcd6152a6
+[32m2|inspecth | [39m[orders api] userId from token: f98a1615-8314-416f-a5ff-c1092f6acbeb
+[32m2|inspecth | [39m[orders api] profile: { role: 'ADMIN' } profileErr: null
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for d86f1c28-0f5f-4e95-929e-38f88ea298bc, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 432f9dee-e54e-49c9-aadd-485c1b0c20a1
+[32m2|inspecth | [39m[tiles meta] Request for d3d8bc61-a22d-4818-a730-c6db35c17366, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for b9b44468-1524-4c88-b38f-5c705f41eb0a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for a3e2dbc2-8b48-4513-b74f-4e9062192f21, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for a3e2dbc2-8b48-4513-b74f-4e9062192f21
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 0484685f-5bf5-462f-b1d5-18ddcd6152a6
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 4627d001-a86e-4061-83f1-aa61b24eddaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 4627d001-a86e-4061-83f1-aa61b24eddaf
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf
+[32m2|inspecth | [39m[tiles meta] Request for 3f8b08ff-b74f-49ae-83ae-4437e18771de, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for d8c53324-4619-476e-ab76-4d640e0f27cd
+[32m2|inspecth | [39m[tiles meta] Request for 430ae194-cfd6-4368-82d7-32403799ea42, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 80097f6c-5330-400a-80e3-af644ee4c8d2, isPublic: false
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[calendar api] fetching data for year 2026, company 65d8b8df-b0ed-4bac-ad6d-ef1409219208 by ADMIN (via service client)
+[32m2|inspecth | [39m[calendar api] found 5 employees
+[32m2|inspecth | [39m[calendar api] success: workers=5, attendance=27, holidays=10
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for d8c53324-4619-476e-ab76-4d640e0f27cd
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for d8c53324-4619-476e-ab76-4d640e0f27cd
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for d8c53324-4619-476e-ab76-4d640e0f27cd
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for d8c53324-4619-476e-ab76-4d640e0f27cd
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for d8c53324-4619-476e-ab76-4d640e0f27cd
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for d8c53324-4619-476e-ab76-4d640e0f27cd
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m> web@0.1.0 start
+[32m2|inspecth | [39m> next start
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m▲ Next.js 16.1.6
+[32m2|inspecth | [39m- Local:         http://localhost:3000
+[32m2|inspecth | [39m- Network:       http://192.168.178.4:3000
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m✓ Starting...
+[32m2|inspecth | [39m✓ Ready in 648ms
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[orders api] userId from token: f98a1615-8314-416f-a5ff-c1092f6acbeb
+[32m2|inspecth | [39m[orders api] profile: { role: 'ADMIN' } profileErr: null
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for b9b44468-1524-4c88-b38f-5c705f41eb0a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 0484685f-5bf5-462f-b1d5-18ddcd6152a6
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 432f9dee-e54e-49c9-aadd-485c1b0c20a1
+[32m2|inspecth | [39m[tiles meta] Request for d3d8bc61-a22d-4818-a730-c6db35c17366, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for a3e2dbc2-8b48-4513-b74f-4e9062192f21, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d86f1c28-0f5f-4e95-929e-38f88ea298bc, isPublic: false
+[32m2|inspecth | [39m[calendar api] fetching data for year 2026, company 65d8b8df-b0ed-4bac-ad6d-ef1409219208 by ADMIN (via service client)
+[32m2|inspecth | [39m[calendar api] found 5 employees
+[32m2|inspecth | [39m[calendar api] success: workers=5, attendance=27, holidays=10
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for d8c53324-4619-476e-ab76-4d640e0f27cd
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for d86f1c28-0f5f-4e95-929e-38f88ea298bc, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d3d8bc61-a22d-4818-a730-c6db35c17366, isPublic: false
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m> web@0.1.0 start
+[32m2|inspecth | [39m> next start
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m▲ Next.js 16.1.6
+[32m2|inspecth | [39m- Local:         http://localhost:3000
+[32m2|inspecth | [39m- Network:       http://192.168.178.4:3000
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m✓ Starting...
+[32m2|inspecth | [39m✓ Ready in 622ms
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 4627d001-a86e-4061-83f1-aa61b24eddaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for a3e2dbc2-8b48-4513-b74f-4e9062192f21, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[orders api] userId from token: f98a1615-8314-416f-a5ff-c1092f6acbeb
+[32m2|inspecth | [39m[orders api] profile: { role: 'ADMIN' } profileErr: null
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 432f9dee-e54e-49c9-aadd-485c1b0c20a1
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 0484685f-5bf5-462f-b1d5-18ddcd6152a6
+[32m2|inspecth | [39m[tiles meta] Request for 4627d001-a86e-4061-83f1-aa61b24eddaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 4627d001-a86e-4061-83f1-aa61b24eddaf
+[32m2|inspecth | [39m[tiles meta] Request for a3e2dbc2-8b48-4513-b74f-4e9062192f21, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for a3e2dbc2-8b48-4513-b74f-4e9062192f21
+[32m2|inspecth | [39m[tiles meta] Request for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for d8c53324-4619-476e-ab76-4d640e0f27cd
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 4627d001-a86e-4061-83f1-aa61b24eddaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for a3e2dbc2-8b48-4513-b74f-4e9062192f21, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a
+[32m2|inspecth | [39m[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m> web@0.1.0 start
+[32m2|inspecth | [39m> next start
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m▲ Next.js 16.1.6
+[32m2|inspecth | [39m- Local:         http://localhost:3000
+[32m2|inspecth | [39m- Network:       http://192.168.178.4:3000
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m✓ Starting...
+[32m2|inspecth | [39m✓ Ready in 731ms
+[32m2|inspecth | [39m[tiles meta] Request for 9d2ea235-1902-4238-b6c3-cc75f7f89e62, isPublic: false
+[32m2|inspecth | [39m[BMA Scan] Starting scan... {
+[32m2|inspecth | [39m  useExisting: true,
+[32m2|inspecth | [39m  planId: 'bd3e3320-8d18-46fb-8ce4-08b9110e8c9a',
+[32m2|inspecth | [39m  fileName: undefined
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[BMA Scan] Downloading from storage: plans projects/9134fda1-dbb9-4a8d-af1a-8dfba002dcd1/floors/a101ec20-e83e-447d-8809-252d898fc253/v1.pdf
+[32m2|inspecth | [39m[BMA Scan] Downloaded buffer size: 1075488
+[32m2|inspecth | [39m[BMA Scan] Applied precision scaling from metadata: { scaleX: 0.9701171875, scaleY: 0.9790736607142857 }
+[32m2|inspecth | [39m[BMA Scan] PDF loaded. Pages: 1
+[32m2|inspecth | [39m[BMA Scan] Page 1 matches found in dense text: 110
+[32m2|inspecth | [39m[tiles meta] Request for db178ab3-bab6-4a5e-bd6f-5c4bad24df94, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d6a89cfd-3d67-411a-a9d9-c83053548f55, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for cb22d136-88e9-4846-8ff9-4727206205a9, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 3b68d144-13b7-4e3f-b28f-8aa8c08b3b3c, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 2c5f8655-d33b-4be2-a25b-74246196feda, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 1d5e5455-5baf-47c1-86a0-567e5fedc58b, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+[32m2|inspecth | [39m[public-plan API] Fetching plan: c1f34460-659f-4303-b928-8762bae47fb7
+[32m2|inspecth | [39m[public-plan API] Fetching plan: c1f34460-659f-4303-b928-8762bae47fb7
+[32m2|inspecth | [39m[public-plan API] Found plan: c1f34460-659f-4303-b928-8762bae47fb7, project: 76530312-bc7b-4681-a760-84c0c7765084
+[32m2|inspecth | [39m[public-plan API] Stats: devices=0, connections=4, routes=0
+[32m2|inspecth | [39m[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: true
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for c1f34460-659f-4303-b928-8762bae47fb7
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m> web@0.1.0 start
+[32m2|inspecth | [39m> next start
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m▲ Next.js 16.1.6
+[32m2|inspecth | [39m- Local:         http://localhost:3000
+[32m2|inspecth | [39m- Network:       http://192.168.178.4:3000
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m✓ Starting...
+[32m2|inspecth | [39m✓ Ready in 681ms
+[32m2|inspecth | [39m[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m> web@0.1.0 start
+[32m2|inspecth | [39m> next start
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m▲ Next.js 16.1.6
+[32m2|inspecth | [39m- Local:         http://localhost:3000
+[32m2|inspecth | [39m- Network:       http://192.168.178.4:3000
+[32m2|inspecth | [39m
+[32m2|inspecth | [39m✓ Starting...
+[32m2|inspecth | [39m✓ Ready in 673ms
+[32m2|inspecth | [39m[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[orders api] userId from token: f98a1615-8314-416f-a5ff-c1092f6acbeb
+[32m2|inspecth | [39m[orders api] profile: { role: 'ADMIN' } profileErr: null
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for d86f1c28-0f5f-4e95-929e-38f88ea298bc, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d3d8bc61-a22d-4818-a730-c6db35c17366, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for b9b44468-1524-4c88-b38f-5c705f41eb0a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for a3e2dbc2-8b48-4513-b74f-4e9062192f21, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+[32m2|inspecth | [39m[public-plan API] Fetching plan: c1f34460-659f-4303-b928-8762bae47fb7
+[32m2|inspecth | [39m[public-plan API] Found plan: c1f34460-659f-4303-b928-8762bae47fb7, project: 76530312-bc7b-4681-a760-84c0c7765084
+[32m2|inspecth | [39m[public-plan API] Stats: devices=0, connections=4, routes=0
+[32m2|inspecth | [39m[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: true
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for c1f34460-659f-4303-b928-8762bae47fb7
+[32m2|inspecth | [39m[public-plan API] Fetching plan: c1f34460-659f-4303-b928-8762bae47fb7
+[32m2|inspecth | [39m[public-plan API] Found plan: c1f34460-659f-4303-b928-8762bae47fb7, project: 76530312-bc7b-4681-a760-84c0c7765084
+[32m2|inspecth | [39m[public-plan API] Stats: devices=0, connections=4, routes=0
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for a3e2dbc2-8b48-4513-b74f-4e9062192f21, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 4627d001-a86e-4061-83f1-aa61b24eddaf, isPublic: false
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 3f8b08ff-b74f-49ae-83ae-4437e18771de, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d86f1c28-0f5f-4e95-929e-38f88ea298bc, isPublic: false
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 432f9dee-e54e-49c9-aadd-485c1b0c20a1
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a
+[32m2|inspecth | [39m[tiles meta] Request for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 0484685f-5bf5-462f-b1d5-18ddcd6152a6
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for d8c53324-4619-476e-ab76-4d640e0f27cd
+[32m2|inspecth | [39m[tiles meta] Request for a3e2dbc2-8b48-4513-b74f-4e9062192f21, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for a3e2dbc2-8b48-4513-b74f-4e9062192f21
+[32m2|inspecth | [39m[tiles meta] Request for 4627d001-a86e-4061-83f1-aa61b24eddaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 4627d001-a86e-4061-83f1-aa61b24eddaf
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[calendar api] fetching data for year 2026, company 65d8b8df-b0ed-4bac-ad6d-ef1409219208 by ADMIN (via service client)
+[32m2|inspecth | [39m[calendar api] found 5 employees
+[32m2|inspecth | [39m[calendar api] success: workers=5, attendance=27, holidays=10
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 432f9dee-e54e-49c9-aadd-485c1b0c20a1
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for d8c53324-4619-476e-ab76-4d640e0f27cd
+[32m2|inspecth | [39m[tiles meta] Request for 4627d001-a86e-4061-83f1-aa61b24eddaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 4627d001-a86e-4061-83f1-aa61b24eddaf
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 0484685f-5bf5-462f-b1d5-18ddcd6152a6
+[32m2|inspecth | [39m[tiles meta] Request for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf
+[32m2|inspecth | [39m[tiles meta] Request for a3e2dbc2-8b48-4513-b74f-4e9062192f21, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for a3e2dbc2-8b48-4513-b74f-4e9062192f21
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for a3e2dbc2-8b48-4513-b74f-4e9062192f21, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for 4627d001-a86e-4061-83f1-aa61b24eddaf, isPublic: false
+[32m2|inspecth | [39m[tasks api] User role check: {
+[32m2|inspecth | [39m  userId: 'f98a1615-8314-416f-a5ff-c1092f6acbeb',
+[32m2|inspecth | [39m  role: 'ADMIN',
+[32m2|inspecth | [39m  isAdmin: true
+[32m2|inspecth | [39m}
+[32m2|inspecth | [39m[tiles meta] Request for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 476a3e6b-bd50-48cb-b8e1-9aab8edafb47
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a
+[32m2|inspecth | [39m[tiles meta] Request for 4627d001-a86e-4061-83f1-aa61b24eddaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 4627d001-a86e-4061-83f1-aa61b24eddaf
+[32m2|inspecth | [39m[tiles meta] Request for a3e2dbc2-8b48-4513-b74f-4e9062192f21, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for a3e2dbc2-8b48-4513-b74f-4e9062192f21
+[32m2|inspecth | [39m[tiles meta] Request for 0484685f-5bf5-462f-b1d5-18ddcd6152a6, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 0484685f-5bf5-462f-b1d5-18ddcd6152a6
+[32m2|inspecth | [39m[tiles meta] Request for 432f9dee-e54e-49c9-aadd-485c1b0c20a1, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 432f9dee-e54e-49c9-aadd-485c1b0c20a1
+[32m2|inspecth | [39m[tiles meta] Request for d8c53324-4619-476e-ab76-4d640e0f27cd, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for d8c53324-4619-476e-ab76-4d640e0f27cd
+[32m2|inspecth | [39m[tiles meta] Request for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for 10a04057-48f6-4e0a-aa7e-5e99caf6beaf
+[32m2|inspecth | [39m[tiles meta] Request for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Returning cached meta for bd3e3320-8d18-46fb-8ce4-08b9110e8c9a
+[32m2|inspecth | [39m[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+[32m2|inspecth | [39m[tiles meta] Request for c1f34460-659f-4303-b928-8762bae47fb7, isPublic: false
+

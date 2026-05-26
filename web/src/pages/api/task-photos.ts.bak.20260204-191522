@@ -1,0 +1,140 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+import { createClient } from "@supabase/supabase-js";
+
+type ApiOk = { ok: true; data: any; meta?: any };
+type ApiErr = { ok: false; error: { code: string; message: string; meta?: any } };
+
+function readJsonBody(req: NextApiRequest): any {
+  if (typeof req.body === "string") {
+    try {
+      return JSON.parse(req.body);
+    } catch {
+      return null;
+    }
+  }
+  return req.body;
+}
+
+function bad(res: NextApiResponse<ApiOk | ApiErr>, message: string, meta?: any) {
+  return res.status(400).json({ ok: false, error: { code: "BAD_REQUEST", message, meta } });
+}
+
+function supaErr(res: NextApiResponse<ApiOk | ApiErr>, error: any) {
+  return res.status(error?.status || 400).json({
+    ok: false,
+    error: { code: "SUPABASE", message: error?.message || "supabase error", meta: { code: error?.code, details: error?.details } },
+  });
+}
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse<ApiOk | ApiErr>) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY || null;
+
+  // DEV/MVP: service role omija RLS.
+  // Docelowo: przechodzimy na sesję usera (auth.uid()) i polityki same zadziałają.
+  const supabase = createClient(url, service || anon, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+
+  // ------------------------
+  // GET /api/task-photos?taskId=...
+  // ------------------------
+  if (req.method === "GET") {
+    const taskId = String(req.query.taskId || "").trim();
+    if (!taskId) return bad(res, "Missing query: taskId");
+
+    const { data, error } = await supabase
+      .from("task_photos")
+      .select("*")
+      .eq("task_id", taskId)
+      .order("created_at", { ascending: false });
+
+    if (error) return supaErr(res, error);
+    return res.status(200).json({ ok: true, data: data ?? [] });
+  }
+
+  // ------------------------
+  // POST /api/task-photos
+  // body: { task_id, uploaded_by, file_name, caption?, base64 }
+  // ------------------------
+  if (req.method === "POST") {
+    const body = readJsonBody(req);
+
+    const task_id = String(body?.task_id || "").trim();
+    const uploaded_by = String(body?.uploaded_by || "").trim(); // DEV; docelowo auth.uid()
+    const file_name = String(body?.file_name || "").trim() || "photo.jpg";
+    const caption = body?.caption == null ? null : String(body.caption);
+    const base64 = String(body?.base64 || "").trim();
+
+    if (!task_id) return bad(res, "Missing task_id");
+    if (!uploaded_by) return bad(res, "Missing uploaded_by (DEV)");
+    if (!base64) return bad(res, "Missing base64");
+
+    // base64 może przyjść jako data:image/...;base64,....
+    const b64 = base64.includes("base64,") ? base64.split("base64,")[1] : base64;
+
+    let buf: Buffer;
+    try {
+      buf = Buffer.from(b64, "base64");
+    } catch {
+      return bad(res, "Invalid base64");
+    }
+
+    // Bucket zgodny z DB defaultem:
+    const bucket = "task-photos";
+
+    // Ścieżka: task_id/yyyymmdd-hhmmss-rand-filename
+    const safeName = file_name.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const rand = Math.random().toString(16).slice(2, 10);
+    const storage_path = `${task_id}/${stamp}-${rand}-${safeName}`;
+
+    // MIME: najlepiej po stronie klienta, ale tu spróbujemy zgadnąć z nazwy jeśli nie ma
+    // (w DB i tak trzymasz url + storage_path)
+    const ext = safeName.toLowerCase().split(".").pop() || "";
+    const contentType =
+      ext === "png"
+        ? "image/png"
+        : ext === "webp"
+          ? "image/webp"
+          : ext === "gif"
+            ? "image/gif"
+            : "image/jpeg";
+
+    // Upload do Storage
+    const up = await supabase.storage.from(bucket).upload(storage_path, buf, {
+      upsert: false,
+      contentType,
+      cacheControl: "3600",
+    });
+
+    if (up.error) return supaErr(res, up.error);
+
+    // Public URL (bucket public)
+    const pub = supabase.storage.from(bucket).getPublicUrl(storage_path);
+    const publicUrl = pub?.data?.publicUrl;
+    if (!publicUrl) return bad(res, "Failed to create public URL");
+
+    // Insert do task_photos (kolumny zgodne z Twoją tabelą)
+    const ins = await supabase
+      .from("task_photos")
+      .insert({
+        task_id,
+        uploaded_by,
+        caption,
+        url: publicUrl,
+        storage_bucket: bucket,
+        storage_path,
+      })
+      .select("*")
+      .single();
+
+    if (ins.error) return supaErr(res, ins.error);
+
+    return res.status(200).json({ ok: true, data: ins.data });
+  }
+
+  res.setHeader("Allow", "GET, POST");
+  return res.status(405).json({ ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Use GET or POST" } });
+}

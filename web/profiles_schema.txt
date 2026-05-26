@@ -1,0 +1,1 @@
+tgres psql -U postgres -h 127.0.0.1 -p 54322 -d postgres -c \\d+\ profiles

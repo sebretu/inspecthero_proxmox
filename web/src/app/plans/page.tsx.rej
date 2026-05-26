@@ -1,0 +1,10 @@
+--- page.tsx
++++ page.tsx
+@@ -250,7 +250,6 @@
+                 </div>
+               </div>
+-              </div>
+             </div>
+           </div>
+ 
+           {selectedPlanId && (() => {

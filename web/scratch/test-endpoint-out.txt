@@ -1,0 +1,9 @@
+[dotenv@17.3.1] injecting env (11) from .env.local -- tip: 🤖 agentic secret storage: https://dotenvx.com/as2
+Endpoint Response: {
+  id: '07df120f-a8a7-460b-82c1-eacdd00efe10',
+  session_id: '0d5e818a-8e0a-43a9-8c57-c29f08a01099',
+  version_number: 1,
+  data: [ { type: 'test' } ],
+  created_by: null,
+  created_at: '2026-05-14T20:22:53.495459+00:00'
+}

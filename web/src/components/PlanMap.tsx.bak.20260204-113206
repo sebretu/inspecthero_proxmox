@@ -1,0 +1,183 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+type Meta = {
+  tileSize: number;
+  minZoom: number;
+  maxZoom: number;
+  gridW: number; // tiles at maxZoom
+  gridH: number; // tiles at maxZoom
+  format?: string;
+};
+
+type TaskRow = {
+  id: string;
+  plan_id: string;
+  project_id: string;
+  x_norm: number;
+  y_norm: number;
+  title: string;
+  description: string | null;
+};
+
+function clamp01(n: number) {
+  return Math.max(0, Math.min(1, n));
+}
+
+// CRS.Simple, bez odwracania Y
+const CRS = L.extend({}, L.CRS.Simple, {
+  transformation: new L.Transformation(1, 0, 1, 0),
+});
+
+// Leaflet default icons fix (Next.js)
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "/leaflet/images/marker-icon-2x.png",
+  iconUrl: "/leaflet/images/marker-icon.png",
+  shadowUrl: "/leaflet/images/marker-shadow.png",
+});
+
+export default function PlanMap({ planId, meta }: { planId: string; meta: Meta }) {
+  // DEMO (na razie na sztywno)
+  const PROJECT_ID = "55555555-5555-5555-5555-555555555555";
+  const CREATED_BY = "44444444-4444-4444-4444-444444444444";
+
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+
+  const [map, setMap] = useState<L.Map | null>(null);
+
+  const maxPxW = useMemo(() => meta.gridW * meta.tileSize, [meta]);
+  const maxPxH = useMemo(() => meta.gridH * meta.tileSize, [meta]);
+
+  const bounds = useMemo(() => L.latLngBounds([0, 0], [maxPxH, maxPxW]), [maxPxH, maxPxW]);
+
+  // start w środku
+  const center = useMemo<[number, number]>(() => [maxPxH / 2, maxPxW / 2], [maxPxH, maxPxW]);
+
+  const startZoom = useMemo(() => Math.max(meta.minZoom, meta.maxZoom - 1), [meta]);
+
+  useEffect(() => {
+    if (!map) return;
+    map.fitBounds(bounds, { animate: false });
+    map.setMaxBounds(bounds);
+  }, [map, bounds]);
+
+  const loadTasks = useCallback(async () => {
+    setTasksLoading(true);
+    try {
+      const r = await fetch(`/api/tasks?projectId=${PROJECT_ID}&planId=${planId}&limit=200&offset=0`, {
+        cache: "no-store",
+      });
+      const j = await r.json();
+      if (!r.ok || !j?.ok) throw new Error(j?.error?.message || "tasks fetch failed");
+      setTasks(j.data || []);
+    } finally {
+      setTasksLoading(false);
+    }
+  }, [PROJECT_ID, planId]);
+
+  useEffect(() => {
+    loadTasks().catch(console.error);
+  }, [loadTasks]);
+
+  function ClickToCreate() {
+    useMapEvents({
+      click: async (e) => {
+        const x = e.latlng.lng;
+        const y = e.latlng.lat;
+
+        const x_norm = clamp01(x / maxPxW);
+        const y_norm = clamp01(y / maxPxH);
+
+        const title = window.prompt("Tytuł taska?", "Nowy task");
+        if (!title) return;
+
+        const description = (window.prompt("Opis (opcjonalnie)?", "") || "").trim() || null;
+
+        const r = await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_id: PROJECT_ID,
+            plan_id: planId,
+            x_norm,
+            y_norm,
+            title,
+            description,
+            created_by: CREATED_BY,
+          }),
+        });
+
+        const j = await r.json();
+        if (!r.ok || !j?.ok) {
+          alert(`Błąd: ${j?.error?.message || j?.error || r.status}`);
+          return;
+        }
+
+        await loadTasks();
+      },
+    });
+
+    return null;
+  }
+
+  return (
+    <div style={{ width: "100%", height: "calc(100vh - 120px)" }}>
+      <style>{`.leaflet-container { background: #fff; }`}</style>
+
+      <div style={{ padding: "6px 10px", fontSize: 12, opacity: 0.75 }}>
+        tasks: {tasks.length} {tasksLoading ? "(loading…)" : ""} | planId:{" "}
+        <span style={{ fontFamily: "monospace" }}>{planId}</span>
+      </div>
+
+      <MapContainer
+        whenCreated={setMap}
+        crs={CRS as any}
+        bounds={bounds}
+        center={center}
+        zoom={startZoom}
+        minZoom={meta.minZoom}
+        maxZoom={meta.maxZoom}
+        maxBounds={bounds}
+        maxBoundsViscosity={1.0}
+        style={{ width: "100%", height: "100%" }}
+      >
+        <TileLayer
+          url={`/api/tiles/${planId}/{z}/{x}/{y}.png`}
+          tileSize={meta.tileSize}
+          minZoom={meta.minZoom}
+          maxZoom={meta.maxZoom}
+          minNativeZoom={meta.minZoom}
+          maxNativeZoom={meta.maxZoom}
+          tms={false}
+          noWrap={true}
+          keepBuffer={4}
+        />
+
+        <ClickToCreate />
+
+        {tasks.map((t) => {
+          const x = Number(t.x_norm) * maxPxW;
+          const y = Number(t.y_norm) * maxPxH;
+
+          return (
+            <Marker key={t.id} position={[y, x]}>
+              <Popup>
+                <div style={{ minWidth: 220 }}>
+                  <div style={{ fontWeight: 700 }}>{t.title}</div>
+                  {t.description ? <div style={{ marginTop: 6 }}>{t.description}</div> : null}
+                  <div style={{ marginTop: 8, fontSize: 12, opacity: 0.7 }}>{t.id}</div>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+      </MapContainer>
+    </div>
+  );
+}

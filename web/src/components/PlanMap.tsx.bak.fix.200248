@@ -1,0 +1,161 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import TaskDrawer from "./TaskDrawer";
+
+type Meta = {
+  tileSize: number;
+  minZoom: number;
+  maxZoom: number;
+  gridW: number;
+  gridH: number;
+};
+
+type TaskRow = {
+  id: string;
+  x_norm: number;
+  y_norm: number;
+  title: string;
+};
+
+const CRS = L.CRS.Simple;
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "/leaflet/images/marker-icon-2x.png",
+  iconUrl: "/leaflet/images/marker-icon.png",
+  shadowUrl: "/leaflet/images/marker-shadow.png",
+});
+
+export default function PlanMap({ planId, meta }: { planId: string; meta: Meta }) {
+  const PROJECT_ID = "55555555-5555-5555-5555-555555555555";
+  const CREATED_BY = "44444444-4444-4444-4444-444444444444";
+
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [thumbByTask, setThumbByTask] = useState<Record<string, string | null>>({});
+  const [drawerTaskId, setDrawerTaskId] = useState<string | null>(null);
+
+  const worldPxW = meta.gridW * meta.tileSize;
+  const worldPxH = meta.gridH * meta.tileSize;
+
+  const bounds = useMemo(() => {
+    const sw = CRS.pointToLatLng(L.point(0, worldPxH), meta.maxZoom);
+    const ne = CRS.pointToLatLng(L.point(worldPxW, 0), meta.maxZoom);
+    return L.latLngBounds(sw, ne);
+  }, [worldPxW, worldPxH, meta.maxZoom]);
+
+  const center = bounds.getCenter();
+
+  const loadTasks = useCallback(async () => {
+    const r = await fetch(`/api/tasks?projectId=${PROJECT_ID}&planId=${planId}&limit=200&offset=0`);
+    const j = await r.json();
+    if (j?.ok) setTasks(j.data || []);
+  }, [PROJECT_ID, planId]);
+
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
+
+  async function loadThumb(taskId: string) {
+    const r = await fetch(`/api/task-photos?taskId=${taskId}`);
+    const j = await r.json();
+    setThumbByTask((p) => ({
+      ...p,
+      [taskId]: j?.ok && j.data.length ? j.data[0].url : null,
+    }));
+  }
+
+  /** 🔔 EVENT z TaskDrawer po uploadzie */
+  useEffect(() => {
+    const h = (e: any) => loadThumb(e.detail.taskId);
+    window.addEventListener("task-photo-added", h);
+    return () => window.removeEventListener("task-photo-added", h);
+  }, []);
+
+  function ClickToCreate() {
+    useMapEvents({
+      click: async (e) => {
+        const p = CRS.latLngToPoint(e.latlng, meta.maxZoom);
+        const r = await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_id: PROJECT_ID,
+            plan_id: planId,
+            x_norm: p.x / worldPxW,
+            y_norm: p.y / worldPxH,
+            title: "Nowy task",
+            created_by: CREATED_BY,
+          }),
+        });
+        const j = await r.json();
+        if (j?.ok) {
+          setDrawerTaskId(j.data.id);
+          loadTasks();
+        }
+      },
+    });
+    return null;
+  }
+
+  return (
+    <>
+      <MapContainer crs={CRS} center={center} zoom={meta.minZoom} bounds={bounds} style={{ height: "100vh" }}>
+        <TileLayer url={`/api/tiles/${planId}/{z}/{x}/{y}.png`} />
+        <ClickToCreate />
+
+        {tasks.map((t) => {
+          const ll = CRS.pointToLatLng(
+            L.point(t.x_norm * worldPxW, t.y_norm * worldPxH),
+            meta.maxZoom
+          );
+
+          return (
+            <Marker key={t.id} position={ll}>
+              <Popup eventHandlers={{ popupopen: () => loadThumb(t.id) }}>
+                <div style={{ width: 220, color: "#111" }}>
+                  {thumbByTask[t.id] ? (
+                    <img src={thumbByTask[t.id]!} style={{ width: "100%", borderRadius: 8 }} />
+                  ) : (
+                    <div style={{ fontSize: 12, opacity: 0.6 }}>Brak zdjęcia</div>
+                  )}
+
+                  <div style={{ fontWeight: 700, marginTop: 6 }}>{t.title}</div>
+
+                  <button
+                    style={{
+                      marginTop: 8,
+                      width: "100%",
+                      padding: 6,
+                      background: "#fff",
+                      color: "#111",
+                      border: "1px solid #111",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setDrawerTaskId(t.id)}
+                  >
+                    Otwórz task
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+      </MapContainer>
+
+      <TaskDrawer
+        open={!!drawerTaskId}
+        taskId={drawerTaskId}
+        uploadedBy={CREATED_BY}
+        onClose={() => {
+          setDrawerTaskId(null);
+          loadTasks();
+        }}
+      />
+    </>
+  );
+}
