@@ -959,3 +959,19 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   4. Dodano `chmod +x gradlew` przed wykonaniem kompilacji APK.
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 6: Błąd `expo/expo-github-action@v8` (yarn global add expo-cli) w GitHub Actions
+* **Data:** 2026-09-24
+* **Symptom / Błąd w GitHub Actions:**
+  ```text
+  Run expo/expo-github-action@v8
+  Installing expo-cli (6.3.10) from cache or with yarn
+  Installing eas-cli (24.7.0) from cache or with yarn
+  Error: The process '/usr/local/bin/yarn' failed with exit code 1
+  ```
+* **Przyczyna:** Akcja `expo/expo-github-action@v8` domyślnie instaluje globalne `expo-cli` (v6.3.10) za pomocą `yarn`. W nowoczesnym Expo SDK 52 narzędzia CLI są częścią lokalnej instalacji pakietu `expo` i wywołuje się je bezpośrednio przez `npx expo prebuild`, bez potrzeby globalnego instalatora `expo-cli`.
+* **Zastosowane rozwiązanie:** Usunięto krok `expo/expo-github-action@v8` na rzecz standardowego, stabilnego wywołania `npx expo prebuild` korzystającego z lokalnych zależności w `apps/mobile/node_modules`.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+
