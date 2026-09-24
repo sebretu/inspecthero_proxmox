@@ -1059,6 +1059,21 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
 * **Zastosowane rozwiązanie:** Zaktualizowano `apps/mobile/package.json` do `"babel-preset-expo": "~12.0.12"`, wygenerowano poprawny `package-lock.json` i przetestowano lokalną instalację (914 pakietów, 0 błędów).
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 12: Natychmiastowe zamykanie aplikacji na iOS (brak pluginu Reanimated i importu gesture-handler)
+* **Data:** 2026-09-24
+* **Symptom / Błąd:**
+  Na urządzeniach Apple (iPhone / iOS Simulator) aplikacja wyświetlała czarny ekran splash i natychmiast się wyłączała (fatal crash / EXC_BAD_ACCESS).
+* **Przyczyna:** 
+  1. Brak pluginu `'react-native-reanimated/plugin'` w `apps/mobile/babel.config.js`. W React Native / Expo Router biblioteka `reanimated` wymaga transformacji kodu do workletów przez plugin Babel; bez tego moduł natywny rzuca nieobsługiwany wyjątek C++ podczas inicjalizacji.
+  2. Brak importu `import 'react-native-gesture-handler';` w pierwszym wierszu głównego pliku `_layout.tsx` oraz brak `SafeAreaProvider`.
+* **Zastosowane rozwiązanie:**
+  1. Dodano `plugins: ['react-native-reanimated/plugin']` do `apps/mobile/babel.config.js`.
+  2. Dodano `import 'react-native-gesture-handler';` oraz `SafeAreaProvider` do `apps/mobile/app/_layout.tsx`.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+
 
 
 
