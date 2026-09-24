@@ -1,7 +1,13 @@
 {
-  "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["DOM", "ESNext"],
+    "jsx": "react-native",
     "strict": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
     "paths": {
       "@/*": ["./src/*"]
     }

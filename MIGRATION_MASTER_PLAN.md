@@ -1026,6 +1026,27 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   * Do bezpośrednich testów na fizycznym telefonie iPhone bez płatnego konta Apple Developer rekomendowane jest uruchomienie w aplikacji **Expo Go** (ze skanowaniem QR) lub build przez **EAS Build** (`npx eas build --platform ios`).
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 10: Błąd Metro bundling `createBundleReleaseJsAndAssets` (brak konfiguracji monorepo, babel oraz _layout.tsx)
+* **Data:** 2026-09-24
+* **Symptom / Błąd w Gradle podczas `assembleRelease`:**
+  ```text
+  Execution failed for task ':app:createBundleReleaseJsAndAssets'.
+  > Process 'command 'node'' finished with non-zero exit value 1
+  ```
+* **Przyczyna:** 
+  1. Brak pliku `metro.config.js` z konfiguracją `watchFolders = [workspaceRoot]` dla monorepo — Metro nie potrafiło powiązać pakietu `packages/sync-protocol` leżącego poza katalogiem `apps/mobile`.
+  2. Brak pliku `apps/mobile/babel.config.js` z presetem `babel-preset-expo`.
+  3. Brak pliku `apps/mobile/app/_layout.tsx` wymaganego przez silnik routingu Expo Router 4 do zbudowania drzewa widoków aplikacji.
+* **Zastosowane rozwiązanie:**
+  1. Utworzono `apps/mobile/metro.config.js` ze wsparciem dla struktury monorepo i śledzeniem katalogu głównego.
+  2. Utworzono `apps/mobile/babel.config.js` z `babel-preset-expo`.
+  3. Utworzono `apps/mobile/app/_layout.tsx` ze standardowym `Stack` i motywem `Dark Theme`.
+  4. Dodano `babel-preset-expo` do `package.json` oraz zaktualizowano `tsconfig.json`.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+
 
 
 
