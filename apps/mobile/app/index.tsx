@@ -113,13 +113,22 @@ export default function HomeScreen() {
 
         {/* Quick Actions */}
         <View style={styles.actionsSection}>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            activeOpacity={0.8}
-            onPress={() => router.push('/projects' as any)}
-          >
-            <Text style={styles.primaryButtonText}>Przeglądaj projekty budowlane →</Text>
-          </TouchableOpacity>
+          <View style={styles.primaryActionRow}>
+            <TouchableOpacity
+              style={[styles.primaryButton, { flex: 1 }]}
+              activeOpacity={0.8}
+              onPress={() => router.push('/plans' as any)}
+            >
+              <Text style={styles.primaryButtonText}>📐 Przeglądaj Plany (Leaflet) →</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.projectsButton, { flex: 1 }]}
+              activeOpacity={0.8}
+              onPress={() => router.push('/projects' as any)}
+            >
+              <Text style={styles.projectsButtonText}>🏢 Projekty ({projectCount}) →</Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.modulesRow}>
             <TouchableOpacity
@@ -148,7 +157,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/attendance' as any)}
             >
               <Text style={styles.moduleIcon}>⏱️</Text>
-              <Text style={styles.moduleTitle}>Obecność (RCP)</Text>
+              <Text style={styles.moduleTitle}>Godziny & Urlopy</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -319,16 +328,39 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
   },
+  primaryActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
   primaryButton: {
     backgroundColor: '#0284C7',
-    paddingVertical: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '700',
+    textAlign: 'center',
+  },
+  projectsButton: {
+    backgroundColor: '#0F172A',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+  },
+  projectsButtonText: {
+    color: '#38BDF8',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   modulesRow: {
     flexDirection: 'row',

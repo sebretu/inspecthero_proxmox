@@ -6,134 +6,211 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  TextInput,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDatabase } from '../../src/db/database';
 
-interface AttendanceRow {
+interface AttendanceEntry {
   id: string;
-  user_id: string;
-  project_id?: string;
-  clock_in: string;
-  clock_out?: string;
+  date: string;
+  status: 'PRESENT' | 'VACATION' | 'ABSENT';
+  start_time?: string;
+  end_time?: string;
+  break_time?: number;
+  total_hours?: number;
+  project_name?: string;
   notes?: string;
   version: number;
 }
 
 export default function AttendanceScreen() {
-  const [logs, setLogs] = useState<AttendanceRow[]>([]);
-  const [activeShift, setActiveShift] = useState<AttendanceRow | null>(null);
+  const [entries, setEntries] = useState<AttendanceEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
 
-  const loadAttendance = useCallback(async () => {
+  // Form State
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [status, setStatus] = useState<'PRESENT' | 'VACATION' | 'ABSENT'>('PRESENT');
+  const [startTime, setStartTime] = useState('07:00');
+  const [endTime, setEndTime] = useState('15:30');
+  const [breakMinutes, setBreakMinutes] = useState('30');
+  const [projectName, setProjectName] = useState('SEGRO Park Berlin City');
+  const [notes, setNotes] = useState('');
+
+  const calculateHours = (start: string, end: string, breakMins: string): number => {
+    try {
+      const [startH, startM] = start.split(':').map(Number);
+      const [endH, endM] = end.split(':').map(Number);
+      const totalMinutes = endH * 60 + endM - (startH * 60 + startM) - (Number(breakMins) || 0);
+      return Math.max(0, Number((totalMinutes / 60).toFixed(2)));
+    } catch {
+      return 8.0;
+    }
+  };
+
+  const loadEntries = useCallback(async () => {
     try {
       setLoading(true);
       const db = await getDatabase();
-      const rows = await db.getAllAsync<AttendanceRow>(
-        'SELECT * FROM attendance WHERE deleted_at IS NULL ORDER BY clock_in DESC;'
+      const rows = await db.getAllAsync<any>(
+        'SELECT * FROM attendance WHERE deleted_at IS NULL ORDER BY clock_in DESC, created_at DESC;'
       );
-      setLogs(rows);
 
-      // Find open shift without clock_out
-      const open = rows.find((r) => !r.clock_out);
-      setActiveShift(open || null);
+      const parsed: AttendanceEntry[] = rows.map((r: any) => {
+        const rawDate = r.clock_in ? r.clock_in.split('T')[0] : new Date().toISOString().split('T')[0];
+        const isVacation = r.notes?.includes('[URLOP]') || r.notes?.includes('[VACATION]');
+        const isAbsent = r.notes?.includes('[NIEOBECNOŚĆ]') || r.notes?.includes('[ABSENT]');
+        const entryStatus = isVacation ? 'VACATION' : isAbsent ? 'ABSENT' : 'PRESENT';
+
+        let start = '07:00';
+        let end = '15:30';
+        if (r.clock_in && r.clock_in.includes('T')) {
+          start = r.clock_in.split('T')[1].substring(0, 5);
+        }
+        if (r.clock_out && r.clock_out.includes('T')) {
+          end = r.clock_out.split('T')[1].substring(0, 5);
+        }
+
+        const totalH = entryStatus === 'PRESENT' ? calculateHours(start, end, '30') : 8.0;
+
+        return {
+          id: r.id,
+          date: rawDate,
+          status: entryStatus,
+          start_time: start,
+          end_time: end,
+          break_time: 30,
+          total_hours: totalH,
+          project_name: r.notes?.split('\n')[0] || 'Budowa ogólna',
+          notes: r.notes || '',
+          version: r.version || 1,
+        };
+      });
+
+      if (parsed.length === 0) {
+        // Seed default starter entries
+        setEntries([
+          {
+            id: 'att-sample-1',
+            date: new Date().toISOString().split('T')[0],
+            status: 'PRESENT',
+            start_time: '07:00',
+            end_time: '15:30',
+            break_time: 30,
+            total_hours: 8.0,
+            project_name: 'SEGRO Park Berlin City',
+            notes: 'Montaż tras kablowych i puszek rozdzielczych',
+            version: 1,
+          },
+          {
+            id: 'att-sample-2',
+            date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+            status: 'PRESENT',
+            start_time: '07:00',
+            end_time: '16:00',
+            break_time: 30,
+            total_hours: 8.5,
+            project_name: 'Sapporo Tower',
+            notes: 'Pomiary rezystancji i okablowanie BMA',
+            version: 1,
+          },
+        ]);
+      } else {
+        setEntries(parsed);
+      }
     } catch (err) {
-      console.error('[AttendanceScreen] Error loading attendance:', err);
+      console.error('[Attendance] Load error:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadAttendance();
-  }, [loadAttendance]);
+    loadEntries();
+  }, [loadEntries]);
 
-  const handleClockIn = async () => {
+  const handleSaveEntry = async () => {
+    if (!date.trim()) {
+      Alert.alert('Błąd', 'Podaj datę wpisu.');
+      return;
+    }
+
     try {
       const db = await getDatabase();
       const attendanceId = `att-${Date.now()}`;
       const now = new Date().toISOString();
 
-      await db.runAsync(`
-        INSERT INTO attendance (id, user_id, project_id, clock_in, version, created_at, updated_at)
-        VALUES (?, 'offline_user', 'proj-sample-001', ?, 1, ?, ?);
-      `, [attendanceId, now, now, now]);
+      const clockInIso = `${date}T${startTime}:00Z`;
+      const clockOutIso = `${date}T${endTime}:00Z`;
+      const calculatedH = status === 'PRESENT' ? calculateHours(startTime, endTime, breakMinutes) : 8.0;
 
+      const formattedNotes =
+        status === 'VACATION'
+          ? `[URLOP] ${notes || 'Urlop wypoczynkowy'}`
+          : status === 'ABSENT'
+          ? `[NIEOBECNOŚĆ] ${notes || 'Nieobecność usprawiedliwiona'}`
+          : `${projectName}\n${notes ? notes + '\n' : ''}Czas: ${startTime}-${endTime} (Przerwa: ${breakMinutes}m, Suma: ${calculatedH}h)`;
+
+      await db.runAsync(`
+        INSERT INTO attendance (id, user_id, project_id, clock_in, clock_out, notes, version, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?);
+      `, [
+        attendanceId,
+        'usr-current',
+        null,
+        clockInIso,
+        status === 'PRESENT' ? clockOutIso : clockInIso,
+        formattedNotes,
+        now,
+        now,
+      ]);
+
+      // Record offline mutation
       await db.runAsync(`
         INSERT INTO mutations (
           mutation_id, entity_type, entity_id, operation, base_version, payload, status, attempts, created_at, updated_at
-        ) VALUES (?, 'attendance', ?, 'INSERT', 0, ?, 'PENDING', 0, ?, ?);
+        ) VALUES (?, 'attendance', ?, 'INSERT', 1, ?, 'PENDING', 0, ?, ?);
       `, [
-        `mut-${Date.now()}-${attendanceId}`,
+        `mut-${Date.now()}`,
         attendanceId,
         JSON.stringify({
-          clock_in: now,
-          project_id: 'proj-sample-001',
+          id: attendanceId,
+          date,
+          status,
+          start_time: startTime,
+          end_time: endTime,
+          break_time: Number(breakMinutes) || 0,
+          notes: formattedNotes,
           created_at: now,
         }),
         now,
         now,
       ]);
 
-      const newRow: AttendanceRow = {
-        id: attendanceId,
-        user_id: 'offline_user',
-        project_id: 'proj-sample-001',
-        clock_in: now,
-        version: 1,
-      };
-
-      setActiveShift(newRow);
-      setLogs((prev) => [newRow, ...prev]);
-      Alert.alert('Rozpoczęto pracę', 'Czas pracy został zarejestrowany lokalnie w trybie offline.');
+      Alert.alert('Zapisano', 'Wpis godzin / urlopu został dodany do bazy lokalnej.');
+      setShowAddForm(false);
+      setNotes('');
+      await loadEntries();
     } catch (err: any) {
-      Alert.alert('Błąd', err?.message || 'Nie udało się zarejestrować wejścia');
+      Alert.alert('Błąd zapisu', err?.message || 'Nie udało się zapisać wpisu');
     }
   };
 
-  const handleClockOut = async () => {
-    if (!activeShift) return;
+  const totalMonthlyHours = entries
+    .filter((e) => e.status === 'PRESENT')
+    .reduce((acc, curr) => acc + (curr.total_hours || 0), 0);
 
-    try {
-      const db = await getDatabase();
-      const now = new Date().toISOString();
-      const nextVersion = activeShift.version + 1;
-
-      await db.runAsync(
-        'UPDATE attendance SET clock_out = ?, version = ?, updated_at = ? WHERE id = ?;',
-        [now, nextVersion, now, activeShift.id]
-      );
-
-      await db.runAsync(`
-        INSERT INTO mutations (
-          mutation_id, entity_type, entity_id, operation, base_version, payload, status, attempts, created_at, updated_at
-        ) VALUES (?, 'attendance', ?, 'UPDATE', ?, ?, 'PENDING', 0, ?, ?);
-      `, [
-        `mut-${Date.now()}-${activeShift.id}`,
-        activeShift.id,
-        activeShift.version,
-        JSON.stringify({ clock_out: now, updated_at: now }),
-        now,
-        now,
-      ]);
-
-      setActiveShift(null);
-      setLogs((prev) =>
-        prev.map((r) => (r.id === activeShift.id ? { ...r, clock_out: now, version: nextVersion } : r))
-      );
-      Alert.alert('Zakończono pracę', 'Koniec zmiany został zapisany w bazie SQLite.');
-    } catch (err: any) {
-      Alert.alert('Błąd', err?.message || 'Nie udało się zarejestrować wyjścia');
-    }
-  };
+  const vacationDays = entries.filter((e) => e.status === 'VACATION').length;
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <Stack.Screen
         options={{
-          title: 'Obecność & RCP',
+          title: 'Godziny i Urlopy (Zeiterfassung)',
           headerShown: true,
           headerBackTitle: 'Wstecz',
           headerStyle: { backgroundColor: '#0B0F19' },
@@ -142,90 +219,196 @@ export default function AttendanceScreen() {
         }}
       />
 
+      {/* Summary KPI */}
+      <View style={styles.summaryBar}>
+        <View style={styles.kpiBox}>
+          <Text style={styles.kpiValue}>{totalMonthlyHours.toFixed(1)} h</Text>
+          <Text style={styles.kpiLabel}>Przepracowane godziny</Text>
+        </View>
+        <View style={styles.kpiDivider} />
+        <View style={styles.kpiBox}>
+          <Text style={[styles.kpiValue, { color: '#F59E0B' }]}>{vacationDays} dni</Text>
+          <Text style={styles.kpiLabel}>Wykorzystany urlop</Text>
+        </View>
+        <View style={styles.kpiDivider} />
+        <TouchableOpacity
+          style={styles.addBtnHeader}
+          onPress={() => setShowAddForm(!showAddForm)}
+        >
+          <Text style={styles.addBtnHeaderText}>{showAddForm ? '✕ Anuluj' : '+ Dodaj wpis'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Manual Entry Form */}
+      {showAddForm && (
+        <ScrollView style={styles.formCard}>
+          <Text style={styles.formTitle}>Nowy wpis godzin / urlopu</Text>
+
+          {/* Status Switcher */}
+          <View style={styles.typeSelector}>
+            <TouchableOpacity
+              style={[styles.typeBtn, status === 'PRESENT' && styles.typeBtnActive]}
+              onPress={() => setStatus('PRESENT')}
+            >
+              <Text style={[styles.typeBtnText, status === 'PRESENT' && styles.typeBtnTextActive]}>
+                🟢 Przepracowane godziny
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.typeBtn, status === 'VACATION' && styles.typeBtnActiveVacation]}
+              onPress={() => setStatus('VACATION')}
+            >
+              <Text style={[styles.typeBtnText, status === 'VACATION' && styles.typeBtnTextActiveVacation]}>
+                🟡 Urlop
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.typeBtn, status === 'ABSENT' && styles.typeBtnActiveAbsent]}
+              onPress={() => setStatus('ABSENT')}
+            >
+              <Text style={[styles.typeBtnText, status === 'ABSENT' && styles.typeBtnTextActiveAbsent]}>
+                🔴 Nieobecność
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Date */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>DATA (YYYY-MM-DD)</Text>
+            <TextInput
+              style={styles.input}
+              value={date}
+              onChangeText={setDate}
+              placeholder="2026-09-24"
+              placeholderTextColor="#64748B"
+            />
+          </View>
+
+          {status === 'PRESENT' && (
+            <>
+              {/* Hours Grid */}
+              <View style={styles.timeRow}>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.inputLabel}>OD GODZINY</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={startTime}
+                    onChangeText={setStartTime}
+                    placeholder="07:00"
+                    placeholderTextColor="#64748B"
+                  />
+                </View>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.inputLabel}>DO GODZINY</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={endTime}
+                    onChangeText={setEndTime}
+                    placeholder="15:30"
+                    placeholderTextColor="#64748B"
+                  />
+                </View>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.inputLabel}>PRZERWA (MIN)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={breakMinutes}
+                    onChangeText={setBreakMinutes}
+                    keyboardType="numeric"
+                    placeholder="30"
+                    placeholderTextColor="#64748B"
+                  />
+                </View>
+              </View>
+
+              <Text style={styles.calcPreview}>
+                ⏱️ Suma netto: <Text style={{ color: '#38BDF8', fontWeight: '800' }}>{calculateHours(startTime, endTime, breakMinutes)} h</Text>
+              </Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>PROJEKT / BUDOWA</Text>
+                <TextInput
+                  style={styles.input}
+                  value={projectName}
+                  onChangeText={setProjectName}
+                  placeholder="np. SEGRO Park Berlin City"
+                  placeholderTextColor="#64748B"
+                />
+              </View>
+            </>
+          )}
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>OPIS WYKONANYCH PRAC / UWAGI</Text>
+            <TextInput
+              style={[styles.input, { height: 60 }]}
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              placeholder="np. Montaż tras kablowych, podłączenie rozdzielnicy..."
+              placeholderTextColor="#64748B"
+            />
+          </View>
+
+          <TouchableOpacity style={styles.saveBtn} activeOpacity={0.8} onPress={handleSaveEntry}>
+            <Text style={styles.saveBtnText}>💾 Zapisz wpis do bazy</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
+
+      {/* Entries List */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#38BDF8" />
+          <Text style={styles.loadingText}>Ładowanie ewidencji godzin...</Text>
         </View>
       ) : (
-        <View style={styles.content}>
-          {/* Main Clock-in/Clock-out Action Box */}
-          <View style={styles.actionCard}>
-            <Text style={styles.cardHeaderTitle}>
-              {activeShift ? '🟢 Jesteś na budowie' : '⚪ Gotowy do rozpoczęcia zmiany'}
-            </Text>
-            <Text style={styles.cardHeaderSubtitle}>
-              {activeShift
-                ? `Rozpoczęto: ${new Date(activeShift.clock_in).toLocaleTimeString()}`
-                : 'Zarejestruj wejście na teren obiektu (działa bez zasięgu)'}
-            </Text>
-
-            {activeShift ? (
-              <TouchableOpacity
-                style={[styles.clockBtn, styles.clockOutBtn]}
-                activeOpacity={0.8}
-                onPress={handleClockOut}
-              >
-                <Text style={styles.clockBtnIcon}>⏹️</Text>
-                <Text style={styles.clockBtnText}>ZAKOŃCZ PRACĘ (WYJŚCIE)</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.clockBtn, styles.clockInBtn]}
-                activeOpacity={0.8}
-                onPress={handleClockIn}
-              >
-                <Text style={styles.clockBtnIcon}>▶️</Text>
-                <Text style={styles.clockBtnText}>ROZPOCZNIJ PRACĘ (WEJŚCIE)</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* History Section */}
-          <View style={styles.historyHeader}>
-            <Text style={styles.historyTitle}>Historia obecności ({logs.length})</Text>
-          </View>
-
-          <FlatList
-            data={logs}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.list}
-            ListEmptyComponent={
-              <View style={styles.center}>
-                <Text style={styles.emptyTitle}>Brak wpisów</Text>
-                <Text style={styles.emptySubtitle}>Nie zarejestrowano jeszcze żadnych zmian roboczych.</Text>
-              </View>
-            }
-            renderItem={({ item }) => {
-              const inDate = new Date(item.clock_in);
-              const outDate = item.clock_out ? new Date(item.clock_out) : null;
-              const durationHours = outDate
-                ? ((outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60)).toFixed(1)
-                : null;
-
-              return (
-                <View style={styles.logCard}>
-                  <View style={styles.logMain}>
-                    <Text style={styles.logDate}>{inDate.toLocaleDateString()}</Text>
-                    <Text style={styles.logTimes}>
-                      {inDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ➔{' '}
-                      {outDate ? outDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'w trakcie'}
-                    </Text>
-                  </View>
-
-                  <View style={styles.logMeta}>
-                    {durationHours ? (
-                      <Text style={styles.durationText}>{durationHours} godz.</Text>
-                    ) : (
-                      <View style={styles.activeTag}>
-                        <Text style={styles.activeTagText}>AKTYWNA</Text>
-                      </View>
-                    )}
-                  </View>
+        <FlatList
+          data={entries}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <Text style={styles.emptyTitle}>Brak wpisów</Text>
+              <Text style={styles.emptySubtitle}>Kliknij "+ Dodaj wpis", aby oddać godziny lub urlop.</Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.cardTop}>
+                <View style={styles.dateCol}>
+                  <Text style={styles.dateText}>{item.date}</Text>
+                  <Text style={styles.projectText}>{item.project_name}</Text>
                 </View>
-              );
-            }}
-          />
-        </View>
+
+                {item.status === 'VACATION' ? (
+                  <View style={styles.vacationBadge}>
+                    <Text style={styles.vacationBadgeText}>🟡 URLOP</Text>
+                  </View>
+                ) : item.status === 'ABSENT' ? (
+                  <View style={styles.absentBadge}>
+                    <Text style={styles.absentBadgeText}>🔴 NIEOBECNOŚĆ</Text>
+                  </View>
+                ) : (
+                  <View style={styles.hoursBadge}>
+                    <Text style={styles.hoursBadgeText}>🟢 {item.total_hours} h</Text>
+                  </View>
+                )}
+              </View>
+
+              {item.status === 'PRESENT' && (
+                <View style={styles.timeDetailsRow}>
+                  <Text style={styles.timeRange}>
+                    🕒 {item.start_time} - {item.end_time}
+                  </Text>
+                  <Text style={styles.breakText}>Przerwa: {item.break_time} min</Text>
+                </View>
+              )}
+
+              {item.notes ? <Text style={styles.notesText}>{item.notes}</Text> : null}
+            </View>
+          )}
+        />
       )}
     </SafeAreaView>
   );
@@ -236,112 +419,237 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#030712',
   },
-  content: {
-    flex: 1,
+  summaryBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#0B0F19',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
   },
-  actionCard: {
+  kpiBox: {
+    alignItems: 'center',
+  },
+  kpiValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#38BDF8',
+  },
+  kpiLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  kpiDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#1E293B',
+  },
+  addBtnHeader: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+  },
+  addBtnHeaderText: {
+    color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  formCard: {
     backgroundColor: '#0F172A',
-    borderRadius: 16,
-    padding: 20,
     margin: 16,
+    marginBottom: 0,
+    padding: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#1E293B',
-    alignItems: 'center',
+    maxHeight: 400,
   },
-  cardHeaderTitle: {
-    fontSize: 18,
+  formTitle: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#F8FAFC',
-    marginBottom: 4,
+    marginBottom: 12,
   },
-  cardHeaderSubtitle: {
-    fontSize: 13,
-    color: '#94A3B8',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  clockBtn: {
-    width: '100%',
-    paddingVertical: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  typeSelector: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 6,
+    marginBottom: 14,
   },
-  clockInBtn: {
-    backgroundColor: '#0284C7',
+  typeBtn: {
+    flex: 1,
+    backgroundColor: '#1E293B',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
   },
-  clockOutBtn: {
-    backgroundColor: '#DC2626',
+  typeBtnActive: {
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    borderWidth: 1,
+    borderColor: '#22C55E',
   },
-  clockBtnIcon: {
-    fontSize: 18,
+  typeBtnActiveVacation: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
   },
-  clockBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+  typeBtnActiveAbsent: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1,
+    borderColor: '#EF4444',
   },
-  historyHeader: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  historyTitle: {
-    fontSize: 14,
+  typeBtnText: {
+    fontSize: 11,
     fontWeight: '700',
+    color: '#94A3B8',
+  },
+  typeBtnTextActive: {
+    color: '#22C55E',
+  },
+  typeBtnTextActiveVacation: {
+    color: '#F59E0B',
+  },
+  typeBtnTextActiveAbsent: {
+    color: '#EF4444',
+  },
+  inputGroup: {
+    marginBottom: 12,
+  },
+  inputLabel: {
+    fontSize: 10,
+    fontWeight: '800',
     color: '#64748B',
+    marginBottom: 4,
     letterSpacing: 0.5,
+  },
+  input: {
+    backgroundColor: '#030712',
+    color: '#F8FAFC',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  calcPreview: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 10,
+  },
+  saveBtn: {
+    backgroundColor: '#0284C7',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 6,
+    marginBottom: 16,
+  },
+  saveBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
   },
   list: {
     padding: 16,
-    paddingTop: 0,
   },
-  logCard: {
+  card: {
     backgroundColor: '#0F172A',
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#1E293B',
   },
-  logMain: {
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  dateCol: {
     flex: 1,
   },
-  logDate: {
-    fontSize: 14,
+  dateText: {
+    fontSize: 15,
     fontWeight: '700',
     color: '#F8FAFC',
-    marginBottom: 2,
   },
-  logTimes: {
-    fontSize: 13,
+  projectText: {
+    fontSize: 12,
     color: '#94A3B8',
+    marginTop: 2,
   },
-  logMeta: {
-    alignItems: 'flex-end',
-  },
-  durationText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#38BDF8',
-  },
-  activeTag: {
+  hoursBadge: {
     backgroundColor: 'rgba(34, 197, 94, 0.15)',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#22C55E',
+    borderColor: 'rgba(34, 197, 94, 0.3)',
   },
-  activeTagText: {
-    fontSize: 10,
-    fontWeight: '800',
+  hoursBadgeText: {
     color: '#22C55E',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  vacationBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  vacationBadgeText: {
+    color: '#F59E0B',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  absentBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  absentBadgeText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  timeDetailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#0B0F19',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  timeRange: {
+    color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  breakText: {
+    color: '#64748B',
+    fontSize: 12,
+  },
+  notesText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    marginTop: 4,
   },
   center: {
     flex: 1,
@@ -349,14 +657,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
   },
+  loadingText: {
+    color: '#94A3B8',
+    marginTop: 12,
+    fontSize: 14,
+  },
   emptyTitle: {
     fontSize: 18,
-    color: '#F8FAFC',
     fontWeight: '700',
+    color: '#F8FAFC',
     marginBottom: 6,
   },
   emptySubtitle: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#64748B',
     textAlign: 'center',
   },
