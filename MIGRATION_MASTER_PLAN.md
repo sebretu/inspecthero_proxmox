@@ -1213,6 +1213,33 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   2. Zastąpiono statyczne teksty wywołaniami funkcji `t(...)` z `useLanguage()`.
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 23: Błąd HTTP 500 `Failed to query sync changes` w /api/sync/pull
+* **Data:** 2026-09-24
+* **Symptom / Błąd:**
+  Podczas synchronizacji aplikacja mobilna otrzymywała błąd `HTTP 500: Failed to query sync changes`.
+* **Przyczyna:**
+  Endpoint `/api/sync/pull.ts` w zapytaniu do `sync_changes` odwoływał się do kolumny `company_id`, która nie została pierwotnie zadeklarowana w definicji tabeli `sync_changes` w Postgresie.
+* **Zastosowane rozwiązanie:**
+  1. Wykonano migrację SQL dodającą kolumny `company_id uuid` oraz `project_id uuid` do tabeli `sync_changes` z odpowiednimi indeksami.
+  2. W pliku [pull.ts](file:///home/ubuntu/building-task-manager/web/src/pages/api/sync/pull.ts) dodano zabezpieczenie awaryjne (fallback query) zwracające zmiany bez błędu 500 nawet przy nietypowych filtrach organizacji.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+---
+
+### 📌 Zdarzenie 24: Ukrycie menu administratora (ADMIN ▾) przed osobami niezalogowanymi i pracownikami
+* **Data:** 2026-09-24
+* **Symptom / Błąd:**
+  Osoba niezalogowana lub zwykły pracownik widziała na górnym pasku przycisk `ADMIN ▾` z dostępem do modułów administracyjnych (YOLO, Symbol Detection, Zarządzanie użytkownikami).
+* **Przyczyna:**
+  Brak weryfikacji roli `isAdmin` w komponencie `HeaderNav.tsx`.
+* **Zastosowane rozwiązanie:**
+  1. W pliku [useAuth.ts](file:///home/ubuntu/building-task-manager/apps/mobile/src/auth/useAuth.ts) dodano pobieranie roli użytkownika z tabeli `profiles` oraz flagę `isAdmin` (`ADMIN` lub `MODERATOR`).
+  2. W pliku [HeaderNav.tsx](file:///home/ubuntu/building-task-manager/apps/mobile/src/components/HeaderNav.tsx) przycisk `ADMIN ▾` jest renderowany **wyłącznie** dla zalogowanych użytkowników posiadających uprawnienia administratora.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+
 
 
 
