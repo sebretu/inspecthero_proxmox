@@ -1073,6 +1073,21 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   2. Dodano `import 'react-native-gesture-handler';` oraz `SafeAreaProvider` do `apps/mobile/app/_layout.tsx`.
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 13: Błąd Metro bundling `Unable to resolve module expo-linking`
+* **Data:** 2026-09-24
+* **Symptom / Błąd w Metro:**
+  ```text
+  Error: Unable to resolve module expo-linking from .../node_modules/expo-router/build/global-state/routing.js: expo-linking could not be found within the project
+  ```
+* **Przyczyna:** Silnik nawigacji Expo Router 4 wewnętrznie korzysta z pakietu `expo-linking` (do obsługi deep linków i nawigacji URL), który nie był zadeklarowany bezpośrednio w `apps/mobile/package.json`.
+* **Zastosowane rozwiązanie:** 
+  1. Dodano `"expo-linking": "~7.0.5"` oraz `"expo-splash-screen": "~0.29.22"` do `apps/mobile/package.json`.
+  2. Zsynchronizowano i zainstalowano pakiety w `apps/mobile/package-lock.json`.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+
 
 
 
