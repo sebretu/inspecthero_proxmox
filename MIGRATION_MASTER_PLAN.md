@@ -1087,6 +1087,21 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   2. Zsynchronizowano i zainstalowano pakiety w `apps/mobile/package-lock.json`.
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 14: Błąd Metro bundling `Unable to resolve module query-string`
+* **Data:** 2026-09-24
+* **Symptom / Błąd w Metro:**
+  ```text
+  Error: Unable to resolve module query-string from .../node_modules/expo-router/build/fork/getPathFromState.js: query-string could not be found within the project
+  ```
+* **Przyczyna:** Moduł `getPathFromState.js` w Expo Router 4 wymaga biblioteki `query-string` oraz `@react-navigation/native` do parsowania parametrów query w URLach stanu nawigacji.
+* **Zastosowane rozwiązanie:**
+  1. Dodano `"query-string": "^7.1.3"`, `"@react-navigation/native": "^7.0.14"`, `"@react-navigation/native-stack": "^7.2.0"` do `apps/mobile/package.json`.
+  2. Zsynchronizowano `apps/mobile/package-lock.json` i przetestowano eksport bundlera Metro lokalnie (`npx expo export --platform android` zakończony kodem 0).
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+
 
 
 
