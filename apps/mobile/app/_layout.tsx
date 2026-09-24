@@ -47,98 +47,109 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 }
 
+import { LanguageProvider } from '../src/i18n/LanguageContext';
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <ErrorBoundary>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: '#0B0F19' },
-            headerTintColor: '#38BDF8',
-            contentStyle: { backgroundColor: '#030712' },
-            headerTitleStyle: { color: '#F8FAFC', fontWeight: '700' },
-          }}
-        >
-          <Stack.Screen
-            name="index"
-            options={{
-              title: 'et4u',
-              headerShown: false,
+      <LanguageProvider>
+        <ErrorBoundary>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: '#0B0F19' },
+              headerTintColor: '#38BDF8',
+              contentStyle: { backgroundColor: '#030712' },
+              headerTitleStyle: { color: '#F8FAFC', fontWeight: '700' },
             }}
-          />
-          <Stack.Screen
-            name="(auth)/login"
-            options={{
-              title: 'Logowanie',
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="projects/index"
-            options={{
-              title: 'Projekty',
-              headerShown: true,
-            }}
-          />
-          <Stack.Screen
-            name="projects/[id]"
-            options={{
-              title: 'Szczegóły Projektu',
-              headerShown: true,
-            }}
-          />
-          <Stack.Screen
-            name="tasks/[id]"
-            options={{
-              title: 'Szczegóły Zadania',
-              headerShown: true,
-            }}
-          />
-          <Stack.Screen
-            name="tasks/create"
-            options={{
-              title: 'Nowe Zadanie',
-              headerShown: true,
-            }}
-          />
-          <Stack.Screen
-            name="cables/index"
-            options={{
-              title: 'Kable & Bębny',
-              headerShown: true,
-            }}
-          />
-          <Stack.Screen
-            name="circuits/index"
-            options={{
-              title: 'Rozdzielnice & BMA',
-              headerShown: true,
-            }}
-          />
-          <Stack.Screen
-            name="attendance/index"
-            options={{
-              title: 'Obecność & RCP',
-              headerShown: true,
-            }}
-          />
-          <Stack.Screen
-            name="orders/index"
-            options={{
-              title: 'Zapotrzebowanie Materiałowe',
-              headerShown: true,
-            }}
-          />
-          <Stack.Screen
-            name="plans/[id]"
-            options={{
-              title: 'Rzut Kondygnacji (Leaflet)',
-              headerShown: true,
-            }}
-          />
-        </Stack>
-      </ErrorBoundary>
+          >
+            <Stack.Screen
+              name="index"
+              options={{
+                title: 'et4u',
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="(auth)/login"
+              options={{
+                title: 'Logowanie',
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="projects/index"
+              options={{
+                title: 'Projekty',
+                headerShown: true,
+              }}
+            />
+            <Stack.Screen
+              name="projects/[id]"
+              options={{
+                title: 'Szczegóły Projektu',
+                headerShown: true,
+              }}
+            />
+            <Stack.Screen
+              name="tasks/[id]"
+              options={{
+                title: 'Szczegóły Zadania',
+                headerShown: true,
+              }}
+            />
+            <Stack.Screen
+              name="tasks/create"
+              options={{
+                title: 'Nowe Zadanie',
+                headerShown: true,
+              }}
+            />
+            <Stack.Screen
+              name="cables/index"
+              options={{
+                title: 'Kable & Bębny',
+                headerShown: true,
+              }}
+            />
+            <Stack.Screen
+              name="circuits/index"
+              options={{
+                title: 'Rozdzielnice & BMA',
+                headerShown: true,
+              }}
+            />
+            <Stack.Screen
+              name="attendance/index"
+              options={{
+                title: 'Godziny & Urlopy',
+                headerShown: true,
+              }}
+            />
+            <Stack.Screen
+              name="orders/index"
+              options={{
+                title: 'Zapotrzebowanie Materiałowe',
+                headerShown: true,
+              }}
+            />
+            <Stack.Screen
+              name="plans/index"
+              options={{
+                title: 'Przeglądarka Planów (Leaflet)',
+                headerShown: true,
+              }}
+            />
+            <Stack.Screen
+              name="plans/[id]"
+              options={{
+                title: 'Rzut Kondygnacji (Leaflet)',
+                headerShown: true,
+              }}
+            />
+          </Stack>
+        </ErrorBoundary>
+      </LanguageProvider>
     </SafeAreaProvider>
   );
 }

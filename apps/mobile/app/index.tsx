@@ -7,9 +7,13 @@ import { getDatabase } from '../src/db/database';
 import { useAuth } from '../src/auth/useAuth';
 import { SyncBar } from '../src/components/SyncBar';
 
+import { HeaderNav } from '../src/components/HeaderNav';
+import { useLanguage } from '../src/i18n/LanguageContext';
+
 export default function HomeScreen() {
   const router = useRouter();
   const { user, isAuthenticated, signOut } = useAuth();
+  const { t } = useLanguage();
 
   const [projectCount, setProjectCount] = useState<number>(0);
   const [taskCount, setTaskCount] = useState<number>(0);
@@ -44,8 +48,9 @@ export default function HomeScreen() {
   }, [loadStats]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="light" />
+      <HeaderNav />
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Header */}
