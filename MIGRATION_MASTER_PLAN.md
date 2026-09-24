@@ -1149,6 +1149,58 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   3. W workflow GitHub Actions (`.github/workflows/expo-mobile-build.yml`) dodano globalne zmienne środowiskowe `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` oraz `EXPO_PUBLIC_API_URL` wstrzykiwane bezpośrednio do kompilacji Hermes dla Androida i iOS.
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 18: Podpięcie rzeczywistych kafelków planów PDF (L.tileLayer) zamiast podkładu zastępczego
+* **Data:** 2026-09-24
+* **Symptom / Błąd:**
+  Użytkownik widział w aplikacji mobilnej prostokąty z nazwami biur narysowane w canvasie zamiast właściwych planów architektonicznych PDF pociętych na kafelki (tiles).
+* **Przyczyna:**
+  Pierwsza wersja widoku `plans/[id].tsx` posiadała jedynie lokalny generator podkładu demonstracyjnego (canvas blueprint) bez aktywnego połączenia z serwerem kafelków.
+* **Zastosowane rozwiązanie:**
+  1. W pliku [apps/mobile/app/plans/[id].tsx](file:///home/ubuntu/building-task-manager/apps/mobile/app/plans/[id].tsx) dodano warstwę `L.tileLayer` łączącą się bezpośrednio z produkcyjnym serwerem kafelków: `https://inspecthero.pl/api/tiles/${planId}/{z}/{x}/{y}.png`.
+  2. Dodano automatyczne wiązanie aktywnego planu kondygnacji w widoku projektu [apps/mobile/app/projects/[id].tsx](file:///home/ubuntu/building-task-manager/apps/mobile/app/projects/[id].tsx) (`currentPlanId`).
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+---
+
+### 📌 Zdarzenie 19: Przeprojektowanie modułu Obecności na manualną ewidencję godzin i urlopów (Zeiterfassung)
+* **Data:** 2026-09-24
+* **Symptom / Błąd:**
+  Aplikacja posiadała stoper czasu rzeczywistego (start/stop), podczas gdy użytkownik potrzebował manualnego oddawania przepracowanych godzin (od-do, przerwa) oraz ewidencji urlopów zgodnie z funkcjonalnością strony WWW.
+* **Przyczyna:**
+  Brak dopasowania logiki mobilnej do formularza `AttendanceCalendarClient.tsx` z wersji przeglądarkowej.
+* **Zastosowane rozwiązanie:**
+  1. Przebudowano ekran [apps/mobile/app/attendance/index.tsx](file:///home/ubuntu/building-task-manager/apps/mobile/app/attendance/index.tsx), dodając wybór daty, tryby (Przepracowane godziny / Urlop / Nieobecność), pola czasu `Od-Do`, przerwę oraz podsumowania KPI przepracowanych godzin i wykorzystanych dni urlopowych.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+---
+
+### 📌 Zdarzenie 20: Brak wyboru 4 języków oraz pełnego menu głównego i administratora
+* **Data:** 2026-09-24
+* **Symptom / Błąd:**
+  Aplikacja nie posiadała przełącznika 4 języków (DE, PL, EN, SK) oraz pełnej listy 15 modułów menu głównego i 16 modułów panelu administratora znanych ze strony WWW.
+* **Przyczyna:**
+  Brak kontekstu wielojęzyczności oraz komponentu paska nawigacyjnego w mobilnym layoutcie.
+* **Zastosowane rozwiązanie:**
+  1. Utworzono [LanguageContext.tsx](file:///home/ubuntu/building-task-manager/apps/mobile/src/i18n/LanguageContext.tsx) z obsługą języków 🇩🇪 Deutsch, 🇵🇱 Polski, 🇬🇧 English, 🇸🇰 Slovenčina i trwałym zapisem w SecureStore.
+  2. Utworzono komponent [HeaderNav.tsx](file:///home/ubuntu/building-task-manager/apps/mobile/src/components/HeaderNav.tsx) zawierający rozwijane menu `MENU ▾` (15 modułów), `ADMIN ▾` (16 modułów) oraz selektor języków.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+---
+
+### 📌 Zdarzenie 21: Błąd połączenia przy kliknięciu Sync bez zalogowania oraz uodpornienie zapisu SQLite
+* **Data:** 2026-09-24
+* **Symptom / Błąd:**
+  Kliknięcie przycisku `Sync 🔄` w trybie demonstracyjnym powodowało błąd `Błąd połączenia` z powodu braku aktywnej sesji JWT.
+* **Przyczyna:**
+  `SyncEngine` oczekiwał ważnego tokena `access_token` bez wcześniejszego ostrzeżenia użytkownika o konieczności logowania.
+* **Zastosowane rozwiązanie:**
+  1. W pliku [SyncBar.tsx](file:///home/ubuntu/building-task-manager/apps/mobile/src/components/SyncBar.tsx) dodano weryfikację sesji z interaktywnym komunikatem przekierowującym do logowania.
+  2. W pliku [SyncEngine.ts](file:///home/ubuntu/building-task-manager/apps/mobile/src/sync/SyncEngine.ts) uodporniono metodę `applyChangeToSqlite` za pomocą dynamicznego filtrowania kolumn przez `PRAGMA table_info`.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+
 
 
 
