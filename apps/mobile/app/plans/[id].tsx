@@ -158,8 +158,24 @@ export default function PlanViewerScreen() {
           });
 
           const bounds = [[0, 0], [height, width]];
+          const planId = "${plan?.id || id || ''}";
           
-          // Draw grid floor blueprint canvas
+          // 1. Primary Layer: Real PDF raster tiles from web backend
+          if (planId && planId !== 'pln-sample-001') {
+            const tileUrl = 'https://inspecthero.pl/api/tiles/' + planId + '/{z}/{x}/{y}.png';
+            const realTiles = L.tileLayer(tileUrl, {
+              crs: L.CRS.Simple,
+              minZoom: -2,
+              maxZoom: 4,
+              maxNativeZoom: 3,
+              tileSize: 256,
+              noWrap: true,
+              bounds: bounds,
+              errorTileUrl: '',
+            }).addTo(map);
+          }
+
+          // 2. Blueprint / Demo fallback canvas if offline or sample plan
           const canvas = document.createElement('canvas');
           canvas.width = width;
           canvas.height = height;
@@ -206,7 +222,9 @@ export default function PlanViewerScreen() {
           ctx.fillText('OPEN SPACE WSCHÓD', 200, 600);
           ctx.fillText('SERWEROWNIA / ROZDZIELNICA RG', 1050, 600);
 
-          const overlay = L.imageOverlay(canvas.toDataURL(), bounds).addTo(map);
+          if (!planId || planId === 'pln-sample-001') {
+            const overlay = L.imageOverlay(canvas.toDataURL(), bounds).addTo(map);
+          }
           map.fitBounds(bounds);
 
           // Render Tasks

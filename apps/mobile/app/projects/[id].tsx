@@ -45,6 +45,7 @@ export default function ProjectDetailScreen() {
   const [floors, setFloors] = useState<Floor[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
   const [selectedFloorId, setSelectedFloorId] = useState<string | null>(null);
+  const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
 
   const loadData = useCallback(async () => {
@@ -79,7 +80,7 @@ export default function ProjectDetailScreen() {
         const activeFloorId = flrs[0]?.id || null;
         setSelectedFloorId(activeFloorId);
 
-        // 4. Get Tasks
+        // 4. Get Tasks & Plan
         await loadTasksForFloor(db, activeFloorId);
       }
     } catch (err) {
@@ -90,6 +91,23 @@ export default function ProjectDetailScreen() {
   }, [id]);
 
   const loadTasksForFloor = async (db: SQLiteDatabase, floorId: string | null) => {
+    // Resolve real plan for this floor or project
+    const planRow = floorId
+      ? await db.getFirstAsync<{ id: string }>(
+          'SELECT id FROM plans WHERE floor_id = ? AND deleted_at IS NULL LIMIT 1;',
+          [floorId]
+        )
+      : null;
+
+    const fallbackPlan = !planRow
+      ? await db.getFirstAsync<{ id: string }>(
+          'SELECT id FROM plans WHERE project_id = ? AND deleted_at IS NULL LIMIT 1;',
+          [id]
+        )
+      : null;
+
+    setCurrentPlanId(planRow?.id || fallbackPlan?.id || null);
+
     let taskList: TaskItem[] = [];
     if (floorId) {
       taskList = await db.getAllAsync<TaskItem>(`
@@ -237,13 +255,19 @@ export default function ProjectDetailScreen() {
               <View style={styles.headerActionsRow}>
                 <TouchableOpacity
                   style={styles.planViewBtn}
-                  onPress={() => router.push({ pathname: '/plans/[id]', params: { id: 'pln-sample-001' } } as any)}
+                  onPress={() =>
+                    router.push(
+                      currentPlanId
+                        ? ({ pathname: '/plans/[id]', params: { id: currentPlanId } } as any)
+                        : ('/plans' as any)
+                    )
+                  }
                 >
                   <Text style={styles.planViewBtnText}>📐 Rzut</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.addTaskBtn}
-                  onPress={() => router.push({ pathname: '/tasks/create', params: { planId: 'pln-sample-001' } } as any)}
+                  onPress={() => router.push({ pathname: '/tasks/create', params: { planId: currentPlanId || 'pln-sample-001' } } as any)}
                 >
                   <Text style={styles.addTaskBtnText}>+ Nowe</Text>
                 </TouchableOpacity>
