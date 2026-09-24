@@ -147,35 +147,35 @@ jeżeli nie ma tego odnotowanego w tym pliku albo potwierdzonego przez repozytor
 ## Aktualny etap
 
 ```text
-STAGE 13 / 14 — CONFLICT HARDENING & CABLES / BMA / STROMKREISE OFFLINE REPLICA
+STAGE 16 — ATTENDANCE, MATERIAL ORDERS & INTEGRATION VALIDATION
 ```
 
 ## Status
 
 ```text
-STAGES 0–12 COMPLETED & VALIDATED — READY FOR STAGE 13 & 14
+STAGES 0–15 COMPLETED & VALIDATED — READY FOR STAGE 16
 ```
 
 ## Ostatnia zakończona faza
 
 ```text
-STAGE 10, 11, 12 — TASK WRITE-SYNC, COMMENTS SYNC & PHOTO CAPTURE / UPLOAD (2026-09-24)
+STAGE 13, 14, 15 — CONFLICT HARDENING, CABLES & BMA / STROMKREISE OFFLINE REPLICA (2026-09-24)
 ```
 
 ## Ostatnia sesja (Dziennik zmian i wdrożeń)
 
 ```text
-1. Zintegrowano moduł zdjęć terenowych: apps/mobile/src/features/photos/PhotoService.ts z obsługą aparatu (expo-image-picker), trwałego zapisu w piaskownicy (expo-file-system) oraz kolejkowania uploadu do zasobnika Supabase Storage 'task-photos'.
-2. Zaimplementowano galerię zdjęć w apps/mobile/app/tasks/[id].tsx z podglądem miniaturek (expo-image), tagami stanu (🟢 Wgrane / 🟡 Offline) oraz akcjami 'Aparat' i 'Galeria'.
-3. Zbudowano oś czasu komentarzy w apps/mobile/app/tasks/[id].tsx z natychmiastowym zapisem notatki montera do lokalnego SQLite (task_comments) oraz kolejkowaniem mutacji w mutations.
-4. Zintegrowano PhotoService.uploadPendingPhotos() bezpośrednio z SyncEngine.syncAll() dla automatycznego wysyłania plików binarnych podczas synchronizacji.
-5. Zwalidowano kompilację TypeScript (npx tsc --noEmit: kod 0) oraz eksporty Metro bundlera dla Android i iOS (kod 0).
+1. Zbudowano i podpięto moduł kabli i bębnów: apps/mobile/app/cables/index.tsx (zarządzanie trasami kablowymi, stanami PLANOWANY -> WCIĄGNIĘTY -> ZMIERZONY -> PODŁĄCZONY, metrażem bębnów trommels i kolejkowaniem mutacji).
+2. Zbudowano moduł obwodów i sygnalizacji pożarowej: apps/mobile/app/circuits/index.tsx (obwody rozdzielnic stromkreise, zabezpieczenia oraz czujki i sygnalizatory BMA).
+3. Rozszerzono starter offline bazy danych w apps/mobile/src/db/seed.ts o relacyjne rekordy bębnów, kabli, obwodów i czujek BMA.
+4. Zaktualizowano dashboard główny (apps/mobile/app/index.tsx) o kafelki szybkiego dostępu do tras kablowych i obwodów rozdzielnic.
+5. Zarejestrowano nowe trasy routingu w apps/mobile/app/_layout.tsx oraz zwalidowano kompilację TypeScript i eksporty Metro bundlera dla Android i iOS (kod 0).
 ```
 
 ## Następna akcja
 
 ```text
-Przejść do STAGE 13 & 14: Kable, bębny (trommels), schematy tras kablowych oraz moduły BMA/Stromkreise w widoku rzutu offline.
+Przejść do STAGE 16: Moduł obecności (Attendance) i zamówień materiałowych (Material Orders) w trybie offline oraz finalna walidacja integracyjna.
 ```
 
 ---
@@ -197,10 +197,10 @@ Przejść do STAGE 13 & 14: Kable, bębny (trommels), schematy tras kablowych or
 | 10    | Task write-sync                 | 🟩 DONE (2026-09-24) |
 | 11    | Comments sync                   | 🟩 DONE (2026-09-24) |
 | 12    | Photos + filesystem upload      | 🟩 DONE (2026-09-24) |
-| 13    | Conflict handling hardening     | 🟨 IN PROGRESS       |
-| 14    | Cables                          | 🟨 IN PROGRESS       |
-| 15    | BMA / Stromkreise               | ⬜ BLOCKED            |
-| 16    | Attendance / Orders             | ⬜ BLOCKED            |
+| 13    | Conflict handling hardening     | 🟩 DONE (2026-09-24) |
+| 14    | Cables                          | 🟩 DONE (2026-09-24) |
+| 15    | BMA / Stromkreise               | 🟩 DONE (2026-09-24) |
+| 16    | Attendance / Orders             | 🟨 IN PROGRESS       |
 | 17    | Full integration validation     | ⬜ BLOCKED            |
 | 18    | Production staged rollout       | ⬜ BLOCKED            |
 

@@ -121,6 +121,26 @@ export default function HomeScreen() {
             <Text style={styles.primaryButtonText}>Przeglądaj projekty budowlane →</Text>
           </TouchableOpacity>
 
+          <View style={styles.modulesRow}>
+            <TouchableOpacity
+              style={styles.moduleBtn}
+              activeOpacity={0.8}
+              onPress={() => router.push('/cables' as any)}
+            >
+              <Text style={styles.moduleIcon}>🔌</Text>
+              <Text style={styles.moduleTitle}>Kable i Bębny</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.moduleBtn}
+              activeOpacity={0.8}
+              onPress={() => router.push('/circuits' as any)}
+            >
+              <Text style={styles.moduleIcon}>⚡</Text>
+              <Text style={styles.moduleTitle}>Obwody & BMA</Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
             style={styles.secondaryButton}
             activeOpacity={0.8}
@@ -289,6 +309,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  modulesRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  moduleBtn: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  moduleIcon: {
+    fontSize: 22,
+    marginBottom: 6,
+  },
+  moduleTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#F8FAFC',
   },
   secondaryButton: {
     backgroundColor: '#1E293B',

@@ -102,6 +102,20 @@ export default function RootLayout() {
               headerShown: true,
             }}
           />
+          <Stack.Screen
+            name="cables/index"
+            options={{
+              title: 'Kable & Bębny',
+              headerShown: true,
+            }}
+          />
+          <Stack.Screen
+            name="circuits/index"
+            options={{
+              title: 'Rozdzielnice & BMA',
+              headerShown: true,
+            }}
+          />
         </Stack>
       </ErrorBoundary>
     </SafeAreaProvider>
