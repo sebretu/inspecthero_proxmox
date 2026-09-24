@@ -50,17 +50,8 @@ jobs:
           npm --prefix packages/sync-protocol install
           npm --prefix apps/mobile install --legacy-peer-deps
 
-      - name: 🎨 Ensure Assets Exist
-        run: |
-          mkdir -p apps/mobile/assets
-          node -e '
-          const fs = require("fs");
-          const png1x1 = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkWPjfDwAEeQHz2Mma3wAAAABJRU5ErkJggg==", "base64");
-          ["icon.png", "splash.png", "adaptive-icon.png"].forEach(f => {
-            const p = "apps/mobile/assets/" + f;
-            if (!fs.existsSync(p)) fs.writeFileSync(p, png1x1);
-          });
-          '
+      - name: 🎨 Ensure Valid Assets Exist
+        run: node apps/mobile/generate_pngs.js
 
       - name: ⚙️ Prebuild Android Native Project
         working-directory: ./apps/mobile
@@ -103,17 +94,8 @@ jobs:
           npm --prefix packages/sync-protocol install
           npm --prefix apps/mobile install --legacy-peer-deps
 
-      - name: 🎨 Ensure Assets Exist
-        run: |
-          mkdir -p apps/mobile/assets
-          node -e '
-          const fs = require("fs");
-          const png1x1 = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkWPjfDwAEeQHz2Mma3wAAAABJRU5ErkJggg==", "base64");
-          ["icon.png", "splash.png", "adaptive-icon.png"].forEach(f => {
-            const p = "apps/mobile/assets/" + f;
-            if (!fs.existsSync(p)) fs.writeFileSync(p, png1x1);
-          });
-          '
+      - name: 🎨 Ensure Valid Assets Exist
+        run: node apps/mobile/generate_pngs.js
 
       - name: ⚙️ Prebuild iOS Native Project
         working-directory: ./apps/mobile

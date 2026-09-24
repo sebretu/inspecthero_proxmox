@@ -974,4 +974,21 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
 * **Zastosowane rozwiązanie:** Usunięto krok `expo/expo-github-action@v8` na rzecz standardowego, stabilnego wywołania `npx expo prebuild` korzystającego z lokalnych zależności w `apps/mobile/node_modules`.
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 7: Błąd Jimp CRC Checksum (`Crc error - -657876257 - -1518005462`) podczas `expo prebuild`
+* **Data:** 2026-09-24
+* **Symptom / Błąd w GitHub Actions:**
+  ```text
+  ✖ Prebuild failed
+  Error: [android.dangerous]: withAndroidDangerousBaseMod: Crc error - -657876257 - -1518005462
+      at n._parseChunkEnd (.../jimp-compact/dist/jimp.js)
+  ```
+* **Przyczyna:** Biblioteka `jimp` (używana przez `@expo/config-plugins` do skalowania ikon Androida i iOS) rygorystycznie weryfikuje sumy kontrolne CRC32 bloków IHDR/IDAT/IEND w plikach PNG. Prosty ciąg base64 1x1 zawierał niepasującą sumę CRC, co powodowało błąd parsowania.
+* **Zastosowane rozwiązanie:** 
+  1. Utworzono dedykowany skrypt `apps/mobile/generate_pngs.js` generujący pełnowymiarowe pliki PNG (`icon.png`, `adaptive-icon.png`, `splash.png`) z dynamicznie obliczanymi, prawidłowymi sumami IEEE CRC32 dla każdego chunka PNG.
+  2. Podpięto wykonanie `node apps/mobile/generate_pngs.js` w pipeline CI/CD przed `expo prebuild`.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+
 
