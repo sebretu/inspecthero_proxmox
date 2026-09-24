@@ -942,3 +942,20 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   ```
 * **Status:** 🟩 Obowiązkowa procedura zapisana w Sekcji 55 planu.
 
+---
+
+### 📌 Zdarzenie 5: Błąd `android-actions/setup-android@v3` (Failed to find package 'tools') w GitHub Actions
+* **Data:** 2026-09-24
+* **Symptom / Błąd w GitHub Actions:**
+  ```text
+  Warning: Failed to find package 'tools'
+  Error: The process '/usr/local/lib/android/sdk/cmdline-tools/16.0/bin/sdkmanager' failed with exit code 1
+  ```
+* **Przyczyna:** Akcja `setup-android@v3` próbowała pobrać przestarzały pakiet `tools`, który został usunięty z repozytoriów Google SDK. Na runnerach `ubuntu-latest` pełne środowisko Android SDK jest już pre-instalowane i gotowe w `/usr/local/lib/android/sdk`.
+* **Zastosowane rozwiązanie:**
+  1. Usunięto zbędny krok `android-actions/setup-android@v3`.
+  2. Dodano oficjalną akcję `gradle/actions/setup-gradle@v3` dla optymalizacji i buforowania kompilacji.
+  3. Dodano automatyczny generator brakujących ikon/splash placeholderów (`apps/mobile/assets`) przed wykonaniem `expo prebuild`.
+  4. Dodano `chmod +x gradlew` przed wykonaniem kompilacji APK.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
