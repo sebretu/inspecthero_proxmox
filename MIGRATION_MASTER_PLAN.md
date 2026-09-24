@@ -153,7 +153,7 @@ STAGE 7 — MOBILE READ-ONLY VERTICAL SLICE
 ## Status
 
 ```text
-STAGE 6 COMPLETED — READY FOR STAGE 7
+STAGE 6 COMPLETED & PUSHED TO GITHUB — READY FOR STAGE 7
 ```
 
 ## Ostatnia zakończona faza
@@ -162,12 +162,14 @@ STAGE 6 COMPLETED — READY FOR STAGE 7
 STAGE 6 — SQLITE + READ-ONLY BOOTSTRAP (2026-09-24)
 ```
 
-## Ostatnia sesja
+## Ostatnia sesja (Dziennik zmian i wdrożeń)
 
 ```text
 1. Zaimplementowano bazę SQLite (WAL mode, transakcyjność, wersjonowane migracje schema_migrations) w apps/mobile/src/db.
 2. Zaimplementowano transakcyjny silnik pull w apps/mobile/src/sync/SyncEngine.ts oraz hooki odczytu danych useProjects i komponent ProjectList.
-3. Utworzono workflow GitHub Actions (.github/workflows/expo-mobile-build.yml) i dodano kompleksowy podręcznik budowania i modyfikacji aplikacji mobilnych Android & iOS.
+3. Utworzono workflow GitHub Actions (.github/workflows/expo-mobile-build.yml) umożliwiający kompilację Android APK i iOS Simulator bez lokalnego SDK.
+4. Przeprowadzono pełny rebranding aplikacji mobilnej na oficjalną nazwę "et4u" (app.json, package.json, et4u.db, GitHub Actions artifacts).
+5. Naprawiono uprawnienia klucza SSH i wykonano pomyślny `git push origin main`, udostępniając workflow w GitHub Actions.
 ```
 
 ## Następna akcja
@@ -879,4 +881,64 @@ Zmienne konfiguracyjne dla klienta mobilnego definiuje się w `apps/mobile/.env`
 
 > ⚠️ **ZASADA BEZPIECZEŃSTWA:**  
 > W kodzie aplikacji mobilnej i zmiennych środowiskowych `EXPO_PUBLIC_*` **NIGDY** nie wolno umieszczać klucza `SUPABASE_SERVICE_ROLE_KEY` ani poświadczeń bazy danych PostgreSQL. Aplikacja mobilna komunikuje się wyłącznie z użyciem tokena sesji zalogowanego użytkownika (JWT Bearer).
+
+---
+
+# 57. DZIENNIK ZMIAN, NAPOTKANYCH PROBLEMÓW I ROZWIĄZAŃ (INCIDENTS, DECISIONS & SOLUTIONS LOG)
+
+Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicznych, napotkanych problemów infrastrukturalnych oraz zastosowanych rozwiązań podczas przebudowy systemu.
+
+---
+
+### 📌 Zdarzenie 1: Uprawnienia klucza SSH uniemożliwiały `git push` do GitHub
+* **Data:** 2026-09-24
+* **Symptom / Błąd:** 
+  ```text
+  @@@@@@ WARNING: UNPROTECTED PRIVATE KEY FILE! @@@@@@
+  Permissions 0605 for '/home/ubuntu/.ssh/id_ed25519' are too open.
+  git@github.com: Permission denied (publickey).
+  fatal: Could not read from remote repository.
+  ```
+* **Przyczyna:** Plik klucza prywatnego SSH na maszynie wirtualnej posiadał maskę `0605` (odczyt dla innych użytkowników), co spowodowało zignorowanie klucza przez klienta SSH ze względów bezpieczeństwa.
+* **Zastosowane rozwiązanie:** 
+  Zacieśniono uprawnienia katalogu i pliku klucza:
+  ```bash
+  chmod 600 /home/ubuntu/.ssh/id_ed25519 && chmod 700 /home/ubuntu/.ssh
+  ```
+* **Status:** 🟩 Rozwiązany — `git push origin main` działa poprawnie.
+
+---
+
+### 📌 Zdarzenie 2: Oficjalne nazewnictwo i rebranding aplikacji mobilnej (`et4u`)
+* **Data:** 2026-09-24
+* **Decyzja projektowa:** Aplikacja mobilna z offline sync nie nosi nazwy "InspectHero", lecz oficjalną markę **`et4u`** (odpowiadającą pakietom domenowym na produkcji).
+* **Wprowadzone modyfikacje:**
+  * `apps/mobile/app.json`: `name` = `"et4u"`, `slug` = `"et4u"`, `bundleIdentifier` / `package` = `"com.et4u.app"`.
+  * `apps/mobile/package.json`: `name` = `"@et4u/mobile"`.
+  * `apps/mobile/src/db/database.ts`: plik lokalnej bazy danych SQLite zmieniony z `inspecthero.db` na `et4u.db`.
+  * `apps/mobile/app/index.tsx`: zaktualizowano UI ekranu powitalnego.
+  * `.github/workflows/expo-mobile-build.yml`: artefakty kompilacji zmienione na `et4u-android-preview.apk` oraz `et4u-ios-simulator.app`.
+* **Status:** 🟩 Wdrożone i zsynchronizowane.
+
+---
+
+### 📌 Zdarzenie 3: Widoczność workflowów kompilacji w GitHub Actions
+* **Data:** 2026-09-24
+* **Symptom:** Brak widoczności nowo utworzonego workflow w zakładce *Actions* w interfejsie GitHub.
+* **Przyczyna:** GitHub Actions indeksuje i wyświetla workflowy zdefiniowane w `.github/workflows/*.yml` wyłącznie wtedy, gdy plik znajduje się w zdalnym repozytorium na gałęzi domyślnej (`main`).
+* **Zastosowane rozwiązanie:** Wykonano commit i `git push origin main`.
+* **Dedykowany link do uruchamiania kompilacji:**  
+  👉 [https://github.com/sebretu/inspecthero_proxmox/actions/workflows/expo-mobile-build.yml](https://github.com/sebretu/inspecthero_proxmox/actions/workflows/expo-mobile-build.yml)
+* **Status:** 🟩 Rozwiązany i udostępniony.
+
+---
+
+### 📌 Zdarzenie 4: Wymóg odświeżania pamięci podręcznej schematu PostgREST po migracjach SQL
+* **Data:** 2026-09-24
+* **Symptom:** Po dodaniu nowych kolumn `version`, `deleted_at`, `client_created_at` przez DDL w PostgreSQL, zapytania PostgREST / Supabase Client mogą zgłaszać `column not found in schema cache`.
+* **Rozwiązanie / Reguła:** Każda migracja SQL wykonywana na węźle bazodanowym (`100.88.160.117`) **musi** natychmiast kończyć się wywołaniem:
+  ```bash
+  ssh ... "sudo docker exec supabase-db psql -U postgres -c \"NOTIFY pgrst, 'reload schema';\""
+  ```
+* **Status:** 🟩 Obowiązkowa procedura zapisana w Sekcji 55 planu.
 
