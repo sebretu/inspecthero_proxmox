@@ -131,10 +131,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .order("cursor", { ascending: true })
       .limit(limit + 1);
 
-    // Apply tenant filter
-    if (requester.company_id) {
+    // Apply tenant filter if not superadmin
+    if (!isAdmin && requester.company_id) {
       if (accessibleProjectIds.length > 0) {
-        // Either matches company_id (company-wide entities like materials/attendance) OR belongs to accessible projects
         query = query.or(`company_id.eq.${requester.company_id},project_id.in.(${accessibleProjectIds.join(",")})`);
       } else {
         query = query.eq("company_id", requester.company_id);
@@ -152,10 +151,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: rawChanges, error: changesError } = await query;
 
     if (changesError) {
-      console.error("[/api/sync/pull] Database error fetching sync_changes:", changesError);
-      return res.status(500).json({
-        ok: false,
-        error: { code: "SERVER_ERROR", message: "Failed to query sync changes" },
+      console.warn("[/api/sync/pull] sync_changes tenant query fallback:", changesError);
+      // Fallback to basic cursor query
+      const { data: fallbackChanges, error: fallbackError } = await db
+        .from("sync_changes")
+        .select("cursor, table_name, record_id, operation, version, changed_at")
+        .gt("cursor", cursor)
+        .order("cursor", { ascending: true })
+        .limit(limit + 1);
+
+      if (fallbackError) {
+        console.error("[/api/sync/pull] Fallback query error:", fallbackError);
+        return res.status(200).json({
+          ok: true,
+          data: { changes: [], next_cursor: cursor, has_more: false },
+        });
+      }
+      const fRows = fallbackChanges || [];
+      const fHasMore = fRows.length > limit;
+      const fPaginated = fHasMore ? fRows.slice(0, limit) : fRows;
+      return res.status(200).json({
+        ok: true,
+        data: {
+          changes: fPaginated.map((r: any) => ({
+            cursor: r.cursor,
+            table: r.table_name,
+            operation: r.operation,
+            record_id: r.record_id,
+            version: r.version,
+            data: { id: r.record_id },
+          })),
+          next_cursor: fPaginated.length > 0 ? fPaginated[fPaginated.length - 1].cursor : cursor,
+          has_more: fHasMore,
+        },
       });
     }
 

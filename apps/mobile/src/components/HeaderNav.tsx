@@ -10,10 +10,12 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useLanguage, LANGUAGES, Language } from '../i18n/LanguageContext';
+import { useAuth } from '../auth/useAuth';
 
 export function HeaderNav() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
+  const { isAuthenticated, isAdmin } = useAuth();
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [adminVisible, setAdminVisible] = useState(false);
@@ -25,7 +27,7 @@ export function HeaderNav() {
     router.push(path as any);
   };
 
-  // Image 1: Main Menu items
+  // Main Field Viewer Menu items
   const menuItems = [
     { key: 'tasks', label: t('tasks', 'AUFGABEN'), route: '/projects', icon: '📌' },
     { key: 'plans', label: t('plans', 'PLÄNE'), route: '/plans', icon: '📐' },
@@ -44,7 +46,7 @@ export function HeaderNav() {
     { key: 'employees', label: t('employees', 'MITARBEITER'), route: '/attendance', icon: '👥' },
   ];
 
-  // Image 2: Admin Menu items
+  // Admin Menu items (Only for Admin/Moderator roles)
   const adminItems = [
     { key: 'yolo_annotator', label: '⚡ YOLO ANNOTATOR', route: '/plans' },
     { key: 'symbol_detection', label: '🔍 SYMBOL DETECTION', route: '/plans' },
@@ -89,14 +91,16 @@ export function HeaderNav() {
           <Text style={styles.menuBtnText}>{t('menu', 'MENU ▾')}</Text>
         </TouchableOpacity>
 
-        {/* ADMIN ▾ */}
-        <TouchableOpacity
-          style={styles.adminBtn}
-          onPress={() => setAdminVisible(true)}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.adminBtnText}>{t('admin', 'ADMIN ▾')}</Text>
-        </TouchableOpacity>
+        {/* ADMIN ▾ (Only visible if authenticated and role is ADMIN/MOD) */}
+        {isAuthenticated && isAdmin && (
+          <TouchableOpacity
+            style={styles.adminBtn}
+            onPress={() => setAdminVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.adminBtnText}>{t('admin', 'ADMIN ▾')}</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Language Switcher */}
         <TouchableOpacity
@@ -108,7 +112,7 @@ export function HeaderNav() {
         </TouchableOpacity>
       </View>
 
-      {/* Modal: MENU (Image 1) */}
+      {/* Modal: MENU (Viewer) */}
       <Modal
         visible={menuVisible}
         transparent
@@ -140,36 +144,38 @@ export function HeaderNav() {
         </Pressable>
       </Modal>
 
-      {/* Modal: ADMIN (Image 2) */}
-      <Modal
-        visible={adminVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setAdminVisible(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setAdminVisible(false)}>
-          <View style={[styles.dropdownModal, styles.adminDropdownModal]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: '#EAB308' }]}>👑 ADMIN PANEL</Text>
-              <TouchableOpacity onPress={() => setAdminVisible(false)}>
-                <Text style={styles.closeBtn}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.scrollList} showsVerticalScrollIndicator={false}>
-              {adminItems.map((item) => (
-                <TouchableOpacity
-                  key={item.key}
-                  style={styles.menuItem}
-                  onPress={() => navigateTo(item.route)}
-                >
-                  <Text style={styles.itemText}>{item.label}</Text>
+      {/* Modal: ADMIN (Protected) */}
+      {isAuthenticated && isAdmin && (
+        <Modal
+          visible={adminVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setAdminVisible(false)}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setAdminVisible(false)}>
+            <View style={[styles.dropdownModal, styles.adminDropdownModal]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: '#EAB308' }]}>👑 ADMIN PANEL</Text>
+                <TouchableOpacity onPress={() => setAdminVisible(false)}>
+                  <Text style={styles.closeBtn}>✕</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </Pressable>
-      </Modal>
+              </View>
+
+              <ScrollView style={styles.scrollList} showsVerticalScrollIndicator={false}>
+                {adminItems.map((item) => (
+                  <TouchableOpacity
+                    key={item.key}
+                    style={styles.menuItem}
+                    onPress={() => navigateTo(item.route)}
+                  >
+                    <Text style={styles.itemText}>{item.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </Pressable>
+        </Modal>
+      )}
 
       {/* Modal: 4 Languages Switcher */}
       <Modal
