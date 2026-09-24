@@ -990,5 +990,23 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   2. Podpięto wykonanie `node apps/mobile/generate_pngs.js` w pipeline CI/CD przed `expo prebuild`.
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 8: Błąd `xcodebuild exit code 65` w buildzie iOS Simulator na macOS Runnerze
+* **Data:** 2026-09-24
+* **Symptom / Błąd w GitHub Actions:**
+  ```text
+  note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'React-runtimeexecutor' from project 'Pods')
+  ...
+  Error: Process completed with exit code 65.
+  ```
+* **Przyczyna:** Kompilacja iOS w trybie `Release` bez konfiguracji certyfikatów deweloperskich Apple wymaga podpisywania kodu (Code Signing), co kończy się błędem `exit code 65`. Flaga `-quiet` dodatkowo maskowała dokładny komunikat błędu kompilacji.
+* **Zastosowane rozwiązanie:**
+  1. Zmieniono konfigurację docelową kompilatora iOS na `Debug` z jawnym wyłączeniem podpisywania kodu dla symulatora: `CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""`.
+  2. Dodano jawną flagę `-sdk iphonesimulator`.
+  3. Zaktualizowano ścieżkę artefaktu na `apps/mobile/ios/build/Build/Products/Debug-iphonesimulator/et4u.app`.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+
 
 

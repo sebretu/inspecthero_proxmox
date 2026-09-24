@@ -66,7 +66,7 @@ jobs:
       - name: 📤 Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: et4u-android-preview.apk
+          name: et4u-android-apk
           path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
 
@@ -101,15 +101,24 @@ jobs:
         working-directory: ./apps/mobile
         run: npx expo prebuild --platform ios --clean
 
-      - name: 🔨 Compile iOS Simulator Build (Archive)
+      - name: 🔨 Compile iOS Simulator Build
         working-directory: ./apps/mobile/ios
         run: |
           pod install
-          xcodebuild -workspace et4u.xcworkspace -scheme et4u -configuration Release -destination 'generic/platform=iOS Simulator' -derivedDataPath build -quiet
+          xcodebuild -workspace et4u.xcworkspace \
+                     -scheme et4u \
+                     -configuration Debug \
+                     -sdk iphonesimulator \
+                     -destination 'generic/platform=iOS Simulator' \
+                     -derivedDataPath build \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY="" \
+                     ONLY_ACTIVE_ARCH=NO
 
       - name: 📤 Upload iOS App Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: et4u-ios-simulator.app
-          path: apps/mobile/ios/build/Build/Products/Release-iphonesimulator/et4u.app
+          name: et4u-ios-simulator-app
+          path: apps/mobile/ios/build/Build/Products/Debug-iphonesimulator/et4u.app
           retention-days: 14
