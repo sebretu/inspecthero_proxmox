@@ -1200,6 +1200,20 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   2. W pliku [SyncEngine.ts](file:///home/ubuntu/building-task-manager/apps/mobile/src/sync/SyncEngine.ts) uodporniono metodę `applyChangeToSqlite` za pomocą dynamicznego filtrowania kolumn przez `PRAGMA table_info`.
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 22: Statyczne etykiety na ekranie głównym uniemożliwiające przełączanie języka (DE/PL/EN/SK)
+* **Data:** 2026-09-24
+* **Symptom / Błąd:**
+  Po wybraniu flagi języka w pasku nawigacyjnym (np. 🇩🇪 DE lub 🇬🇧 EN), etykiety na ekranie głównym i w pasku synchronizacji pozostawały w języku polskim.
+* **Przyczyna:**
+  Klucze i teksty interfejsu w komponentach `app/index.tsx` i `components/SyncBar.tsx` były wpisane jako statyczne ciągi znaków, a słownik `MOBILE_TRANSLATIONS` w `LanguageContext.tsx` posiadał jedynie tłumaczenia dla elementów menu.
+* **Zastosowane rozwiązanie:**
+  1. Rozszerzono `MOBILE_TRANSLATIONS` o pełny zestaw kluczy dla ekranu głównego, bazy lokalnej, paska synchronizacji i modułów dla wszystkich 4 języków (DE, PL, EN, SK).
+  2. Zastąpiono statyczne teksty wywołaniami funkcji `t(...)` z `useLanguage()`.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+
 
 
 
