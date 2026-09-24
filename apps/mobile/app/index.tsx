@@ -61,7 +61,7 @@ export default function HomeScreen() {
             </View>
             <View>
               <Text style={styles.title}>et4u</Text>
-              <Text style={styles.subtitle}>Offline-First Mobile Field Client</Text>
+              <Text style={styles.subtitle}>{t('client_subtitle', 'Offline-First Mobiler Baustellen-Client')}</Text>
             </View>
           </View>
 
@@ -70,14 +70,14 @@ export default function HomeScreen() {
               <Text style={styles.userEmail} numberOfLines={1}>
                 👤 {user?.email}
               </Text>
-              <Text style={styles.logoutText}>Wyloguj</Text>
+              <Text style={styles.logoutText}>{t('logout', 'Abmelden')}</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
               style={styles.loginBadge}
               onPress={() => router.push('/(auth)/login' as any)}
             >
-              <Text style={styles.loginBadgeText}>🔑 Zaloguj do chmury</Text>
+              <Text style={styles.loginBadgeText}>{t('login_cloud', '🔑 In Cloud anmelden')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -88,30 +88,30 @@ export default function HomeScreen() {
         {/* Main Stats Card */}
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
-            <Text style={styles.cardTitle}>Lokalna Baza Danych</Text>
+            <Text style={styles.cardTitle}>{t('local_db', 'Lokale Datenbank')}</Text>
             <View style={styles.onlineBadge}>
-              <Text style={styles.onlineBadgeText}>🟢 SQLite (WAL)</Text>
+              <Text style={styles.onlineBadgeText}>{t('sqlite_status', '🟢 SQLite (WAL)')}</Text>
             </View>
           </View>
 
           <Text style={styles.cardDescription}>
-            Wszystkie obiekty, rzuty kondygnacji i zadania montażowe są w pełni dostępne i edytowalne bez dostępu do Internetu.
+            {t('db_desc', 'Alle Bauobjekte, Geschosspläne und Montageaufgaben sind offline voll funktionsfähig.')}
           </Text>
 
           <View style={styles.statsGrid}>
             <View style={styles.statBox}>
               <Text style={styles.statValue}>{isReady ? projectCount : '-'}</Text>
-              <Text style={styles.statLabel}>Projekty</Text>
+              <Text style={styles.statLabel}>{t('projects_stat', 'Projekte')}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statValue}>{isReady ? taskCount : '-'}</Text>
-              <Text style={styles.statLabel}>Zadania</Text>
+              <Text style={styles.statLabel}>{t('tasks_stat', 'Aufgaben')}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={[styles.statValue, pendingMutations > 0 && styles.pendingStat]}>
                 {isReady ? pendingMutations : '-'}
               </Text>
-              <Text style={styles.statLabel}>Kolejka Sync</Text>
+              <Text style={styles.statLabel}>{t('sync_queue_stat', 'Sync-Warteschlange')}</Text>
             </View>
           </View>
         </View>
@@ -124,14 +124,16 @@ export default function HomeScreen() {
               activeOpacity={0.8}
               onPress={() => router.push('/plans' as any)}
             >
-              <Text style={styles.primaryButtonText}>📐 Przeglądaj Plany (Leaflet) →</Text>
+              <Text style={styles.primaryButtonText}>{t('browse_plans_btn', '📐 Pläne (Leaflet) →')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.projectsButton, { flex: 1 }]}
               activeOpacity={0.8}
               onPress={() => router.push('/projects' as any)}
             >
-              <Text style={styles.projectsButtonText}>🏢 Projekty ({projectCount}) →</Text>
+              <Text style={styles.projectsButtonText}>
+                {t('browse_projects_btn', '🏢 Projekte ({count}) →').replace('{count}', projectCount.toString())}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -142,7 +144,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/cables' as any)}
             >
               <Text style={styles.moduleIcon}>🔌</Text>
-              <Text style={styles.moduleTitle}>Kable i Bębny</Text>
+              <Text style={styles.moduleTitle}>{t('cables', 'KABEL')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -151,7 +153,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/circuits' as any)}
             >
               <Text style={styles.moduleIcon}>⚡</Text>
-              <Text style={styles.moduleTitle}>Obwody & BMA</Text>
+              <Text style={styles.moduleTitle}>{t('circuits', 'STROMKREISE')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -162,7 +164,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/attendance' as any)}
             >
               <Text style={styles.moduleIcon}>⏱️</Text>
-              <Text style={styles.moduleTitle}>Godziny & Urlopy</Text>
+              <Text style={styles.moduleTitle}>{t('hours_vacation', 'Stunden & Urlaub')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -171,7 +173,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/orders' as any)}
             >
               <Text style={styles.moduleIcon}>📦</Text>
-              <Text style={styles.moduleTitle}>Materiały (Katalog)</Text>
+              <Text style={styles.moduleTitle}>{t('materials_catalog', 'Materialien')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -180,7 +182,7 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             onPress={() => router.push('/tasks/create' as any)}
           >
-            <Text style={styles.secondaryButtonText}>+ Dodaj nowe zadanie offline</Text>
+            <Text style={styles.secondaryButtonText}>{t('add_task_offline', '+ Neue Offline-Aufgabe')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

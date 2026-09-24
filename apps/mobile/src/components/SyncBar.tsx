@@ -4,8 +4,11 @@ import { useRouter } from 'expo-router';
 import { SyncEngine, SyncEngineState } from '../sync/SyncEngine';
 import { authSupabase } from '../auth/authClient';
 
+import { useLanguage } from '../i18n/LanguageContext';
+
 export function SyncBar() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [syncState, setSyncState] = useState<SyncEngineState>(SyncEngine.getState());
 
   useEffect(() => {
@@ -19,12 +22,12 @@ export function SyncBar() {
       const { data: { session } } = await authSupabase.auth.getSession();
       if (!session) {
         Alert.alert(
-          'Wymagane logowanie do chmury',
-          'Aby pobrać Twoje projekty, plany i zadania z serwera, najpierw zaloguj się na swoje konto w chmurze.',
+          t('login_cloud', 'In Cloud anmelden'),
+          t('db_desc', 'Um Daten aus der Cloud zu synchronisieren, melden Sie sich bitte an.'),
           [
-            { text: 'Anuluj', style: 'cancel' },
+            { text: 'Abbrechen', style: 'cancel' },
             {
-              text: 'Zaloguj się →',
+              text: t('login_cloud', 'Anmelden →'),
               onPress: () => router.push('/(auth)/login' as any),
             },
           ]
@@ -34,11 +37,11 @@ export function SyncBar() {
 
       const res = await SyncEngine.syncAll();
       Alert.alert(
-        'Synchronizacja zakończona',
-        `Pobrano ${res.pulled} obiektów z chmury, wysłano ${res.pushed} zmian.`
+        t('synced', 'Synchronisiert'),
+        `Pushed: ${res.pushed}, Pulled: ${res.pulled}`
       );
     } catch (err: any) {
-      Alert.alert('Błąd synchronizacji', err?.message || 'Nie udało się połączyć z serwerem.');
+      Alert.alert(t('conn_error', 'Verbindungsfehler'), err?.message || 'Error');
     }
   };
 
@@ -59,20 +62,20 @@ export function SyncBar() {
           </Text>
           <Text style={styles.statusTitle}>
             {syncState.status === 'SYNCING'
-              ? 'Synchronizacja z chmurą...'
+              ? t('syncing', 'Synchronisiere mit Cloud...')
               : syncState.status === 'SYNCED'
-              ? 'Zsynchronizowano z chmurą'
+              ? t('synced', 'Mit Cloud synchronisiert')
               : syncState.status === 'ERROR'
-              ? 'Błąd połączenia'
-              : 'Tryb Offline'}
+              ? t('conn_error', 'Verbindungsfehler')
+              : t('ready_offline', 'Bereit für Offline-Arbeit')}
           </Text>
         </View>
         <Text style={styles.metaText}>
           {syncState.pendingCount > 0
-            ? `Oczekujące mutacje: ${syncState.pendingCount}`
+            ? `${t('pending_mutations', 'Ausstehende Änderungen')}: ${syncState.pendingCount}`
             : syncState.lastSyncedAt
-            ? `Ostatni sync: ${new Date(syncState.lastSyncedAt).toLocaleTimeString()}`
-            : 'Kliknij Sync 🔄, aby pobrać dane'}
+            ? `${t('last_sync', 'Letzter Sync')}: ${new Date(syncState.lastSyncedAt).toLocaleTimeString()}`
+            : t('click_sync', 'Klicken Sie auf Sync 🔄 zum Laden')}
         </Text>
       </View>
 
@@ -85,7 +88,7 @@ export function SyncBar() {
         {isSyncing ? (
           <ActivityIndicator size="small" color="#38BDF8" />
         ) : (
-          <Text style={styles.syncButtonText}>Sync 🔄</Text>
+          <Text style={styles.syncButtonText}>{t('sync_now', 'Sync 🔄')}</Text>
         )}
       </TouchableOpacity>
     </View>
