@@ -20,6 +20,10 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   // Run internal migration system
   await runMigrations(db);
 
+  // Seed offline starter data if replica is empty
+  const { seedSampleDataIfEmpty } = await import('./seed');
+  await seedSampleDataIfEmpty(db);
+
   dbInstance = db;
   return db;
 }

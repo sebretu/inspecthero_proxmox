@@ -23,7 +23,7 @@ on:
 
 jobs:
   build-android:
-    if: inputs.platform == 'all' || inputs.platform == 'android'
+    if: inputs.platform == 'all' || inputs.platform == 'android' || github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: 🏗️ Checkout repository
@@ -77,7 +77,7 @@ jobs:
           retention-days: 14
 
   build-ios:
-    if: inputs.platform == 'all' || inputs.platform == 'ios'
+    if: inputs.platform == 'all' || inputs.platform == 'ios' || github.event_name != 'workflow_dispatch'
     runs-on: macos-14
     steps:
       - name: 🏗️ Checkout repository
@@ -107,34 +107,36 @@ jobs:
         working-directory: ./apps/mobile
         run: npx expo prebuild --platform ios --clean
 
-      - name: 🔨 Compile iOS Simulator Build
+      - name: 🔨 Compile iOS Physical Device Build (arm64 Release with Embedded JS Bundle)
         working-directory: ./apps/mobile/ios
         run: |
           pod install
           xcodebuild -workspace et4u.xcworkspace \
                      -scheme et4u \
-                     -configuration Debug \
-                     -sdk iphonesimulator \
-                     -destination 'generic/platform=iOS Simulator' \
+                     -configuration Release \
+                     -sdk iphoneos \
+                     -destination 'generic/platform=iOS' \
                      -derivedDataPath build \
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGN_IDENTITY="" \
-                     ONLY_ACTIVE_ARCH=NO
+                     AD_HOC_CODE_SIGNING_ALLOWED=YES
 
-      - name: 📦 Package iOS Simulator App & Payload IPA
-        working-directory: ./apps/mobile/ios/build/Build/Products/Debug-iphonesimulator
+      - name: 📦 Package iOS Physical Device IPA with Ad-Hoc Signatures
+        working-directory: ./apps/mobile/ios/build/Build/Products/Release-iphoneos
         run: |
+          # Ad-hoc sign embedded frameworks and the main executable so sideloading tools can replace signature properly
+          if [ -d "et4u.app/Frameworks" ]; then
+            find et4u.app/Frameworks -type f \( -name "*.dylib" -o -name "*.framework" \) -exec codesign --force --sign - {} + || true
+          fi
+          codesign --force --deep --sign - et4u.app || true
           mkdir -p Payload
           cp -r et4u.app Payload/
-          zip -r -q et4u-ios-simulator.ipa Payload
-          zip -r -q et4u-ios-simulator.zip et4u.app
+          zip -r -q et4u-ios-device-unsigned.ipa Payload
 
-      - name: 📤 Upload iOS Simulator Artifacts
+      - name: 📤 Upload iOS Device IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: et4u-ios-simulator-package
-          path: |
-            apps/mobile/ios/build/Build/Products/Debug-iphonesimulator/et4u-ios-simulator.zip
-            apps/mobile/ios/build/Build/Products/Debug-iphonesimulator/et4u-ios-simulator.ipa
+          name: et4u-ios-device-ipa
+          path: apps/mobile/ios/build/Build/Products/Release-iphoneos/et4u-ios-device-unsigned.ipa
           retention-days: 14

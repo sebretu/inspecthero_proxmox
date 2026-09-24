@@ -1101,6 +1101,40 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   2. Zsynchronizowano `apps/mobile/package-lock.json` i przetestowano eksport bundlera Metro lokalnie (`npx expo export --platform android` zakończony kodem 0).
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 15: Crash na fizycznym iPhone (kompilacja iphonesimulator zamiast iphoneos arm64 Release)
+* **Data:** 2026-09-24
+* **Symptom / Błąd:**
+  Na telefonie iPhone po wgraniu aplikacji wyświetlał się czarny ekran i aplikacja natychmiast się zamykała.
+* **Przyczyna:** Workflow w GitHub Actions budował binarkę z flagą `-sdk iphonesimulator` (przeznaczoną wyłącznie pod symulator macOS). Kernel fizycznego iPhone'a (arm64 `iphoneos`) natychmiast ubija procesy zbudowane dla symulatora z błędem `EXC_CRASH`.
+* **Zastosowane rozwiązanie:**
+  1. Zmieniono target kompilacji iOS na natywny fizyczny telefon: `-sdk iphoneos -configuration Release -destination 'generic/platform=iOS'`.
+  2. Włączono automatyczne pakowanie wynikowego katalogu `Release-iphoneos/et4u.app` do struktury `Payload/et4u.app` i spakowano jako instalator **`et4u-ios-device-unsigned.ipa`**.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+---
+
+### 📌 Zdarzenie 16: Brak nawigacji do projektów (Android) oraz crash uruchomieniowy na iOS (ad-hoc signing & splash)
+* **Data:** 2026-09-24
+* **Symptom / Błąd:**
+  1. **Android:** Aplikacja uruchamia się poprawnie w trybie offline, jednak kliknięcie przycisku „Przejdź do projektów” nic nie robiło (brak reakcji interfejsu).
+  2. **iOS:** Na fizycznym telefonie iPhone aplikacja otwierała czarny ekran startowy i natychmiast się wyłączała.
+* **Przyczyna:**
+  1. W komponencie `apps/mobile/app/index.tsx` komponent `<TouchableOpacity>` nie posiadał zdefiniowanego handlera `onPress` ani powiązania z routerem `useRouter()`. Brakowało również dedykowanych ekranów routingu `app/projects/index.tsx` oraz `app/projects/[id].tsx`.
+  2. Gdy baza SQLite była pusta (pierwsze uruchomienie offline przed pierwszym logowaniem/poborem), tabela projektów zwracała 0 rekordów.
+  3. Na platformie iOS dynamiczne biblioteki frameworków (w tym silnik Hermes `hermes.framework` oraz moduły podów) wyeksportowane bez podpisu ad-hoc (`codesign -s -`) powodowały zablokowanie procesu przez mechanizm bezpieczeństwa iOS (dyld code signature check failure). Dodatkowo brakowało konfiguracji `UIViewControllerBasedStatusBarAppearance` oraz obsługi `ErrorBoundary` przechwytującej ewentualne błędy startowe Reacta.
+* **Zastosowane rozwiązanie:**
+  1. Utworzono ekran listy projektów [apps/mobile/app/projects/index.tsx](file:///home/ubuntu/building-task-manager/apps/mobile/app/projects/index.tsx) z wyszukiwarką, metrykami liczby budynków/zadań oraz obsługą `RefreshControl`.
+  2. Utworzono ekran szczegółów projektu [apps/mobile/app/projects/[id].tsx](file:///home/ubuntu/building-task-manager/apps/mobile/app/projects/[id].tsx) z przełącznikiem budynków i kondygnacji (pięter) oraz interaktywną listą zadań z natychmiastową zmianą statusu i kolejkowaniem mutacji offline (`INSERT INTO mutations`).
+  3. Dodano auto-seeding danych startowych [apps/mobile/src/db/seed.ts](file:///home/ubuntu/building-task-manager/apps/mobile/src/db/seed.ts) (`seedSampleDataIfEmpty`), dzięki czemu aplikacja natychmiast posiada demonstracyjny zestaw danych offline („Biurowiec Warszawa Hub”).
+  4. Zaktualizowano ekran startowy [apps/mobile/app/index.tsx](file:///home/ubuntu/building-task-manager/apps/mobile/app/index.tsx) z podpiętą nawigacją `router.push('/projects')` oraz kafelkami statystyk pobieranymi na żywo z SQLite (liczba projektów, zadań, oczekujących mutacji sync).
+  5. Dodano globalny `ErrorBoundary` oraz konfigurację ekranów w [apps/mobile/app/_layout.tsx](file:///home/ubuntu/building-task-manager/apps/mobile/app/_layout.tsx).
+  6. W procesie CI/CD [.github/workflows/expo-mobile-build.yml](file:///home/ubuntu/building-task-manager/.github/workflows/expo-mobile-build.yml) dodano automatyczne podpisywanie ad-hoc (`codesign --force --deep --sign - et4u.app`) dla wszystkich bibliotek `.framework` i `.dylib` przed spakowaniem IPA.
+* **Status:** 🟩 Rozwiązane, przetestowane (Metro bundler eksportuje pakiety z kodem 0) i wdrożone do repozytorium.
+
+
+
 
 
 

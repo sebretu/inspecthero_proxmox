@@ -1,19 +1,20 @@
-# Flutter / Dart
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-.pub/
-build/
-**/build/
+# Dependencies
+node_modules/
+**/node_modules/
 
-# Android
+# Expo / React Native
+.expo/
+**/.expo/
+dist/
+**/dist/
+
+# iOS / Android native outputs
+ios/Pods/
+ios/build/
+**/ios/build/
 android/.gradle/
-android/local.properties
-
-# IDE
-.idea/
-.vscode/
+android/app/build/
+**/android/build/
 
 # Logs
 *.log
@@ -21,3 +22,5 @@ android/local.properties
 # APK / binaries
 *.apk
 *.aab
+*.ipa
+
