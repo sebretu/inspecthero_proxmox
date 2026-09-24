@@ -1046,6 +1046,20 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   4. Dodano `babel-preset-expo` do `package.json` oraz zaktualizowano `tsconfig.json`.
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 11: Błąd wersji pakietu `babel-preset-expo@~52.0.0` w npm
+* **Data:** 2026-09-24
+* **Symptom / Błąd:**
+  ```text
+  npm error code ETARGET
+  npm error notarget No matching version found for babel-preset-expo@~52.0.0.
+  ```
+* **Przyczyna:** Pakiet `babel-preset-expo` nie używa numeracji SDK 52.x.x, lecz dla Expo SDK 52 posiada linię wydań `~12.0.12` (zgodnie z `dist-tags sdk-52`).
+* **Zastosowane rozwiązanie:** Zaktualizowano `apps/mobile/package.json` do `"babel-preset-expo": "~12.0.12"`, wygenerowano poprawny `package-lock.json` i przetestowano lokalną instalację (914 pakietów, 0 błędów).
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+
 
 
 
