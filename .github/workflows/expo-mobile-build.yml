@@ -57,17 +57,23 @@ jobs:
         working-directory: ./apps/mobile
         run: npx expo prebuild --platform android --clean
 
-      - name: 🔨 Compile Android APK (Debug / Preview)
+      - name: 🔑 Configure Debug Signing for Standalone Release APK
+        working-directory: ./apps/mobile/android/app
+        run: |
+          # Configure release build to use debug signing key so APK is fully standalone without local Metro
+          sed -i 's/signingConfig signingConfigs.release/signingConfig signingConfigs.debug/g' build.gradle
+
+      - name: 🔨 Compile Standalone Android APK (Release with Embedded JS Bundle)
         working-directory: ./apps/mobile/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
-      - name: 📤 Upload Android APK Artifact
+      - name: 📤 Upload Standalone Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: et4u-android-apk
-          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          name: et4u-android-standalone-apk
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 14
 
   build-ios:
@@ -116,9 +122,19 @@ jobs:
                      CODE_SIGN_IDENTITY="" \
                      ONLY_ACTIVE_ARCH=NO
 
-      - name: 📤 Upload iOS App Artifact
+      - name: 📦 Package iOS Simulator App & Payload IPA
+        working-directory: ./apps/mobile/ios/build/Build/Products/Debug-iphonesimulator
+        run: |
+          mkdir -p Payload
+          cp -r et4u.app Payload/
+          zip -r -q et4u-ios-simulator.ipa Payload
+          zip -r -q et4u-ios-simulator.zip et4u.app
+
+      - name: 📤 Upload iOS Simulator Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: et4u-ios-simulator-app
-          path: apps/mobile/ios/build/Build/Products/Debug-iphonesimulator/et4u.app
+          name: et4u-ios-simulator-package
+          path: |
+            apps/mobile/ios/build/Build/Products/Debug-iphonesimulator/et4u-ios-simulator.zip
+            apps/mobile/ios/build/Build/Products/Debug-iphonesimulator/et4u-ios-simulator.ipa
           retention-days: 14

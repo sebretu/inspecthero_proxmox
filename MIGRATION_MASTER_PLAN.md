@@ -1007,6 +1007,26 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   3. Zaktualizowano ścieżkę artefaktu na `apps/mobile/ios/build/Build/Products/Debug-iphonesimulator/et4u.app`.
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 9: Błąd "Unable to load script" w Android Debug APK oraz specyfika instalacji na iPhone
+* **Data:** 2026-09-24
+* **Symptom 1 (Android):**
+  Ekran błędu w aplikacji na telefonie:
+  ```text
+  Unable to load script. Make sure you're either running Metro (run 'npx react-native start') or that your bundle 'index.android.bundle' is packaged correctly for release.
+  ```
+* **Przyczyna 1:** Kompilacja `./gradlew assembleDebug` tworzy paczkę deweloperską, która nie zawiera wbudowanego kodu JavaScript (oczekuje lokalnego serwera Metro na `localhost:8081`).
+* **Rozwiązanie 1:** Przełączono pipeline CI/CD na `./gradlew assembleRelease` ze skonfigurowanym kluczem podpisywania `debug` (`signingConfig signingConfigs.debug`). Gradle wykonuje zadanie `createBundleReleaseJsAndAssets`, kompilując kod do hermes bytecode i pakując cały bundle JS bezpośrednio do wnętrza pliku `app-release.apk`.
+* **Symptom 2 (iOS — katalog zamiast instalacji):**
+  Pobrany plik z symulatora iOS to katalog `et4u.app` (struktura wewnętrzna aplikacji iOS).
+* **Wyjaśnienie i Rozwiązanie 2 (Instalacja na fizycznym iPhone vs Symulatorze):**
+  * System Apple iOS uniemożliwia bezpośrednią instalację surowych plików przez przeglądarkę (wymaga podpisania certyfikatem Apple Developer lub dystrybucji przez Apple TestFlight).
+  * Do testów na symulatorze iOS na Macu paczka jest teraz pakowana do pojedynczego archiwum `.zip` oraz `.ipa` (struktura `Payload/et4u.app`).
+  * Do bezpośrednich testów na fizycznym telefonie iPhone bez płatnego konta Apple Developer rekomendowane jest uruchomienie w aplikacji **Expo Go** (ze skanowaniem QR) lub build przez **EAS Build** (`npx eas build --platform ios`).
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
+
 
 
 
