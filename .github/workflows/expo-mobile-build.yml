@@ -21,6 +21,11 @@ on:
           - preview
           - production
 
+env:
+  EXPO_PUBLIC_SUPABASE_URL: https://api.inspecthero.pl
+  EXPO_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5NzI4OTQzLCJleHAiOjIwOTUwODg5NDN9.GeDuftnqf8z1mcK2zc1uCismil4t49iNBZsViXWJnkY
+  EXPO_PUBLIC_API_URL: https://inspecthero.pl
+
 jobs:
   build-android:
     if: inputs.platform == 'all' || inputs.platform == 'android' || github.event_name != 'workflow_dispatch'

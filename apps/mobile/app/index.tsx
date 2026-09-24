@@ -141,6 +141,26 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
+          <View style={styles.modulesRow}>
+            <TouchableOpacity
+              style={styles.moduleBtn}
+              activeOpacity={0.8}
+              onPress={() => router.push('/attendance' as any)}
+            >
+              <Text style={styles.moduleIcon}>⏱️</Text>
+              <Text style={styles.moduleTitle}>Obecność (RCP)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.moduleBtn}
+              activeOpacity={0.8}
+              onPress={() => router.push('/orders' as any)}
+            >
+              <Text style={styles.moduleIcon}>📦</Text>
+              <Text style={styles.moduleTitle}>Materiały (Katalog)</Text>
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
             style={styles.secondaryButton}
             activeOpacity={0.8}

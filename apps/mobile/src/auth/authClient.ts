@@ -13,8 +13,11 @@ const ExpoSecureStoreAdapter = {
   },
 };
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://example.supabase.co';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'anon-key-placeholder';
+const supabaseUrl =
+  process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://api.inspecthero.pl';
+const supabaseAnonKey =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5NzI4OTQzLCJleHAiOjIwOTUwODg5NDN9.GeDuftnqf8z1mcK2zc1uCismil4t49iNBZsViXWJnkY';
 
 export const authSupabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

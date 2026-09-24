@@ -234,12 +234,20 @@ export default function ProjectDetailScreen() {
                 <Text style={styles.taskHeaderTitle}>Zadania montażowe ({tasks.length})</Text>
                 <Text style={styles.taskHeaderSubtitle}>Dotknij zadania, aby otworzyć szczegóły</Text>
               </View>
-              <TouchableOpacity
-                style={styles.addTaskBtn}
-                onPress={() => router.push({ pathname: '/tasks/create', params: { planId: 'pln-sample-001' } } as any)}
-              >
-                <Text style={styles.addTaskBtnText}>+ Nowe</Text>
-              </TouchableOpacity>
+              <View style={styles.headerActionsRow}>
+                <TouchableOpacity
+                  style={styles.planViewBtn}
+                  onPress={() => router.push({ pathname: '/plans/[id]', params: { id: 'pln-sample-001' } } as any)}
+                >
+                  <Text style={styles.planViewBtnText}>📐 Rzut</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.addTaskBtn}
+                  onPress={() => router.push({ pathname: '/tasks/create', params: { planId: 'pln-sample-001' } } as any)}
+                >
+                  <Text style={styles.addTaskBtnText}>+ Nowe</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
@@ -357,6 +365,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     marginTop: 2,
+  },
+  headerActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  planViewBtn: {
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  planViewBtnText: {
+    color: '#F8FAFC',
+    fontSize: 12,
+    fontWeight: '700',
   },
   addTaskBtn: {
     backgroundColor: 'rgba(56, 189, 248, 0.15)',

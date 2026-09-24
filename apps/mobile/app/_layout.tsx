@@ -116,6 +116,27 @@ export default function RootLayout() {
               headerShown: true,
             }}
           />
+          <Stack.Screen
+            name="attendance/index"
+            options={{
+              title: 'Obecność & RCP',
+              headerShown: true,
+            }}
+          />
+          <Stack.Screen
+            name="orders/index"
+            options={{
+              title: 'Zapotrzebowanie Materiałowe',
+              headerShown: true,
+            }}
+          />
+          <Stack.Screen
+            name="plans/[id]"
+            options={{
+              title: 'Rzut Kondygnacji (Leaflet)',
+              headerShown: true,
+            }}
+          />
         </Stack>
       </ErrorBoundary>
     </SafeAreaProvider>

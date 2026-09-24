@@ -17,7 +17,9 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UIStatusBarStyle": "UIStatusBarStyleLightContent",
-        "UIViewControllerBasedStatusBarAppearance": false
+        "UIViewControllerBasedStatusBarAppearance": false,
+        "NSCameraUsageDescription": "Aplikacja et4u wymaga dostępu do aparatu, aby wykonywać zdjęcia usterek i montażu na budowie.",
+        "NSPhotoLibraryUsageDescription": "Aplikacja et4u wymaga dostępu do zdjęć, aby załączać dokumentację fotograficzną do zadań."
       }
     },
     "android": {
@@ -25,12 +27,25 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#030712"
       },
-      "package": "com.et4u.app"
+      "package": "com.et4u.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET"
+      ]
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Aplikacja et4u wymaga dostępu do zdjęć, aby załączać dokumentację fotograficzną.",
+          "cameraPermission": "Aplikacja et4u wymaga dostępu do aparatu, aby wykonywać zdjęcia usterek."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

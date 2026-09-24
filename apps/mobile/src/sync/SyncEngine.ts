@@ -20,7 +20,7 @@ type SyncStateListener = (state: SyncEngineState) => void;
 
 export class SyncEngine {
   private static isRunning = false;
-  private static apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.app';
+  private static apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
   private static stateListeners = new Set<SyncStateListener>();
 
   private static currentState: SyncEngineState = {

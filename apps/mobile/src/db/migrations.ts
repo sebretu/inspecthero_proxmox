@@ -186,6 +186,67 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 2,
+    up: async (db: SQLiteDatabase) => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS materials (
+          id TEXT PRIMARY KEY,
+          company_id TEXT,
+          name TEXT NOT NULL,
+          category TEXT,
+          unit TEXT NOT NULL DEFAULT 'szt',
+          unit_price REAL,
+          sku TEXT,
+          in_stock REAL DEFAULT 0,
+          created_at TEXT,
+          updated_at TEXT,
+          version INTEGER NOT NULL DEFAULT 1,
+          deleted_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS orders (
+          id TEXT PRIMARY KEY,
+          project_id TEXT,
+          user_id TEXT,
+          status TEXT NOT NULL DEFAULT 'draft',
+          notes TEXT,
+          total_price REAL DEFAULT 0,
+          created_at TEXT,
+          updated_at TEXT,
+          version INTEGER NOT NULL DEFAULT 1,
+          deleted_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS order_items (
+          id TEXT PRIMARY KEY,
+          order_id TEXT NOT NULL,
+          material_id TEXT NOT NULL,
+          quantity REAL NOT NULL DEFAULT 1,
+          unit_price REAL,
+          created_at TEXT,
+          updated_at TEXT,
+          version INTEGER NOT NULL DEFAULT 1,
+          deleted_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS attendance (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          project_id TEXT,
+          clock_in TEXT NOT NULL,
+          clock_out TEXT,
+          notes TEXT,
+          latitude REAL,
+          longitude REAL,
+          created_at TEXT,
+          updated_at TEXT,
+          version INTEGER NOT NULL DEFAULT 1,
+          deleted_at TEXT
+        );
+      `);
+    },
+  },
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {

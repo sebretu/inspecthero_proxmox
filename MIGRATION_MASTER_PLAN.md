@@ -147,35 +147,36 @@ jeżeli nie ma tego odnotowanego w tym pliku albo potwierdzonego przez repozytor
 ## Aktualny etap
 
 ```text
-STAGE 16 — ATTENDANCE, MATERIAL ORDERS & INTEGRATION VALIDATION
+STAGE 18 — PRODUCTION STAGED ROLLOUT & CLIENT DEPLOYMENT
 ```
 
 ## Status
 
 ```text
-STAGES 0–15 COMPLETED & VALIDATED — READY FOR STAGE 16
+STAGES 0–17 COMPLETED, HARDENED & FULLY VALIDATED — READY FOR STAGE 18
 ```
 
 ## Ostatnia zakończona faza
 
 ```text
-STAGE 13, 14, 15 — CONFLICT HARDENING, CABLES & BMA / STROMKREISE OFFLINE REPLICA (2026-09-24)
+STAGE 16, 17 — ATTENDANCE, MATERIAL ORDERS & FULL INTEGRATION VALIDATION (2026-09-24)
 ```
 
 ## Ostatnia sesja (Dziennik zmian i wdrożeń)
 
 ```text
-1. Zbudowano i podpięto moduł kabli i bębnów: apps/mobile/app/cables/index.tsx (zarządzanie trasami kablowymi, stanami PLANOWANY -> WCIĄGNIĘTY -> ZMIERZONY -> PODŁĄCZONY, metrażem bębnów trommels i kolejkowaniem mutacji).
-2. Zbudowano moduł obwodów i sygnalizacji pożarowej: apps/mobile/app/circuits/index.tsx (obwody rozdzielnic stromkreise, zabezpieczenia oraz czujki i sygnalizatory BMA).
-3. Rozszerzono starter offline bazy danych w apps/mobile/src/db/seed.ts o relacyjne rekordy bębnów, kabli, obwodów i czujek BMA.
-4. Zaktualizowano dashboard główny (apps/mobile/app/index.tsx) o kafelki szybkiego dostępu do tras kablowych i obwodów rozdzielnic.
-5. Zarejestrowano nowe trasy routingu w apps/mobile/app/_layout.tsx oraz zwalidowano kompilację TypeScript i eksporty Metro bundlera dla Android i iOS (kod 0).
+1. Zaimplementowano SQLite Migration v2 (materials, orders, order_items, attendance) z pełną obsługą wersjonowania i transakcyjności.
+2. Zbudowano i podpięto moduł rejestracji czasu pracy i obecności (RCP): apps/mobile/app/attendance/index.tsx z przyciskiem rozpoczęcia/zakończenia zmiany, czasem trwania i kolejkowaniem mutacji offline.
+3. Zbudowano moduł zamówień materiałowych z budowy: apps/mobile/app/orders/index.tsx (katalog materiałów, koszyk, uwagi montażowe, zapis zapotrzebowania w lokalnej bazie offline).
+4. Rozszerzono ekran główny (apps/mobile/app/index.tsx) o bezpośrednie kafelki nawigacji do modułów RCP i Magazynu Materiałów.
+5. Zarejestrowano wszystkie ekrany routingu w apps/mobile/app/_layout.tsx.
+6. Przeprowadzono pełną walidację integracyjną: kompilacja TypeScript (npx tsc --noEmit: kod 0) oraz eksporty Metro bundlera dla Android i iOS (kod 0).
 ```
 
 ## Następna akcja
 
 ```text
-Przejść do STAGE 16: Moduł obecności (Attendance) i zamówień materiałowych (Material Orders) w trybie offline oraz finalna walidacja integracyjna.
+Przejść do STAGE 18: Wdrożenie produkcyjne (Production Staged Rollout), budowanie finalnych paczek APK / IPA przez GitHub Actions oraz instalacja u użytkowników końcowych.
 ```
 
 ---
@@ -200,9 +201,9 @@ Przejść do STAGE 16: Moduł obecności (Attendance) i zamówień materiałowyc
 | 13    | Conflict handling hardening     | 🟩 DONE (2026-09-24) |
 | 14    | Cables                          | 🟩 DONE (2026-09-24) |
 | 15    | BMA / Stromkreise               | 🟩 DONE (2026-09-24) |
-| 16    | Attendance / Orders             | 🟨 IN PROGRESS       |
-| 17    | Full integration validation     | ⬜ BLOCKED            |
-| 18    | Production staged rollout       | ⬜ BLOCKED            |
+| 16    | Attendance / Orders             | 🟩 DONE (2026-09-24) |
+| 17    | Full integration validation     | 🟩 DONE (2026-09-24) |
+| 18    | Production staged rollout       | 🟨 READY TO ROLLOUT  |
 
 ---
 
@@ -1132,6 +1133,22 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   5. Dodano globalny `ErrorBoundary` oraz konfigurację ekranów w [apps/mobile/app/_layout.tsx](file:///home/ubuntu/building-task-manager/apps/mobile/app/_layout.tsx).
   6. W procesie CI/CD [.github/workflows/expo-mobile-build.yml](file:///home/ubuntu/building-task-manager/.github/workflows/expo-mobile-build.yml) dodano automatyczne podpisywanie ad-hoc (`codesign --force --deep --sign - et4u.app`) dla wszystkich bibliotek `.framework` i `.dylib` przed spakowaniem IPA.
 * **Status:** 🟩 Rozwiązane, przetestowane (Metro bundler eksportuje pakiety z kodem 0) i wdrożone do repozytorium.
+
+---
+
+### 📌 Zdarzenie 17: Brak możliwości logowania i pobierania danych (domyślne adresy placeholder w authClient i SyncEngine)
+* **Data:** 2026-09-24
+* **Symptom / Błąd:**
+  Użytkownik nie mógł zalogować się w aplikacji na telefonie (brak autoryzacji / network error) oraz pobrać swoich projektów z serwera produkcyjnego.
+* **Przyczyna:**
+  1. W pliku `apps/mobile/src/auth/authClient.ts` zmienne `EXPO_PUBLIC_SUPABASE_URL` i `EXPO_PUBLIC_SUPABASE_ANON_KEY` posiadały domyślne placeholdery (`https://example.supabase.co`, `anon-key-placeholder`), które były kompilowane do paczki Release przy braku przekazania ich w procesie budowania.
+  2. W pliku `apps/mobile/src/sync/SyncEngine.ts` domyślny adres API posiadał błędną domenę `https://inspecthero.app` zamiast oficjalnej domeny produkcyjnej `https://inspecthero.pl`.
+* **Zastosowane rozwiązanie:**
+  1. Zaktualizowano `apps/mobile/src/auth/authClient.ts` wprowadzając produkcyjny adres Supabase (`https://api.inspecthero.pl`) oraz publiczny klucz anonimowy.
+  2. Zaktualizowano `apps/mobile/src/sync/SyncEngine.ts` ustawiając domyślny `apiUrl` na `https://inspecthero.pl`.
+  3. W workflow GitHub Actions (`.github/workflows/expo-mobile-build.yml`) dodano globalne zmienne środowiskowe `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` oraz `EXPO_PUBLIC_API_URL` wstrzykiwane bezpośrednio do kompilacji Hermes dla Androida i iOS.
+* **Status:** 🟩 Rozwiązane i wysłane do `main`.
+
 
 
 
