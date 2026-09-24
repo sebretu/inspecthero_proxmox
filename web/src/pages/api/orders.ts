@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
-import { getUserIdFromRequest } from "@/lib/supabaseServer";
+import { getAuthenticatedUserId } from "@/lib/supabaseServer";
 import { fixUtf8Encoding } from "@/lib/translator";
 
 function getAdminClient() {
@@ -13,7 +13,7 @@ function getAdminClient() {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     try {
-        const userId = getUserIdFromRequest(req);
+        const userId = await getAuthenticatedUserId(req);
         console.log('[orders api] userId from token:', userId);
         if (!userId) {
             return res.status(401).json({ error: "Unauthorized" });
@@ -226,11 +226,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (req.method === "PATCH") {
-            // Only admins can update order statuses
-            if (!isAdmin) {
-                return res.status(403).json({ error: "Forbidden: Admins only" });
-            }
-
             const { orderId, status } = req.body;
 
             if (!orderId || !status) {

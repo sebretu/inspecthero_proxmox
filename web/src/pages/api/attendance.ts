@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { data: me, error: meError } = await supabase
         .from("profiles")
-        .select("id, role, email")
+        .select("id, role, email, company_id")
         .eq("id", userId)
         .single();
     if (meError || !me) {
@@ -36,12 +36,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Insufficient permissions" } });
     }
 
+    const db = createServiceSupabaseClient();
+
+    // Tenant Isolation Helper: Verify target user or employee belongs to the requester's company
+    const verifyTenantAccess = async (targetUserId?: any, targetEmployeeId?: any) => {
+        if (!me.company_id) return true; // Superadmin / system level if no company set
+
+        if (targetUserId) {
+            const { data: targetProfile } = await db
+                .from("profiles")
+                .select("company_id")
+                .eq("id", targetUserId)
+                .single();
+            if (!targetProfile || targetProfile.company_id !== me.company_id) {
+                return false;
+            }
+        }
+
+        if (targetEmployeeId) {
+            const { data: targetEmployee } = await db
+                .from("employees")
+                .select("company_id")
+                .eq("id", targetEmployeeId)
+                .single();
+            if (!targetEmployee || targetEmployee.company_id !== me.company_id) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
     if (req.method === "DELETE") {
         const { user_id, employee_id, date } = req.query;
         if (!date || (!user_id && !employee_id)) {
             return res.status(400).json({ ok: false, error: { code: "MISSING_FIELDS", message: "date and (user_id OR employee_id) are required" } });
         }
-        const db = createServiceSupabaseClient();
+
+        const isAllowed = await verifyTenantAccess(user_id, employee_id);
+        if (!isAllowed) {
+            return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Cross-tenant access denied" } });
+        }
+
         const matchObj: any = { date };
         if (user_id) matchObj.user_id = user_id;
         if (employee_id) matchObj.employee_id = employee_id;
@@ -60,8 +96,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         return res.status(400).json({ ok: false, error: { code: "MISSING_FIELDS", message: "date, status and (user_id OR employee_id) are required" } });
     }
 
-    // Use service client to bypass RLS for authorized MODs
-    const db = createServiceSupabaseClient();
+    const isAllowed = await verifyTenantAccess(user_id, employee_id);
+    if (!isAllowed) {
+        return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Cross-tenant access denied" } });
+    }
 
     const matchObj: any = { date };
     if (user_id) matchObj.user_id = user_id;
@@ -79,6 +117,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             .from("vacations")
             .insert({
                 ...vacationMatch,
+                company_id: me.company_id || null,
                 start_date: date,
                 end_date: date,
                 status: 'APPROVED',
@@ -102,6 +141,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             .from("attendance")
             .insert({
                 ...matchObj,
+                company_id: me.company_id || null,
                 status,
                 start_time: start_time || null,
                 end_time: end_time || null,

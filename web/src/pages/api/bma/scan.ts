@@ -1,18 +1,17 @@
+import "@/lib/pdfPolyfill";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServerSupabaseClient } from "@/lib/supabaseServer";
 import path from "path";
 import { promises as fs } from "fs";
+import os from "os";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 // @ts-ignore
 import { createWorker } from "tesseract.js";
 
-// Polyfill DOMMatrix for pdfjs-dist in Node environment
-if (typeof (global as any).DOMMatrix === 'undefined') {
-  (global as any).DOMMatrix = class DOMMatrix {
-    constructor() { }
-  };
-}
+const execFileAsync = promisify(execFile);
 
 export const config = {
   api: {
@@ -20,6 +19,7 @@ export const config = {
       sizeLimit: '10mb',
     },
   },
+  maxDuration: 60,
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -80,7 +80,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    const deviceRegex = new RegExp(regex || '((?:[A-Z]{1,3})?\\s*\\d{1,4}(?:\\s*[./]\\s*\\d{1,4}){1,3}|[A-Z]{1,3}\\s*\\d{1,4}|PA10\\s*S\\d|BMA|BMZ|FIZ|HM|ÜG|FSD|SDA|NSL)', 'g');
+    const DEFAULT_BMA_REGEX = '((?:[A-Z]{1,3})?\\s*\\d{1,4}(?:\\s*[./]\\s*\\d{1,4}){1,3}|[A-Z]{1,3}\\s*\\d{1,4}|PA10\\s*S\\d|BMA|BMZ|FIZ|HM|ÜG|FSD|SDA|NSL)';
+    let safePattern = DEFAULT_BMA_REGEX;
+    if (typeof regex === "string" && regex.trim().length > 0 && regex.length <= 200) {
+      // Allow only safe characters without catastrophic nested quantifier constructs
+      const hasDangerousConstructs = /(\+|\*|\{)\s*(\+|\*|\{)/.test(regex) || /(\([^()]+\))\s*(\+|\*|\{)\s*(\+|\*|\{)/.test(regex);
+      if (!hasDangerousConstructs && /^[a-zA-Z0-9\s|()?:._\-\\/\[\]+*]+$/.test(regex)) {
+        safePattern = regex;
+      }
+    }
+    const deviceRegex = new RegExp(safePattern, 'g');
     
     let detectedDevices: any[] = [];
 
@@ -193,11 +202,69 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await worker.terminate();
     }
 
-    // If no devices found in text layer and it's a scan or image, try OCR (Simplified logic)
-    if (detectedDevices.length === 0) {
-        // Fallback to OCR logic here... 
-        // For brevity in this initial implementation, we focus on text layer
-        // Full OCR implementation would require rendering PDF pages to canvas/images
+    // Fallback to OCR if no devices found in PDF text layer (scanned or rasterized PDF plan)
+    if (detectedDevices.length === 0 && effectiveFileName.toLowerCase().endsWith('.pdf')) {
+      console.log('[BMA Scan] No devices found in PDF text layer. Executing Tesseract OCR Fallback...');
+      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'bma-ocr-'));
+      const pdfPath = path.join(tmpDir, 'input.pdf');
+      await fs.writeFile(pdfPath, buffer);
+
+      const pngBase = path.join(tmpDir, 'page');
+      try {
+        await execFileAsync('pdftoppm', ['-png', '-r', '96', pdfPath, pngBase]);
+
+        const files = await fs.readdir(tmpDir);
+        const pagePngs = files.filter(f => f.startsWith('page-') && f.endsWith('.png')).sort();
+
+        for (let pageIdx = 0; pageIdx < pagePngs.length; pageIdx++) {
+          const pngPath = path.join(tmpDir, pagePngs[pageIdx]);
+          let text = '';
+
+          try {
+            const { stdout } = await execFileAsync('tesseract', [pngPath, 'stdout', '-l', 'deu+eng']);
+            text = stdout || '';
+          } catch (tessCliErr) {
+            console.warn('[BMA Scan] tesseract CLI failed, trying tesseract.js:', tessCliErr);
+            try {
+              const worker = await createWorker('deu+eng');
+              const { data } = await worker.recognize(pngPath);
+              await worker.terminate();
+              text = data.text || '';
+            } catch (tessJsErr) {
+              console.error('[BMA Scan] tesseract.js fallback failed:', tessJsErr);
+            }
+          }
+
+          const lines = text.split('\n');
+
+          const industrialRegex = /((?:[3-7]\d{2}|\d{2})[./-]\d{1,2}|s\d{1,2}(?!\d)|(?:BMZ|FIZ)(?!\d))/gi;
+          const loopDeviceRegex = /((?:[A-Z]{1,3})?\s*\d{1,4}(?:\s*[./-]\s*\d{1,4}){1,3}|[A-Z]{1,3}\s*\d{1,4}|PA10\s*S\d|BMA|BMZ|FIZ|HM|ÜG|FSD|SDA|NSL|\bS\d{1,4}\b)/gi;
+
+          lines.forEach((line: string, idx: number) => {
+            const matches = [...line.matchAll(industrialRegex), ...line.matchAll(loopDeviceRegex)];
+            for (const match of matches) {
+              const devName = match[0].trim().toUpperCase();
+              if (devName.length > 15) continue;
+              
+              const normY = Number((0.10 + (idx / Math.max(lines.length, 1)) * 0.80).toFixed(4));
+              const normX = Number((0.20 + ((detectedDevices.length * 0.05) % 0.60)).toFixed(4));
+
+              detectedDevices.push({
+                name: devName,
+                type: "Detected via OCR",
+                x: normX,
+                y: normY,
+                page: pageIdx + 1
+              });
+            }
+          });
+        }
+        console.log(`[BMA Scan] OCR Fallback found ${detectedDevices.length} devices.`);
+      } catch (ocrErr) {
+        console.error('[BMA Scan] OCR Fallback failed:', ocrErr);
+      } finally {
+        await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+      }
     }
 
     return res.status(200).json({ ok: true, data: detectedDevices });

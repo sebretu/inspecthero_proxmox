@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS public.aufmass_materials (
     article_number VARCHAR(100),
     item_name VARCHAR(255) NOT NULL,
     quantity NUMERIC(10, 2) NOT NULL DEFAULT 1.00,
-    unit VARCHAR(50) NOT NULL DEFAULT 'pcs',
+    unit VARCHAR(50) NOT NULL DEFAULT 'st.',
     price NUMERIC(10, 2),
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,

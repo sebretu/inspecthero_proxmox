@@ -31,7 +31,23 @@ export function getBearerToken(req: NextApiRequest | Request): string | null {
       ? req.headers.get("x-app-token") || ""
       : (req.headers["x-app-token"] as string || "");
 
-  return xToken.trim() || null;
+  if (xToken.trim()) return xToken.trim();
+
+  // Fallback: Check token in query parameters
+  try {
+    if (req instanceof Request) {
+      const url = new URL(req.url);
+      const qToken = url.searchParams.get("token") || url.searchParams.get("accessToken");
+      if (qToken) return qToken.trim();
+    } else {
+      const qToken = (req.query?.token as string) || (req.query?.accessToken as string);
+      if (qToken) return qToken.trim();
+    }
+  } catch (e) {
+    console.error("Error reading token from query params:", e);
+  }
+
+  return null;
 }
 
 /**
@@ -87,7 +103,31 @@ export function createServerSupabaseClient(
 }
 
 /**
- * Helper: get userId from request
+ * Cryptographically verify JWT and return authenticated userId
+ */
+export async function getAuthenticatedUserId(req: NextApiRequest | Request): Promise<string | null> {
+  const token = getBearerToken(req);
+  if (!token) return null;
+
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const authClient = createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+
+    const { data: { user }, error } = await authClient.auth.getUser(token);
+    if (error || !user) {
+      return null;
+    }
+    return user.id;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Helper: get userId from request (Deprecated - use getAuthenticatedUserId for cryptographic verification)
  */
 export function getUserIdFromRequest(req: NextApiRequest | Request): string | null {
   const token = getBearerToken(req);
@@ -122,3 +162,4 @@ export function createServiceSupabaseClient() {
     },
   });
 }
+

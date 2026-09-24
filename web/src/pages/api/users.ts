@@ -30,7 +30,16 @@ export default async function handler(
     if (req.method === "GET") {
       const includeInactive = req.query.includeInactive === "true";
 
-      let query = client
+      const { data: requester } = await client
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .single();
+      
+      const isGlobalAdmin = requester?.role === "ADMIN";
+      const dbClient = isGlobalAdmin ? getSupabaseAdminClient() : client;
+
+      let query = dbClient
         .from("profiles")
         .select("id, full_name, email, role, company_id, is_active, created_at, has_vde_access, project_members!user_id(project_id)");
 
@@ -109,16 +118,12 @@ export default async function handler(
 
       if (createRes.error) {
         if (createRes.error.message?.toLowerCase().includes("already registered") || createRes.error.message?.toLowerCase().includes("already exists")) {
-          const { data: userList } = await adminClient.auth.admin.listUsers();
-          const existingUser = userList?.users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
-          authUserId = existingUser?.id || null;
-          if (!authUserId) {
-            return res.status(400).json({ ok: false, error: { message: "User already exists", code: "USER_EXISTS" } });
-          }
-          await adminClient.auth.admin.updateUserById(authUserId, {
-            email_confirm: true,
-            user_metadata: { full_name },
-            password: trimmedPassword,
+          return res.status(409).json({
+            ok: false,
+            error: {
+              message: "Użytkownik z tym adresem e-mail już istnieje w systemie.",
+              code: "USER_ALREADY_EXISTS"
+            }
           });
         } else {
           return res.status((createRes.error as any).status || 400).json({

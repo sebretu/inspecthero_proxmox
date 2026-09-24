@@ -17,7 +17,11 @@ function readJsonBody(req: NextApiRequest): any {
 }
 
 async function sendNotificationEmail(input: { to: string; subject: string; html: string }) {
-    const resendKey = process.env.RESEND_API_KEY || "re_47k34vN1_9uKk2y9XqyfBzE8aBvHk9Dqf"; // Replace with your actual Resend API Key if needed
+    const resendKey = process.env.RESEND_API_KEY;
+
+    if (!resendKey) {
+        throw new Error("Missing RESEND_API_KEY environment variable");
+    }
 
     // Configure sender name and address
     let resendFrom = process.env.RESEND_FROM || "onboarding@resend.dev";
@@ -25,10 +29,6 @@ async function sendNotificationEmail(input: { to: string; subject: string; html:
         resendFrom = "Marcin Slapinski Etecprojekt + Bau GmbH <onboarding@resend.dev>";
     } else if (!resendFrom.includes("<")) {
         resendFrom = `Marcin Slapinski Etecprojekt + Bau GmbH <${resendFrom}>`;
-    }
-
-    if (!resendKey) {
-        throw new Error("Missing RESEND_API_KEY");
     }
 
     const res = await fetch("https://api.resend.com/emails", {
