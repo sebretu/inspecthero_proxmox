@@ -147,37 +147,35 @@ jeżeli nie ma tego odnotowanego w tym pliku albo potwierdzonego przez repozytor
 ## Aktualny etap
 
 ```text
-STAGE 10 — TASK WRITE-SYNC & PHOTO/MUTATION QUEUE HARDENING
+STAGE 13 / 14 — CONFLICT HARDENING & CABLES / BMA / STROMKREISE OFFLINE REPLICA
 ```
 
 ## Status
 
 ```text
-STAGES 0–9 COMPLETED & VALIDATED — READY FOR STAGE 10
+STAGES 0–12 COMPLETED & VALIDATED — READY FOR STAGE 13 & 14
 ```
 
 ## Ostatnia zakończona faza
 
 ```text
-STAGE 7, 8, 9 — MOBILE VERTICAL SLICE, PILOT ROLLOUT & /api/sync/push (2026-09-24)
+STAGE 10, 11, 12 — TASK WRITE-SYNC, COMMENTS SYNC & PHOTO CAPTURE / UPLOAD (2026-09-24)
 ```
 
 ## Ostatnia sesja (Dziennik zmian i wdrożeń)
 
 ```text
-1. Zaimplementowano pełny przepływ uwierzytelniania w aplikacji mobilnej: apps/mobile/src/auth/useAuth.ts oraz ekran logowania apps/mobile/app/(auth)/login.tsx z obsługą trybu offline demo.
-2. Zbudowano i podpięto ekran szczegółów zadań apps/mobile/app/tasks/[id].tsx z lokalną modyfikacją statusu w SQLite i automatycznym kolejkowaniem mutacji.
-3. Utworzono ekran tworzenia zadań offline apps/mobile/app/tasks/create.tsx z generowaniem identyfikatorów i zapisem rekordu w bazie lokalnej.
-4. Utworzono komponent paska statusu synchronizacji apps/mobile/src/components/SyncBar.tsx ze wskaźnikiem stanu, liczbą oczekujących zmian i ręcznym wyzwalaczem.
-5. Zaimplementowano backendowy endpoint dwukierunkowej replikacji web/src/pages/api/sync/push.ts (idempotentna obsługa processed_mutations, wykrywanie konfliktów wersji, atomowe transakcje).
-6. Rozszerzono apps/mobile/src/sync/SyncEngine.ts o metody pushMutations(), syncAll() oraz system subskrypcji zdarzeń synchronizacji dla widoków UI.
-7. Zwalidowano kompilację TypeScript i eksporty Metro bundlera dla Android i iOS (zakończone kodem 0).
+1. Zintegrowano moduł zdjęć terenowych: apps/mobile/src/features/photos/PhotoService.ts z obsługą aparatu (expo-image-picker), trwałego zapisu w piaskownicy (expo-file-system) oraz kolejkowania uploadu do zasobnika Supabase Storage 'task-photos'.
+2. Zaimplementowano galerię zdjęć w apps/mobile/app/tasks/[id].tsx z podglądem miniaturek (expo-image), tagami stanu (🟢 Wgrane / 🟡 Offline) oraz akcjami 'Aparat' i 'Galeria'.
+3. Zbudowano oś czasu komentarzy w apps/mobile/app/tasks/[id].tsx z natychmiastowym zapisem notatki montera do lokalnego SQLite (task_comments) oraz kolejkowaniem mutacji w mutations.
+4. Zintegrowano PhotoService.uploadPendingPhotos() bezpośrednio z SyncEngine.syncAll() dla automatycznego wysyłania plików binarnych podczas synchronizacji.
+5. Zwalidowano kompilację TypeScript (npx tsc --noEmit: kod 0) oraz eksporty Metro bundlera dla Android i iOS (kod 0).
 ```
 
 ## Następna akcja
 
 ```text
-Przejść do STAGE 10: Task Write-Sync & Photo/Comment Sync Hardening (integracja zdjęć lokalnych z expo-file-system, kompresja i kolejka uploadu do Supabase Storage).
+Przejść do STAGE 13 & 14: Kable, bębny (trommels), schematy tras kablowych oraz moduły BMA/Stromkreise w widoku rzutu offline.
 ```
 
 ---
@@ -196,11 +194,11 @@ Przejść do STAGE 10: Task Write-Sync & Photo/Comment Sync Hardening (integracj
 | 7     | Mobile read-only vertical slice | 🟩 DONE (2026-09-24) |
 | 8     | Pilot rollout                   | 🟩 DONE (2026-09-24) |
 | 9     | `/api/sync/push`                | 🟩 DONE (2026-09-24) |
-| 10    | Task write-sync                 | 🟨 IN PROGRESS       |
-| 11    | Comments sync                   | ⬜ BLOCKED            |
-| 12    | Photos + filesystem upload      | ⬜ BLOCKED            |
-| 13    | Conflict handling hardening     | ⬜ BLOCKED            |
-| 14    | Cables                          | ⬜ BLOCKED            |
+| 10    | Task write-sync                 | 🟩 DONE (2026-09-24) |
+| 11    | Comments sync                   | 🟩 DONE (2026-09-24) |
+| 12    | Photos + filesystem upload      | 🟩 DONE (2026-09-24) |
+| 13    | Conflict handling hardening     | 🟨 IN PROGRESS       |
+| 14    | Cables                          | 🟨 IN PROGRESS       |
 | 15    | BMA / Stromkreise               | ⬜ BLOCKED            |
 | 16    | Attendance / Orders             | ⬜ BLOCKED            |
 | 17    | Full integration validation     | ⬜ BLOCKED            |

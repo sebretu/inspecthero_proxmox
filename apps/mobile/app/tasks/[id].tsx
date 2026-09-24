@@ -6,11 +6,15 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  TextInput,
   Alert,
+  FlatList,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { getDatabase } from '../../src/db/database';
+import { PhotoService, TaskPhotoRow } from '../../src/features/photos/PhotoService';
 
 interface TaskDetail {
   id: string;
@@ -29,17 +33,33 @@ interface TaskDetail {
   floor_name?: string;
 }
 
+interface TaskComment {
+  id: string;
+  task_id: string;
+  user_id?: string;
+  comment: string;
+  created_at: string;
+}
+
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [task, setTask] = useState<TaskDetail | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  const loadTask = useCallback(async () => {
+  const [task, setTask] = useState<TaskDetail | null>(null);
+  const [photos, setPhotos] = useState<TaskPhotoRow[]>([]);
+  const [comments, setComments] = useState<TaskComment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [capturingPhoto, setCapturingPhoto] = useState(false);
+
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const db = await getDatabase();
-      const row = await db.getFirstAsync<TaskDetail>(`
+
+      // 1. Task info
+      const taskRow = await db.getFirstAsync<TaskDetail>(`
         SELECT 
           t.*,
           p.name as plan_name,
@@ -51,18 +71,31 @@ export default function TaskDetailScreen() {
         LEFT JOIN buildings b ON f.building_id = b.id
         WHERE t.id = ?;
       `, [id]);
+      setTask(taskRow ?? null);
 
-      setTask(row ?? null);
+      // 2. Photos
+      const photoRows = await db.getAllAsync<TaskPhotoRow>(
+        'SELECT * FROM task_photos WHERE task_id = ? AND deleted_at IS NULL ORDER BY created_at DESC;',
+        [id]
+      );
+      setPhotos(photoRows);
+
+      // 3. Comments
+      const commentRows = await db.getAllAsync<TaskComment>(
+        'SELECT * FROM task_comments WHERE task_id = ? AND deleted_at IS NULL ORDER BY created_at ASC;',
+        [id]
+      );
+      setComments(commentRows);
     } catch (err) {
-      console.error('[TaskDetailScreen] Error loading task:', err);
+      console.error('[TaskDetailScreen] Error loading task data:', err);
     } finally {
       setLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
-    loadTask();
-  }, [loadTask]);
+    loadData();
+  }, [loadData]);
 
   const updateStatus = async (nextStatus: 'open' | 'in_progress' | 'closed') => {
     if (!task) return;
@@ -79,22 +112,91 @@ export default function TaskDetailScreen() {
       await db.runAsync(`
         INSERT INTO mutations (
           mutation_id, entity_type, entity_id, operation, base_version, payload, status, attempts, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?);
+        ) VALUES (?, 'tasks', ?, 'UPDATE', ?, ?, 'PENDING', 0, ?, ?);
       `, [
         `mut-${Date.now()}-${task.id}`,
-        'tasks',
         task.id,
-        'UPDATE',
         task.version,
         JSON.stringify({ status: nextStatus, updated_at: now }),
-        'PENDING',
         now,
         now,
       ]);
 
-      setTask((prev) => prev ? { ...prev, status: nextStatus, version: nextVersion, updated_at: now } : null);
+      setTask((prev) => (prev ? { ...prev, status: nextStatus, version: nextVersion, updated_at: now } : null));
     } catch (err: any) {
       Alert.alert('Błąd zapisu', err?.message || 'Nie udało się zaktualizować statusu zadania');
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !task) return;
+
+    try {
+      setSubmittingComment(true);
+      const db = await getDatabase();
+      const commentId = `com-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const now = new Date().toISOString();
+
+      await db.runAsync(`
+        INSERT INTO task_comments (id, task_id, user_id, comment, created_at, version)
+        VALUES (?, ?, 'offline_user', ?, ?, 1);
+      `, [commentId, task.id, newComment.trim(), now]);
+
+      await db.runAsync(`
+        INSERT INTO mutations (
+          mutation_id, entity_type, entity_id, operation, base_version, payload, status, attempts, created_at, updated_at
+        ) VALUES (?, 'task_comments', ?, 'INSERT', 0, ?, 'PENDING', 0, ?, ?);
+      `, [
+        `mut-${Date.now()}-${commentId}`,
+        commentId,
+        JSON.stringify({
+          task_id: task.id,
+          comment: newComment.trim(),
+          created_at: now,
+        }),
+        now,
+        now,
+      ]);
+
+      setComments((prev) => [
+        ...prev,
+        { id: commentId, task_id: task.id, comment: newComment.trim(), created_at: now },
+      ]);
+      setNewComment('');
+    } catch (err: any) {
+      Alert.alert('Błąd', err?.message || 'Nie udało się zapisać komentarza');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    if (!task) return;
+    try {
+      setCapturingPhoto(true);
+      const photo = await PhotoService.capturePhoto(task.id);
+      if (photo) {
+        setPhotos((prev) => [photo, ...prev]);
+      }
+    } catch (err: any) {
+      Alert.alert('Aparat', err?.message || 'Nie udało się wykonać zdjęcia');
+    } finally {
+      setCapturingPhoto(false);
+    }
+  };
+
+  const handlePickPhoto = async () => {
+    if (!task) return;
+    try {
+      setCapturingPhoto(true);
+      const photo = await PhotoService.pickPhoto(task.id);
+      if (photo) {
+        setPhotos((prev) => [photo, ...prev]);
+      }
+    } catch (err: any) {
+      Alert.alert('Galeria', err?.message || 'Nie udało się wybrać zdjęcia');
+    } finally {
+      setCapturingPhoto(false);
     }
   };
 
@@ -163,7 +265,7 @@ export default function TaskDetailScreen() {
 
           {/* Status Control */}
           <View style={styles.statusSection}>
-            <Text style={styles.sectionHeading}>ZMIEŃ STATUS ZADANIA (TRYB OFFLINE)</Text>
+            <Text style={styles.sectionHeading}>ZMIEŃ STATUS (TRYB OFFLINE)</Text>
             <View style={styles.statusButtonsRow}>
               {(['open', 'in_progress', 'closed'] as const).map((st) => {
                 const badge = getStatusBadge(st);
@@ -190,6 +292,95 @@ export default function TaskDetailScreen() {
               })}
             </View>
           </View>
+
+          {/* Photos Section */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionHeading}>DOKUMENTACJA ZDJĘCIOWA ({photos.length})</Text>
+              <View style={styles.photoActionsRow}>
+                <TouchableOpacity
+                  style={styles.photoActionBtn}
+                  onPress={handleTakePhoto}
+                  disabled={capturingPhoto}
+                >
+                  <Text style={styles.photoActionBtnText}>📸 Aparat</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.photoActionBtn}
+                  onPress={handlePickPhoto}
+                  disabled={capturingPhoto}
+                >
+                  <Text style={styles.photoActionBtnText}>🖼️ Galeria</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {photos.length === 0 ? (
+              <Text style={styles.emptySectionText}>Brak dodanych zdjęć do tego zadania.</Text>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosScroll}>
+                {photos.map((p) => {
+                  const imageSource = p.local_uri || p.url || '';
+                  return (
+                    <View key={p.id} style={styles.photoWrapper}>
+                      <Image
+                        source={{ uri: imageSource }}
+                        style={styles.photoThumb}
+                        contentFit="cover"
+                        transition={200}
+                      />
+                      <View style={styles.photoStatusTag}>
+                        <Text style={styles.photoStatusText}>
+                          {p.upload_status === 'uploaded' ? '🟢 Wgrane' : '🟡 Offline'}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+
+          {/* Comments Section */}
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionHeading}>KOMENTARZE I UWAGI MONTERA ({comments.length})</Text>
+
+            {comments.length === 0 ? (
+              <Text style={styles.emptySectionText}>Brak komentarzy. Dodaj pierwszą notatkę poniżej.</Text>
+            ) : (
+              <View style={styles.commentsList}>
+                {comments.map((c) => (
+                  <View key={c.id} style={styles.commentItem}>
+                    <Text style={styles.commentText}>{c.comment}</Text>
+                    <Text style={styles.commentMeta}>
+                      {new Date(c.created_at).toLocaleDateString()} {new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.addCommentRow}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Napisz komentarz / notatkę..."
+                placeholderTextColor="#64748B"
+                value={newComment}
+                onChangeText={setNewComment}
+              />
+              <TouchableOpacity
+                style={[styles.commentSendBtn, submittingComment && styles.btnDisabled]}
+                onPress={handleAddComment}
+                disabled={submittingComment || !newComment.trim()}
+              >
+                {submittingComment ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.commentSendBtnText}>Wyślij</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -203,12 +394,13 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: 16,
+    paddingBottom: 40,
   },
   breadcrumbCard: {
     backgroundColor: '#0B0F19',
     padding: 12,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: '#1E293B',
   },
@@ -222,7 +414,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: '#1E293B',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   taskTitle: {
     fontSize: 20,
@@ -260,16 +452,135 @@ const styles = StyleSheet.create({
   statusSection: {
     backgroundColor: '#0F172A',
     borderRadius: 14,
-    padding: 20,
+    padding: 18,
     borderWidth: 1,
     borderColor: '#1E293B',
+    marginBottom: 14,
+  },
+  sectionCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 14,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    marginBottom: 14,
   },
   sectionHeading: {
     fontSize: 11,
     fontWeight: '800',
     color: '#64748B',
     letterSpacing: 1,
+    marginBottom: 12,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  photoActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  photoActionBtn: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+  },
+  photoActionBtnText: {
+    color: '#38BDF8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  photosScroll: {
+    flexDirection: 'row',
+    marginTop: 4,
+  },
+  photoWrapper: {
+    marginRight: 10,
+    borderRadius: 10,
+    overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  photoThumb: {
+    width: 120,
+    height: 120,
+    borderRadius: 10,
+  },
+  photoStatusTag: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  photoStatusText: {
+    fontSize: 9,
+    color: '#F8FAFC',
+    fontWeight: '700',
+  },
+  commentsList: {
+    gap: 8,
     marginBottom: 14,
+  },
+  commentItem: {
+    backgroundColor: '#0B0F19',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  commentText: {
+    fontSize: 14,
+    color: '#F8FAFC',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  commentMeta: {
+    fontSize: 10,
+    color: '#64748B',
+  },
+  emptySectionText: {
+    fontSize: 13,
+    color: '#64748B',
+    marginVertical: 6,
+  },
+  addCommentRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: '#030712',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#F8FAFC',
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  commentSendBtn: {
+    backgroundColor: '#0284C7',
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
+  commentSendBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  btnDisabled: {
+    opacity: 0.5,
   },
   statusButtonsRow: {
     flexDirection: 'row',

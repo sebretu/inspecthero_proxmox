@@ -234,10 +234,16 @@ export class SyncEngine {
     this.notify({ status: 'SYNCING', lastError: null });
 
     try {
-      // 1. Push Outbox
+      // 1. Push Outbox mutations
       const pushRes = await this.pushMutations();
 
-      // 2. Pull Inbound Deltas
+      // 2. Upload pending binary photos to Supabase Storage
+      const { PhotoService } = await import('../features/photos/PhotoService');
+      await PhotoService.uploadPendingPhotos().catch((e) => {
+        console.warn('[SyncEngine] Photo upload background error:', e);
+      });
+
+      // 3. Pull Inbound Deltas
       const pullRes = await this.pullChanges(projectId);
 
       // 3. Count remaining pending mutations
