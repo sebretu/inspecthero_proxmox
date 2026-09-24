@@ -284,31 +284,37 @@ export class SyncEngine {
       await db.runAsync(
         `UPDATE ${table} SET deleted_at = ?, version = ? WHERE id = ?;`,
         [new Date().toISOString(), version, record_id]
-      );
+      ).catch(() => {});
       return;
     }
 
     const rowData = data as Record<string, any>;
     if (!rowData || !rowData.id) return;
 
-    const columns = Object.keys(rowData);
-    const placeholders = columns.map(() => '?').join(', ');
-    const values = Object.values(rowData).map((v) =>
-      typeof v === 'object' && v !== null ? JSON.stringify(v) : v
-    );
-
-    const updateClauses = columns
-      .filter((c) => c !== 'id')
-      .map((c) => `${c} = excluded.${c}`)
-      .join(', ');
-
-    const sql = `
-      INSERT INTO ${table} (${columns.join(', ')})
-      VALUES (${placeholders})
-      ON CONFLICT(id) DO UPDATE SET ${updateClauses};
-    `;
-
     try {
+      // Validate columns dynamically against SQLite table schema
+      const tableInfo = (await db.getAllAsync(`PRAGMA table_info(${table});`)) as { name: string }[];
+      const validCols = new Set(tableInfo.map((c) => c.name));
+      if (validCols.size === 0) return;
+
+      const columns = Object.keys(rowData).filter((k) => validCols.has(k));
+      if (columns.length === 0 || !columns.includes('id')) return;
+
+      const placeholders = columns.map(() => '?').join(', ');
+      const values = columns.map((k) => {
+        const v = rowData[k];
+        return typeof v === 'object' && v !== null ? JSON.stringify(v) : v;
+      });
+
+      const updateClauses = columns
+        .filter((c) => c !== 'id')
+        .map((c) => `${c} = excluded.${c}`)
+        .join(', ');
+
+      const sql = updateClauses.length > 0
+        ? `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders}) ON CONFLICT(id) DO UPDATE SET ${updateClauses};`
+        : `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders}) ON CONFLICT(id) DO NOTHING;`;
+
       await db.runAsync(sql, values);
     } catch (err) {
       console.warn(`[SyncEngine] Failed to apply change to ${table} (${record_id}):`, err);

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SyncEngine, SyncEngineState } from '../sync/SyncEngine';
+import { authSupabase } from '../auth/authClient';
 
 export function SyncBar() {
+  const router = useRouter();
   const [syncState, setSyncState] = useState<SyncEngineState>(SyncEngine.getState());
 
   useEffect(() => {
@@ -13,9 +16,29 @@ export function SyncBar() {
 
   const handleManualSync = async () => {
     try {
-      await SyncEngine.syncAll();
-    } catch {
-      // Handled via SyncEngine state listener
+      const { data: { session } } = await authSupabase.auth.getSession();
+      if (!session) {
+        Alert.alert(
+          'Wymagane logowanie do chmury',
+          'Aby pobrać Twoje projekty, plany i zadania z serwera, najpierw zaloguj się na swoje konto w chmurze.',
+          [
+            { text: 'Anuluj', style: 'cancel' },
+            {
+              text: 'Zaloguj się →',
+              onPress: () => router.push('/(auth)/login' as any),
+            },
+          ]
+        );
+        return;
+      }
+
+      const res = await SyncEngine.syncAll();
+      Alert.alert(
+        'Synchronizacja zakończona',
+        `Pobrano ${res.pulled} obiektów z chmury, wysłano ${res.pushed} zmian.`
+      );
+    } catch (err: any) {
+      Alert.alert('Błąd synchronizacji', err?.message || 'Nie udało się połączyć z serwerem.');
     }
   };
 
@@ -26,13 +49,19 @@ export function SyncBar() {
       <View style={styles.infoCol}>
         <View style={styles.statusRow}>
           <Text style={styles.statusDot}>
-            {syncState.status === 'SYNCED' ? '🟢' : syncState.status === 'SYNCING' ? '🟡' : syncState.status === 'ERROR' ? '🔴' : '⚪'}
+            {syncState.status === 'SYNCED'
+              ? '🟢'
+              : syncState.status === 'SYNCING'
+              ? '🟡'
+              : syncState.status === 'ERROR'
+              ? '🔴'
+              : '⚪'}
           </Text>
           <Text style={styles.statusTitle}>
             {syncState.status === 'SYNCING'
               ? 'Synchronizacja z chmurą...'
               : syncState.status === 'SYNCED'
-              ? 'Zsynchronizowano'
+              ? 'Zsynchronizowano z chmurą'
               : syncState.status === 'ERROR'
               ? 'Błąd połączenia'
               : 'Tryb Offline'}
@@ -43,7 +72,7 @@ export function SyncBar() {
             ? `Oczekujące mutacje: ${syncState.pendingCount}`
             : syncState.lastSyncedAt
             ? `Ostatni sync: ${new Date(syncState.lastSyncedAt).toLocaleTimeString()}`
-            : 'Gotowy do pracy bez zasięgu'}
+            : 'Kliknij Sync 🔄, aby pobrać dane'}
         </Text>
       </View>
 
