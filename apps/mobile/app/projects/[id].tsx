@@ -9,7 +9,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { getDatabase } from '../../src/db/database';
@@ -37,6 +37,7 @@ interface TaskItem {
 }
 
 export default function ProjectDetailScreen() {
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState('Projekt');
@@ -228,8 +229,18 @@ export default function ProjectDetailScreen() {
 
           {/* Task List Header */}
           <View style={styles.taskHeader}>
-            <Text style={styles.taskHeaderTitle}>Zadania montażowe ({tasks.length})</Text>
-            <Text style={styles.taskHeaderSubtitle}>Dotknij statusu, aby go zmienić offline</Text>
+            <View style={styles.taskHeaderTop}>
+              <View>
+                <Text style={styles.taskHeaderTitle}>Zadania montażowe ({tasks.length})</Text>
+                <Text style={styles.taskHeaderSubtitle}>Dotknij zadania, aby otworzyć szczegóły</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.addTaskBtn}
+                onPress={() => router.push({ pathname: '/tasks/create', params: { planId: 'pln-sample-001' } } as any)}
+              >
+                <Text style={styles.addTaskBtnText}>+ Nowe</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Task List */}
@@ -246,11 +257,15 @@ export default function ProjectDetailScreen() {
             renderItem={({ item }) => {
               const badge = getStatusBadge(item.status);
               return (
-                <View style={styles.taskCard}>
+                <TouchableOpacity
+                  style={styles.taskCard}
+                  activeOpacity={0.8}
+                  onPress={() => router.push(`/tasks/${item.id}` as any)}
+                >
                   <View style={styles.taskMain}>
                     <Text style={styles.taskTitle}>{item.title}</Text>
                     {item.description ? (
-                      <Text style={styles.taskDesc}>{item.description}</Text>
+                      <Text style={styles.taskDesc} numberOfLines={2}>{item.description}</Text>
                     ) : null}
                     <Text style={styles.taskMeta}>Lokalna wersja: v{item.version}</Text>
                   </View>
@@ -264,7 +279,7 @@ export default function ProjectDetailScreen() {
                       {badge.label}
                     </Text>
                   </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
               );
             }}
           />
@@ -328,6 +343,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#030712',
   },
+  taskHeaderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   taskHeaderTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -337,6 +357,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     marginTop: 2,
+  },
+  addTaskBtn: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+  },
+  addTaskBtnText: {
+    color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: '700',
   },
   list: {
     padding: 16,

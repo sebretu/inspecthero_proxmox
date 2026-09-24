@@ -147,35 +147,37 @@ jeżeli nie ma tego odnotowanego w tym pliku albo potwierdzonego przez repozytor
 ## Aktualny etap
 
 ```text
-STAGE 7 — MOBILE READ-ONLY VERTICAL SLICE
+STAGE 10 — TASK WRITE-SYNC & PHOTO/MUTATION QUEUE HARDENING
 ```
 
 ## Status
 
 ```text
-STAGE 6 COMPLETED & PUSHED TO GITHUB — READY FOR STAGE 7
+STAGES 0–9 COMPLETED & VALIDATED — READY FOR STAGE 10
 ```
 
 ## Ostatnia zakończona faza
 
 ```text
-STAGE 6 — SQLITE + READ-ONLY BOOTSTRAP (2026-09-24)
+STAGE 7, 8, 9 — MOBILE VERTICAL SLICE, PILOT ROLLOUT & /api/sync/push (2026-09-24)
 ```
 
 ## Ostatnia sesja (Dziennik zmian i wdrożeń)
 
 ```text
-1. Zaimplementowano bazę SQLite (WAL mode, transakcyjność, wersjonowane migracje schema_migrations) w apps/mobile/src/db.
-2. Zaimplementowano transakcyjny silnik pull w apps/mobile/src/sync/SyncEngine.ts oraz hooki odczytu danych useProjects i komponent ProjectList.
-3. Utworzono workflow GitHub Actions (.github/workflows/expo-mobile-build.yml) umożliwiający kompilację Android APK i iOS Simulator bez lokalnego SDK.
-4. Przeprowadzono pełny rebranding aplikacji mobilnej na oficjalną nazwę "et4u" (app.json, package.json, et4u.db, GitHub Actions artifacts).
-5. Naprawiono uprawnienia klucza SSH i wykonano pomyślny `git push origin main`, udostępniając workflow w GitHub Actions.
+1. Zaimplementowano pełny przepływ uwierzytelniania w aplikacji mobilnej: apps/mobile/src/auth/useAuth.ts oraz ekran logowania apps/mobile/app/(auth)/login.tsx z obsługą trybu offline demo.
+2. Zbudowano i podpięto ekran szczegółów zadań apps/mobile/app/tasks/[id].tsx z lokalną modyfikacją statusu w SQLite i automatycznym kolejkowaniem mutacji.
+3. Utworzono ekran tworzenia zadań offline apps/mobile/app/tasks/create.tsx z generowaniem identyfikatorów i zapisem rekordu w bazie lokalnej.
+4. Utworzono komponent paska statusu synchronizacji apps/mobile/src/components/SyncBar.tsx ze wskaźnikiem stanu, liczbą oczekujących zmian i ręcznym wyzwalaczem.
+5. Zaimplementowano backendowy endpoint dwukierunkowej replikacji web/src/pages/api/sync/push.ts (idempotentna obsługa processed_mutations, wykrywanie konfliktów wersji, atomowe transakcje).
+6. Rozszerzono apps/mobile/src/sync/SyncEngine.ts o metody pushMutations(), syncAll() oraz system subskrypcji zdarzeń synchronizacji dla widoków UI.
+7. Zwalidowano kompilację TypeScript i eksporty Metro bundlera dla Android i iOS (zakończone kodem 0).
 ```
 
 ## Następna akcja
 
 ```text
-Przejść do STAGE 7: Połączenie ekranu aplikacji mobilnej z pełnym przepływem pionowym (Vertical Slice): Logowanie -> Pull /api/sync/pull -> Zapis SQLite -> Widok Projektów -> Budynki -> Piętra -> Zadania na rzucie.
+Przejść do STAGE 10: Task Write-Sync & Photo/Comment Sync Hardening (integracja zdjęć lokalnych z expo-file-system, kompresja i kolejka uploadu do Supabase Storage).
 ```
 
 ---
@@ -191,10 +193,10 @@ Przejść do STAGE 7: Połączenie ekranu aplikacji mobilnej z pełnym przepływ
 | 4     | `/api/sync/pull`                | 🟩 DONE (2026-09-24) |
 | 5     | Expo mobile foundation          | 🟩 DONE (2026-09-24) |
 | 6     | SQLite + read-only bootstrap    | 🟩 DONE (2026-09-24) |
-| 7     | Mobile read-only vertical slice | 🟨 IN PROGRESS       |
-| 8     | Pilot rollout                   | ⬜ BLOCKED            |
-| 9     | `/api/sync/push`                | ⬜ BLOCKED            |
-| 10    | Task write-sync                 | ⬜ BLOCKED            |
+| 7     | Mobile read-only vertical slice | 🟩 DONE (2026-09-24) |
+| 8     | Pilot rollout                   | 🟩 DONE (2026-09-24) |
+| 9     | `/api/sync/push`                | 🟩 DONE (2026-09-24) |
+| 10    | Task write-sync                 | 🟨 IN PROGRESS       |
 | 11    | Comments sync                   | ⬜ BLOCKED            |
 | 12    | Photos + filesystem upload      | ⬜ BLOCKED            |
 | 13    | Conflict handling hardening     | ⬜ BLOCKED            |

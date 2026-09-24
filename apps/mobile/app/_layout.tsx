@@ -68,6 +68,13 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen
+            name="(auth)/login"
+            options={{
+              title: 'Logowanie',
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
             name="projects/index"
             options={{
               title: 'Projekty',
@@ -78,6 +85,20 @@ export default function RootLayout() {
             name="projects/[id]"
             options={{
               title: 'Szczegóły Projektu',
+              headerShown: true,
+            }}
+          />
+          <Stack.Screen
+            name="tasks/[id]"
+            options={{
+              title: 'Szczegóły Zadania',
+              headerShown: true,
+            }}
+          />
+          <Stack.Screen
+            name="tasks/create"
+            options={{
+              title: 'Nowe Zadanie',
               headerShown: true,
             }}
           />

@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDatabase } from '../src/db/database';
+import { useAuth } from '../src/auth/useAuth';
+import { SyncBar } from '../src/components/SyncBar';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user, isAuthenticated, signOut } = useAuth();
+
   const [projectCount, setProjectCount] = useState<number>(0);
   const [taskCount, setTaskCount] = useState<number>(0);
   const [pendingMutations, setPendingMutations] = useState<number>(0);
@@ -43,57 +47,89 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
 
-      <View style={styles.header}>
-        <View style={styles.brandRow}>
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoBadgeText}>⚡</Text>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.brandRow}>
+            <View style={styles.logoBadge}>
+              <Text style={styles.logoBadgeText}>⚡</Text>
+            </View>
+            <View>
+              <Text style={styles.title}>et4u</Text>
+              <Text style={styles.subtitle}>Offline-First Mobile Field Client</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.title}>et4u</Text>
-            <Text style={styles.subtitle}>Offline-First Mobile Field Client</Text>
+
+          {isAuthenticated ? (
+            <TouchableOpacity style={styles.userBadge} onPress={signOut}>
+              <Text style={styles.userEmail} numberOfLines={1}>
+                👤 {user?.email}
+              </Text>
+              <Text style={styles.logoutText}>Wyloguj</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.loginBadge}
+              onPress={() => router.push('/(auth)/login' as any)}
+            >
+              <Text style={styles.loginBadgeText}>🔑 Zaloguj do chmury</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Sync Status Bar */}
+        <SyncBar />
+
+        {/* Main Stats Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>Lokalna Baza Danych</Text>
+            <View style={styles.onlineBadge}>
+              <Text style={styles.onlineBadgeText}>🟢 SQLite (WAL)</Text>
+            </View>
+          </View>
+
+          <Text style={styles.cardDescription}>
+            Wszystkie obiekty, rzuty kondygnacji i zadania montażowe są w pełni dostępne i edytowalne bez dostępu do Internetu.
+          </Text>
+
+          <View style={styles.statsGrid}>
+            <View style={styles.statBox}>
+              <Text style={styles.statValue}>{isReady ? projectCount : '-'}</Text>
+              <Text style={styles.statLabel}>Projekty</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statValue}>{isReady ? taskCount : '-'}</Text>
+              <Text style={styles.statLabel}>Zadania</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={[styles.statValue, pendingMutations > 0 && styles.pendingStat]}>
+                {isReady ? pendingMutations : '-'}
+              </Text>
+              <Text style={styles.statLabel}>Kolejka Sync</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.card}>
-        <View style={styles.cardHeaderRow}>
-          <Text style={styles.cardTitle}>Status Replikacji</Text>
-          <View style={styles.onlineBadge}>
-            <Text style={styles.onlineBadgeText}>🟢 Aktywna (WAL)</Text>
-          </View>
+        {/* Quick Actions */}
+        <View style={styles.actionsSection}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            activeOpacity={0.8}
+            onPress={() => router.push('/projects' as any)}
+          >
+            <Text style={styles.primaryButtonText}>Przeglądaj projekty budowlane →</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            activeOpacity={0.8}
+            onPress={() => router.push('/tasks/create' as any)}
+          >
+            <Text style={styles.secondaryButtonText}>+ Dodaj nowe zadanie offline</Text>
+          </TouchableOpacity>
         </View>
-
-        <Text style={styles.cardDescription}>
-          Lokalny silnik bazodanowy przechowuje strukturę obiektów, kondygnacji i zadań z pełną obsługą trybu bez zasięgu.
-        </Text>
-
-        <View style={styles.statsGrid}>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{isReady ? projectCount : '-'}</Text>
-            <Text style={styles.statLabel}>Projekty</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{isReady ? taskCount : '-'}</Text>
-            <Text style={styles.statLabel}>Zadania</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={[styles.statValue, pendingMutations > 0 && styles.pendingStat]}>
-              {isReady ? pendingMutations : '-'}
-            </Text>
-            <Text style={styles.statLabel}>Kolejka Sync</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          activeOpacity={0.8}
-          onPress={() => router.push('/projects' as any)}
-        >
-          <Text style={styles.primaryButtonText}>Przejdź do projektów →</Text>
-        </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -102,24 +138,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#030712',
+  },
+  scroll: {
     padding: 20,
     justifyContent: 'space-between',
+    minHeight: '100%',
   },
   header: {
-    marginTop: 20,
+    marginTop: 10,
+    marginBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   logoBadge: {
-    width: 46,
-    height: 46,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0F172A',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 12,
     borderWidth: 1,
     borderColor: '#38BDF8',
   },
@@ -127,15 +170,47 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   title: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800',
     color: '#F8FAFC',
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#94A3B8',
+  },
+  userBadge: {
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    alignItems: 'flex-end',
+    maxWidth: 150,
+  },
+  userEmail: {
+    fontSize: 11,
+    color: '#F8FAFC',
+    fontWeight: '600',
+  },
+  logoutText: {
+    fontSize: 10,
+    color: '#EF4444',
     marginTop: 2,
+  },
+  loginBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+  },
+  loginBadgeText: {
+    color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: '700',
   },
   card: {
     backgroundColor: '#0F172A',
@@ -143,6 +218,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#1E293B',
+    marginBottom: 20,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -199,7 +275,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '500',
   },
-  footer: {
+  actionsSection: {
+    gap: 12,
     marginBottom: 10,
   },
   primaryButton: {
@@ -207,15 +284,23 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    backgroundColor: '#1E293B',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  secondaryButtonText: {
+    color: '#38BDF8',
+    fontSize: 14,
     fontWeight: '700',
   },
 });
