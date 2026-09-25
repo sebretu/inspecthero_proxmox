@@ -40,7 +40,7 @@ interface TaskPin {
   description?: string;
   pos_x: number;
   pos_y: number;
-  status: 'open' | 'in_progress' | 'closed';
+  status: 'OPEN' | 'IN_PROGRESS' | 'DONE_WAITING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'open' | 'in_progress' | 'closed';
   priority?: string;
   version: number;
 }
@@ -787,8 +787,8 @@ export default function InteractivePlanScreen() {
             user-select: none;
           }
           .custom-pin {
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             border-radius: 50% !important;
             position: relative;
             display: flex;
@@ -796,33 +796,67 @@ export default function InteractivePlanScreen() {
             justify-content: center;
             color: #ffffff;
             font-weight: 800;
-            font-size: 11px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+            font-size: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
             border: 2px solid #ffffff;
             cursor: pointer;
             transition: transform 0.15s ease;
           }
-          .custom-pin:hover {
+          .custom-pin:hover, .custom-pin:active {
             transform: scale(1.2);
           }
-          .pin-open { background-color: #38BDF8; }
-          .pin-in_progress { background-color: #EAB308; }
-          .pin-closed { background-color: #22C55E; }
+          .pin-OPEN, .pin-open { background-color: #0284C7; border-color: #38BDF8; }
+          .pin-IN_PROGRESS, .pin-in_progress { background-color: #D97706; border-color: #FBBF24; }
+          .pin-DONE_WAITING_APPROVAL, .pin-done_waiting_approval {
+            background-color: #7C3AED;
+            border-color: #C084FC;
+            box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.45), 0 2px 12px rgba(124, 58, 237, 0.8);
+          }
+          .pin-APPROVED, .pin-approved, .pin-closed { background-color: #059669; border-color: #34D399; }
+          .pin-REJECTED, .pin-rejected { background-color: #DC2626; border-color: #F87171; }
+          
+          .svg-marker-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+          }
+          .svg-marker-container:hover, .svg-marker-container:active {
+            transform: scale(1.22);
+          }
+          .svg-marker-box {
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            border-radius: 6px;
+            padding: 3px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
           .pin-label {
             position: absolute;
-            bottom: -18px;
+            bottom: -20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(15, 23, 42, 0.94);
+            background: rgba(15, 23, 42, 0.95);
             color: #F8FAFC;
             font-size: 9px;
             font-weight: 700;
-            padding: 1px 5px;
+            padding: 1px 6px;
             border-radius: 4px;
             white-space: nowrap;
             border: 1px solid #334155;
             pointer-events: none;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.6);
+            z-index: 10;
           }
           .leaflet-container {
             background-color: #030712 !important;
@@ -877,20 +911,113 @@ export default function InteractivePlanScreen() {
             }
           }
 
+          // DIN / VDE / CAD Vector SVG Symbol Generator
+          function getVectorSvgHtml(type, color, rotation) {
+            const rot = rotation || 0;
+            const rotStyle = rot ? 'transform: rotate(' + rot + 'deg); transform-origin: center;' : '';
+            const c = color || '#38BDF8';
+
+            if (type === 'sym_socket' || type === 'socket') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><path d="M 20 70 A 30 30 0 0 1 80 70" fill="none" stroke="' + c + '" stroke-width="9" stroke-linecap="round"/><line x1="16" y1="40" x2="84" y2="40" stroke="' + c + '" stroke-width="9" stroke-linecap="round"/><line x1="50" y1="40" x2="50" y2="10" stroke="' + c + '" stroke-width="9" stroke-linecap="round"/></svg>';
+            }
+            if (type === 'sym_socket_2x' || type === 'socket_2x') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><path d="M 15 70 A 35 35 0 0 1 85 70" fill="none" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/><line x1="10" y1="40" x2="90" y2="40" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/><line x1="38" y1="40" x2="38" y2="10" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/><line x1="62" y1="40" x2="62" y2="10" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/><text x="50" y="94" fill="' + c + '" font-size="22" font-weight="900" text-anchor="middle">2x</text></svg>';
+            }
+            if (type === 'sym_cee16' || type === 'cee16' || type === 'cee') {
+              return '<svg viewBox="0 0 100 110" style="width:100%;height:100%;' + rotStyle + '"><path d="M 25 70 A 25 25 0 0 1 75 70" fill="none" stroke="#DC2626" stroke-width="8" stroke-linecap="round"/><line x1="20" y1="45" x2="80" y2="45" stroke="#DC2626" stroke-width="8" stroke-linecap="round"/><line x1="50" y1="45" x2="50" y2="10" stroke="#DC2626" stroke-width="8" stroke-linecap="round"/><line x1="38" y1="36" x2="62" y2="28" stroke="#DC2626" stroke-width="7" stroke-linecap="round"/><line x1="38" y1="27" x2="62" y2="19" stroke="#DC2626" stroke-width="7" stroke-linecap="round"/><line x1="38" y1="18" x2="62" y2="10" stroke="#DC2626" stroke-width="7" stroke-linecap="round"/><text x="50" y="102" fill="#DC2626" font-weight="900" font-size="24" text-anchor="middle">16A</text></svg>';
+            }
+            if (type === 'sym_cee32' || type === 'cee32') {
+              return '<svg viewBox="0 0 100 110" style="width:100%;height:100%;' + rotStyle + '"><path d="M 25 70 A 25 25 0 0 1 75 70" fill="none" stroke="#9333EA" stroke-width="9" stroke-linecap="round"/><line x1="20" y1="45" x2="80" y2="45" stroke="#9333EA" stroke-width="9" stroke-linecap="round"/><line x1="50" y1="45" x2="50" y2="10" stroke="#9333EA" stroke-width="9" stroke-linecap="round"/><line x1="38" y1="36" x2="62" y2="28" stroke="#9333EA" stroke-width="8" stroke-linecap="round"/><line x1="38" y1="27" x2="62" y2="19" stroke="#9333EA" stroke-width="8" stroke-linecap="round"/><line x1="38" y1="18" x2="62" y2="10" stroke="#9333EA" stroke-width="8" stroke-linecap="round"/><text x="50" y="102" fill="#9333EA" font-weight="900" font-size="24" text-anchor="middle">32A</text></svg>';
+            }
+            if (type === 'sym_light' || type === 'light') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="34" fill="rgba(234,179,8,0.18)" stroke="#EAB308" stroke-width="8"/><line x1="26" y1="26" x2="74" y2="74" stroke="#EAB308" stroke-width="8" stroke-linecap="round"/><line x1="74" y1="26" x2="26" y2="74" stroke="#EAB308" stroke-width="8" stroke-linecap="round"/></svg>';
+            }
+            if (type === 'sym_switch' || type === 'switch') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="32" fill="none" stroke="#F59E0B" stroke-width="8"/><line x1="50" y1="50" x2="78" y2="22" stroke="#F59E0B" stroke-width="8" stroke-linecap="round"/><circle cx="78" cy="22" r="5" fill="#F59E0B"/></svg>';
+            }
+            if (type === 'sym_edv' || type === 'edv') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="18" y="18" width="64" height="64" rx="10" fill="rgba(16,185,129,0.15)" stroke="#10B981" stroke-width="8"/><rect x="36" y="42" width="28" height="24" rx="4" fill="none" stroke="#10B981" stroke-width="6"/><line x1="50" y1="66" x2="50" y2="52" stroke="#10B981" stroke-width="6"/></svg>';
+            }
+            if (type === 'detector_blue' || type === 'bma_smoke') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="42" fill="rgba(56,189,248,0.2)" stroke="#0284C7" stroke-width="8"/><circle cx="50" cy="50" r="22" fill="none" stroke="#0284C7" stroke-width="6"/><circle cx="50" cy="50" r="8" fill="#0284C7"/></svg>';
+            }
+            if (type === 'detector_red' || type === 'bma_dual') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="42" fill="rgba(239,68,68,0.2)" stroke="#DC2626" stroke-width="8"/><circle cx="50" cy="50" r="28" fill="none" stroke="#DC2626" stroke-width="6"/><circle cx="50" cy="50" r="14" fill="none" stroke="#DC2626" stroke-width="4"/><circle cx="50" cy="50" r="6" fill="#DC2626"/></svg>';
+            }
+            if (type === 'thermo_melder' || type === 'bma_heat') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="42" fill="rgba(249,115,22,0.2)" stroke="#EA580C" stroke-width="8"/><path d="M 50 24 L 50 62 M 42 66 A 10 10 0 1 0 58 66 A 10 10 0 0 0 42 66" fill="#EA580C" stroke="#EA580C" stroke-width="4"/></svg>';
+            }
+            if (type === 'handmelder' || type === 'bma_rop') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" rx="8" fill="rgba(220,38,38,0.2)" stroke="#DC2626" stroke-width="8"/><circle cx="50" cy="50" r="16" fill="#DC2626"/><text x="50" y="80" fill="#DC2626" font-size="14" font-weight="900" text-anchor="middle">BMA</text></svg>';
+            }
+            if (type === 'sirene' || type === 'bma_siren') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><polygon points="30,35 60,15 60,85 30,65" fill="#F97316" stroke="#C2410C" stroke-width="6"/><rect x="18" y="38" width="14" height="24" fill="#C2410C"/><path d="M 70 30 A 25 25 0 0 1 70 70" fill="none" stroke="#EA580C" stroke-width="6" stroke-linecap="round"/></svg>';
+            }
+            if (type === 'bmz') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="12" y="12" width="76" height="76" rx="8" fill="#B91C1C" stroke="#7F1D1D" stroke-width="8"/><text x="50" y="60" fill="#FFFFFF" font-size="24" font-weight="900" font-family="sans-serif" text-anchor="middle">BMZ</text></svg>';
+            }
+            if (type === 'notlicht_pikto' || type === 'notleuchte') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 30 50 L 55 30 L 55 42 L 75 42 L 75 58 L 55 58 L 55 70 Z" fill="#FFFFFF"/></svg>';
+            }
+            if (type === 'revisionsklappe') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" fill="rgba(245,158,11,0.15)" stroke="#D97706" stroke-width="7"/><line x1="15" y1="15" x2="85" y2="85" stroke="#D97706" stroke-width="6"/><line x1="15" y1="85" x2="85" y2="15" stroke="#D97706" stroke-width="6"/></svg>';
+            }
+            if (type === 'warmepumpe_aussen') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" rx="10" fill="rgba(2,132,199,0.15)" stroke="#0284C7" stroke-width="7"/><circle cx="50" cy="50" r="26" fill="none" stroke="#0284C7" stroke-width="5"/><path d="M 50 24 L 50 76 M 24 50 L 76 50 M 32 32 L 68 68 M 32 68 L 68 32" stroke="#0284C7" stroke-width="4"/></svg>';
+            }
+            if (type === 'warmepumpe_innen') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="20" y="12" width="60" height="76" rx="8" fill="rgba(14,165,233,0.15)" stroke="#0284C7" stroke-width="7"/><line x1="30" y1="35" x2="70" y2="35" stroke="#0284C7" stroke-width="5"/><circle cx="50" cy="60" r="14" fill="none" stroke="#0284C7" stroke-width="4"/></svg>';
+            }
+            if (type === 'kabeltrasse') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><line x1="15" y1="30" x2="85" y2="30" stroke="#64748B" stroke-width="8"/><line x1="15" y1="70" x2="85" y2="70" stroke="#64748B" stroke-width="8"/><line x1="30" y1="30" x2="30" y2="70" stroke="#64748B" stroke-width="6"/><line x1="50" y1="30" x2="50" y2="70" stroke="#64748B" stroke-width="6"/><line x1="70" y1="30" x2="70" y2="70" stroke="#64748B" stroke-width="6"/></svg>';
+            }
+
+            // Fallback CAD circle glyph
+            return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="38" fill="none" stroke="' + c + '" stroke-width="8"/><circle cx="50" cy="50" r="12" fill="' + c + '"/></svg>';
+          }
+
+          // Strict 90-degree orthogonal polyline generator
+          function makeStrictOrthoPolyline(pts) {
+            if (!pts || pts.length < 2) return pts;
+            const res = [pts[0]];
+            for (let i = 0; i < pts.length - 1; i++) {
+              const pA = res[res.length - 1];
+              const pB = pts[i + 1];
+              const dx = pB.x - pA.x;
+              const dy = pB.y - pA.y;
+              if (Math.abs(dx) < 1 || Math.abs(dy) < 1) {
+                res.push(pB);
+                continue;
+              }
+              const corner = Math.abs(dx) >= Math.abs(dy)
+                ? { x: pB.x, y: pA.y }
+                : { x: pA.x, y: pB.y };
+              res.push(corner, pB);
+            }
+            return res;
+          }
+
           const symbolMeta = ${JSON.stringify(ALL_SYMBOLS)};
 
           window.addTaskMarker = function(t) {
             if (!t) return;
             const lat = -(t.pos_y || 400) / Math.pow(2, maxZoom);
             const lng = (t.pos_x || 400) / Math.pow(2, maxZoom);
-            const statusClass = 'pin-' + (t.status || 'open');
+            const statusClass = 'pin-' + (t.status || 'OPEN');
             const safeTitle = escapeHtml(t.title || 'Zadanie').substring(0, 20);
+
+            let statusIcon = '📌';
+            const st = (t.status || '').toUpperCase();
+            if (st === 'IN_PROGRESS') statusIcon = '⚙️';
+            else if (st === 'DONE_WAITING_APPROVAL') statusIcon = '⏳';
+            else if (st === 'APPROVED' || st === 'CLOSED') statusIcon = '✓';
+            else if (st === 'REJECTED') statusIcon = '✕';
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="custom-pin ' + statusClass + '" style="width: 28px; height: 28px;">📌<span class="pin-label">' + safeTitle + '</span></div>',
-              iconSize: [28, 28],
-              iconAnchor: [14, 14],
+              html: '<div class="custom-pin ' + statusClass + '" style="width: 30px; height: 30px;">' + statusIcon + '<span class="pin-label">' + safeTitle + '</span></div>',
+              iconSize: [30, 30],
+              iconAnchor: [15, 15],
             });
 
             const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
@@ -905,18 +1032,13 @@ export default function InteractivePlanScreen() {
             const lat = -(c.pos_y || 500) / Math.pow(2, maxZoom);
             const lng = (c.pos_x || 500) / Math.pow(2, maxZoom);
             const safeName = escapeHtml(c.circuit_code || c.short_label || c.circuit_name || 'Obwód').substring(0, 15);
-
-            let emoji = '⚡';
-            let bgCol = '#3B82F6';
-            if (c.type === 'light') { emoji = '💡'; bgCol = '#EAB308'; }
-            else if (c.type === 'cee') { emoji = '⚡'; bgCol = '#EF4444'; }
-            else if (c.type === 'edv') { emoji = '🌐'; bgCol = '#10B981'; }
+            const svgHtml = getVectorSvgHtml(c.type || 'sym_socket', c.color || '#38BDF8', 0);
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="custom-pin" style="width: 26px; height: 26px; background-color: ' + bgCol + ';">' + emoji + '<span class="pin-label">' + safeName + '</span></div>',
-              iconSize: [26, 26],
-              iconAnchor: [13, 13],
+              html: '<div class="svg-marker-container"><div class="svg-marker-box">' + svgHtml + '</div><span class="pin-label">' + safeName + '</span></div>',
+              iconSize: [34, 34],
+              iconAnchor: [17, 17],
             });
 
             const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
@@ -932,12 +1054,14 @@ export default function InteractivePlanScreen() {
             const lng = (s.pos_x || (s.x_norm * width)) / Math.pow(2, maxZoom);
             const def = symbolMeta.find(function(d) { return d.id === s.symbol_type; }) || { emoji: '📍', color: '#38BDF8' };
             const safeLabel = escapeHtml(s.label || s.symbol_type).substring(0, 18);
+            const rot = s.parsed_desc?.rotation || 0;
+            const svgHtml = getVectorSvgHtml(s.symbol_type, def.color || '#38BDF8', rot);
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="custom-pin" style="width: 28px; height: 28px; background-color: ' + def.color + ';">' + def.emoji + '<span class="pin-label">' + safeLabel + '</span></div>',
-              iconSize: [28, 28],
-              iconAnchor: [14, 14],
+              html: '<div class="svg-marker-container"><div class="svg-marker-box" style="border-color: ' + def.color + '44;">' + svgHtml + '</div><span class="pin-label">' + safeLabel + '</span></div>',
+              iconSize: [34, 34],
+              iconAnchor: [17, 17],
             });
 
             const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
@@ -955,7 +1079,8 @@ export default function InteractivePlanScreen() {
             } catch(e) {}
 
             if (pts && pts.length >= 2) {
-              const latlngs = pts.map(function(p) {
+              const orthoPts = makeStrictOrthoPolyline(pts);
+              const latlngs = orthoPts.map(function(p) {
                 return [-p.y / Math.pow(2, maxZoom), p.x / Math.pow(2, maxZoom)];
               });
               const poly = L.polyline(latlngs, {

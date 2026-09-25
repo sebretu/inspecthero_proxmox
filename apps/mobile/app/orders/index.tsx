@@ -41,18 +41,32 @@ interface ProjectOption {
   name: string;
 }
 
+interface OrderHistoryItem {
+  id: string;
+  order_number?: string;
+  project_id?: string;
+  project_name?: string;
+  status: string;
+  notes?: string;
+  items_count?: number;
+  items?: Array<{ name: string; quantity: number; unit: string }>;
+  created_at: string;
+}
+
 export default function MaterialsCatalogScreen() {
   const router = useRouter();
   const { t } = useLanguage();
   const { isAdmin } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'catalog' | 'cart'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'cart' | 'history'>('catalog');
   const [materials, setMaterials] = useState<MaterialItem[]>([]);
   const [categories, setCategories] = useState<MaterialCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<Record<string, number>>({});
   const [orderNotes, setOrderNotes] = useState('');
+  const [orderHistory, setOrderHistory] = useState<OrderHistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -162,15 +176,50 @@ export default function MaterialsCatalogScreen() {
     } catch (e) {}
   }, [selectedProjectId]);
 
+  const loadOrderHistory = useCallback(async () => {
+    try {
+      setLoadingHistory(true);
+      const { data: { session } } = await authSupabase.auth.getSession();
+      const headers: Record<string, string> = session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {};
+
+      const res = await fetch(`${API_BASE_URL}/api/orders`, { headers });
+      if (res.ok) {
+        const json = await res.json();
+        const items = Array.isArray(json) ? json : (json?.data || []);
+        setOrderHistory(
+          items.map((o: any) => ({
+            id: o.id,
+            order_number: o.order_number || o.id?.slice(0, 8),
+            project_id: o.project_id,
+            project_name: o.project_name || o.project?.name || 'Projekt budowlany',
+            status: o.status || 'PENDING',
+            notes: o.notes,
+            items_count: Array.isArray(o.items) ? o.items.length : o.items_count || 0,
+            items: o.items || [],
+            created_at: o.created_at || new Date().toISOString(),
+          }))
+        );
+      }
+    } catch (e) {
+      console.warn('[Orders] History load error:', e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadData();
     loadProjects();
-  }, [loadData, loadProjects]);
+    loadOrderHistory();
+  }, [loadData, loadProjects, loadOrderHistory]);
 
   const onRefresh = () => {
     setRefreshing(true);
     loadData();
     loadProjects();
+    loadOrderHistory();
   };
 
   // Quantity in Cart Management
@@ -545,14 +594,14 @@ export default function MaterialsCatalogScreen() {
         }}
       />
 
-      {/* Main Tabs: Katalog vs Koszyk */}
+      {/* Main Tabs: Katalog vs Koszyk vs Historia */}
       <View style={styles.tabsHeader}>
         <TouchableOpacity
           style={[styles.mainTab, activeTab === 'catalog' && styles.mainTabActive]}
           onPress={() => setActiveTab('catalog')}
         >
           <Text style={[styles.mainTabText, activeTab === 'catalog' && styles.mainTabTextActive]}>
-            📦 Katalog Materiałów ({materials.length})
+            📦 Katalog ({materials.length})
           </Text>
         </TouchableOpacity>
 
@@ -561,7 +610,16 @@ export default function MaterialsCatalogScreen() {
           onPress={() => setActiveTab('cart')}
         >
           <Text style={[styles.mainTabText, activeTab === 'cart' && styles.mainTabTextActive]}>
-            🛒 Zapotrzebowanie {totalCartCount > 0 ? `(${totalCartCount})` : ''}
+            🛒 Koszyk {totalCartCount > 0 ? `(${totalCartCount})` : ''}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.mainTab, activeTab === 'history' && styles.mainTabActive]}
+          onPress={() => setActiveTab('history')}
+        >
+          <Text style={[styles.mainTabText, activeTab === 'history' && styles.mainTabTextActive]}>
+            📜 Historia ({orderHistory.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -638,7 +696,7 @@ export default function MaterialsCatalogScreen() {
             />
           )}
         </View>
-      ) : (
+      ) : activeTab === 'cart' ? (
         /* TAB 2: CART / ZAPOTRZEBOWANIE DLA PROJEKTU */
         <ScrollView style={styles.cartScroll} contentContainerStyle={{ padding: 16 }}>
           <Text style={styles.cartSectionHeading}>WYBIERZ PROJEKT DOCELOWY:</Text>
@@ -726,6 +784,57 @@ export default function MaterialsCatalogScreen() {
             </View>
           )}
         </ScrollView>
+      ) : (
+        /* TAB 3: ORDER HISTORY */
+        <FlatList
+          data={orderHistory}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#38BDF8" />}
+          ListEmptyComponent={
+            loadingHistory ? (
+              <View style={styles.center}>
+                <ActivityIndicator size="large" color="#38BDF8" />
+                <Text style={styles.loadingText}>Ładowanie historii zamówień...</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyEmoji}>📜</Text>
+                <Text style={styles.emptyTitle}>Brak historii zamówień</Text>
+                <Text style={styles.emptySub}>
+                  Złożone zapotrzebowania materiałowe pojawią się na tej liście.
+                </Text>
+              </View>
+            )
+          }
+          renderItem={({ item }) => {
+            const st = (item.status || 'PENDING').toUpperCase();
+            let statusColor = '#38BDF8';
+            let statusBg = 'rgba(56, 189, 248, 0.15)';
+            if (st === 'APPROVED') { statusColor = '#10B981'; statusBg = 'rgba(16, 185, 129, 0.15)'; }
+            else if (st === 'DELIVERED') { statusColor = '#22C55E'; statusBg = 'rgba(34, 197, 94, 0.2)'; }
+            else if (st === 'REJECTED' || st === 'CANCELLED') { statusColor = '#EF4444'; statusBg = 'rgba(239, 68, 68, 0.15)'; }
+
+            return (
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>Zamówienie #{item.order_number || item.id.slice(0, 8)}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
+                    <Text style={[styles.statusText, { color: statusColor }]}>{st}</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.cardDesc}>🏢 {item.project_name}</Text>
+                {item.notes ? <Text style={[styles.emptySub, { textAlign: 'left', marginBottom: 8 }]}>Uwagi: {item.notes}</Text> : null}
+
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaLabel}>Pozycji: <Text style={styles.metaValue}>{item.items_count || 0}</Text></Text>
+                  <Text style={styles.metaLabel}>Data: <Text style={styles.metaValue}>{new Date(item.created_at).toLocaleDateString()}</Text></Text>
+                </View>
+              </View>
+            );
+          }}
+        />
       )}
 
       {/* MODAL: ADD / EDIT MATERIAL */}
@@ -921,6 +1030,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1E293B',
     marginBottom: 6,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  cardTitle: {
+    color: '#F8FAFC',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  cardDesc: {
+    color: '#94A3B8',
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  metaLabel: {
+    color: '#64748B',
+    fontSize: 11,
+  },
+  metaValue: {
+    color: '#F8FAFC',
+    fontWeight: '700',
   },
   cardMain: {
     marginBottom: 8,

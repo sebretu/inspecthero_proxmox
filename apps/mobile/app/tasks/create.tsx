@@ -17,6 +17,11 @@ import { useLanguage } from '../../src/i18n/LanguageContext';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
 
+interface ProfileOption {
+  id: string;
+  name: string;
+}
+
 export default function CreateTaskScreen() {
   const { planId, type: initialType } = useLocalSearchParams<{ planId?: string; type?: string }>();
   const router = useRouter();
@@ -28,12 +33,35 @@ export default function CreateTaskScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal');
+  const [dueDate, setDueDate] = useState('');
+  const [assignedUserId, setAssignedUserId] = useState<string>('');
+  const [profiles, setProfiles] = useState<ProfileOption[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (initialType && ['task', 'question', 'revision', 'fehler'].includes(initialType)) {
       setItemType(initialType as any);
     }
+
+    const loadProfiles = async () => {
+      try {
+        const db = await getDatabase();
+        const profileRows = await db.getAllAsync<{ id: string; full_name: string | null; email: string | null }>(
+          'SELECT id, full_name, email FROM profiles ORDER BY full_name ASC;'
+        );
+        if (profileRows) {
+          setProfiles(
+            profileRows.map((p) => ({
+              id: p.id,
+              name: p.full_name || p.email || p.id,
+            }))
+          );
+        }
+      } catch (e) {
+        console.warn('[CreateTask] Profiles load warning:', e);
+      }
+    };
+    loadProfiles();
   }, [initialType]);
 
   const handleSave = async () => {
@@ -54,7 +82,6 @@ export default function CreateTaskScreen() {
       };
 
       if (itemType === 'revision') {
-        const revId = `rev-${Date.now()}`;
         if (session?.access_token) {
           await fetch(`${API_BASE_URL}/api/revisions`, {
             method: 'POST',
@@ -67,7 +94,6 @@ export default function CreateTaskScreen() {
           }).catch(() => {});
         }
       } else if (itemType === 'fehler') {
-        const fehlerId = `fhl-${Date.now()}`;
         if (session?.access_token) {
           await fetch(`${API_BASE_URL}/api/fehler`, {
             method: 'POST',
@@ -84,12 +110,14 @@ export default function CreateTaskScreen() {
         // Task or Question
         const taskId = `tsk-mob-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         const isQuestion = itemType === 'question';
+        const formattedDueDate = dueDate.trim() ? dueDate.trim() : null;
+        const targetAssignee = assignedUserId || null;
 
         await db.runAsync(`
           INSERT INTO tasks (
-            id, plan_id, title, description, status, priority, pos_x, pos_y, created_at, updated_at, version
-          ) VALUES (?, ?, ?, ?, 'open', ?, 500, 500, ?, ?, 1);
-        `, [taskId, targetPlanId, title.trim(), description.trim() || null, priority, now, now]);
+            id, plan_id, title, description, status, priority, assigned_user_id, due_date, pos_x, pos_y, created_at, updated_at, version
+          ) VALUES (?, ?, ?, ?, 'OPEN', ?, ?, ?, 500, 500, ?, ?, 1);
+        `, [taskId, targetPlanId, title.trim(), description.trim() || null, priority, targetAssignee, formattedDueDate, now, now]);
 
         await db.runAsync(`
           INSERT INTO mutations (
@@ -102,8 +130,10 @@ export default function CreateTaskScreen() {
             plan_id: targetPlanId,
             title: title.trim(),
             description: description.trim() || null,
-            status: 'open',
+            status: 'OPEN',
             priority,
+            assigned_user_id: targetAssignee,
+            due_date: formattedDueDate,
             is_question: isQuestion,
             created_at: now,
           }),
@@ -212,6 +242,59 @@ export default function CreateTaskScreen() {
             />
           </View>
 
+          {itemType === 'task' && (
+            <>
+              {/* Assignee Selection */}
+              {profiles.length > 0 && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>PRZYPISZ MONTERA</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.profilesScroll}>
+                    <TouchableOpacity
+                      style={[
+                        styles.profileChip,
+                        !assignedUserId && styles.profileChipActive,
+                      ]}
+                      onPress={() => setAssignedUserId('')}
+                    >
+                      <Text style={[styles.profileChipText, !assignedUserId && styles.profileChipTextActive]}>
+                        Nieprzypisany
+                      </Text>
+                    </TouchableOpacity>
+                    {profiles.map((p) => {
+                      const isSelected = assignedUserId === p.id;
+                      return (
+                        <TouchableOpacity
+                          key={p.id}
+                          style={[
+                            styles.profileChip,
+                            isSelected && styles.profileChipActive,
+                          ]}
+                          onPress={() => setAssignedUserId(p.id)}
+                        >
+                          <Text style={[styles.profileChipText, isSelected && styles.profileChipTextActive]}>
+                            👤 {p.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Due Date */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>TERMIN WYKONANIA (DUE DATE)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="RRRR-MM-DD (np. 2026-10-15)"
+                  placeholderTextColor="#64748B"
+                  value={dueDate}
+                  onChangeText={setDueDate}
+                />
+              </View>
+            </>
+          )}
+
           <View style={styles.inputGroup}>
             <Text style={styles.label}>PRIORYTET</Text>
             <View style={styles.priorityContainer}>
@@ -272,6 +355,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     padding: 16,
+    paddingBottom: 40,
   },
   typeSelectorRow: {
     flexDirection: 'row',
@@ -303,24 +387,50 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
     color: '#94A3B8',
-    marginBottom: 6,
+    marginBottom: 8,
     letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: '#1E293B',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#030712',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     color: '#F8FAFC',
     fontSize: 14,
-    borderWidth: 1,
-    borderColor: '#334155',
   },
   textArea: {
-    minHeight: 100,
+    height: 100,
     textAlignVertical: 'top',
+  },
+  profilesScroll: {
+    flexDirection: 'row',
+  },
+  profileChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#1E293B',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginRight: 8,
+  },
+  profileChipActive: {
+    backgroundColor: '#0284C7',
+    borderColor: '#38BDF8',
+  },
+  profileChipText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  profileChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
   priorityContainer: {
     flexDirection: 'row',
@@ -328,27 +438,32 @@ const styles = StyleSheet.create({
   },
   priorityButton: {
     flex: 1,
-    paddingVertical: 10,
-    backgroundColor: '#1E293B',
-    borderRadius: 8,
-    alignItems: 'center',
+    backgroundColor: '#030712',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E293B',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
   },
   priorityText: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '700',
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
   },
   saveButton: {
+    borderRadius: 12,
     paddingVertical: 14,
-    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   saveButtonText: {
     color: '#0F172A',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
   },
 });

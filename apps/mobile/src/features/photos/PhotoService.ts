@@ -27,7 +27,10 @@ export class PhotoService {
   /**
    * Capture photo with camera and store in persistent local storage & SQLite
    */
-  static async capturePhoto(taskId: string): Promise<TaskPhotoRow | null> {
+  /**
+   * Capture photo with camera and store in persistent local storage & SQLite
+   */
+  static async capturePhoto(taskId: string, photoType: string = 'STANDARD'): Promise<TaskPhotoRow | null> {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       throw new Error('Brak uprawnień do aparatu');
@@ -43,13 +46,13 @@ export class PhotoService {
       return null;
     }
 
-    return this.savePhotoLocally(taskId, result.assets[0].uri);
+    return this.savePhotoLocally(taskId, result.assets[0].uri, photoType);
   }
 
   /**
    * Pick photo from device gallery
    */
-  static async pickPhoto(taskId: string): Promise<TaskPhotoRow | null> {
+  static async pickPhoto(taskId: string, photoType: string = 'STANDARD'): Promise<TaskPhotoRow | null> {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       throw new Error('Brak uprawnień do galerii');
@@ -65,13 +68,13 @@ export class PhotoService {
       return null;
     }
 
-    return this.savePhotoLocally(taskId, result.assets[0].uri);
+    return this.savePhotoLocally(taskId, result.assets[0].uri, photoType);
   }
 
   /**
    * Copy file into sandbox and insert into SQLite
    */
-  private static async savePhotoLocally(taskId: string, sourceUri: string): Promise<TaskPhotoRow> {
+  private static async savePhotoLocally(taskId: string, sourceUri: string, photoType: string = 'STANDARD'): Promise<TaskPhotoRow> {
     await ensurePhotosDirExists();
 
     const photoId = `pho-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -87,8 +90,8 @@ export class PhotoService {
     await db.runAsync(`
       INSERT INTO task_photos (
         id, task_id, url, local_uri, photo_type, upload_status, created_at, version
-      ) VALUES (?, ?, NULL, ?, 'standard', 'pending_upload', ?, 1);
-    `, [photoId, taskId, destinationUri, now]);
+      ) VALUES (?, ?, NULL, ?, ?, 'pending_upload', ?, 1);
+    `, [photoId, taskId, destinationUri, photoType, now]);
 
     // Record mutation for sync queue
     await db.runAsync(`
@@ -100,7 +103,7 @@ export class PhotoService {
       photoId,
       JSON.stringify({
         task_id: taskId,
-        photo_type: 'standard',
+        photo_type: photoType,
         created_at: now,
       }),
       now,
@@ -112,7 +115,7 @@ export class PhotoService {
       task_id: taskId,
       url: null,
       local_uri: destinationUri,
-      photo_type: 'standard',
+      photo_type: photoType,
       upload_status: 'pending_upload',
       created_at: now,
       version: 1,

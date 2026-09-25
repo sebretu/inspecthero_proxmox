@@ -18,6 +18,14 @@ export default function HomeScreen() {
   const [projectCount, setProjectCount] = useState<number>(0);
   const [taskCount, setTaskCount] = useState<number>(0);
   const [pendingMutations, setPendingMutations] = useState<number>(0);
+  const [recentTasks, setRecentTasks] = useState<Array<{
+    id: string;
+    title: string;
+    status: string;
+    priority: string | null;
+    plan_name?: string;
+    created_at: string;
+  }>>([]);
   const [isReady, setIsReady] = useState(false);
 
   const loadStats = useCallback(async () => {
@@ -33,9 +41,36 @@ export default function HomeScreen() {
         "SELECT COUNT(*) as count FROM mutations WHERE status = 'PENDING';"
       );
 
+      const tasksRows = await db.getAllAsync<{
+        id: string;
+        title: string;
+        status: string;
+        priority: string | null;
+        plan_name: string | null;
+        created_at: string;
+      }>(`
+        SELECT 
+          t.id, t.title, t.status, t.priority, t.created_at, p.name as plan_name
+        FROM tasks t
+        LEFT JOIN plans p ON t.plan_id = p.id
+        WHERE t.deleted_at IS NULL
+        ORDER BY t.created_at DESC
+        LIMIT 4;
+      `);
+
       setProjectCount(pCount?.count ?? 0);
       setTaskCount(tCount?.count ?? 0);
       setPendingMutations(mCount?.count ?? 0);
+      setRecentTasks(
+        (tasksRows || []).map((r) => ({
+          id: r.id,
+          title: r.title,
+          status: r.status,
+          priority: r.priority,
+          plan_name: r.plan_name || 'Rzut obiektu',
+          created_at: r.created_at,
+        }))
+      );
       setIsReady(true);
     } catch (err) {
       console.error('[HomeScreen] SQLite init error:', err);
@@ -115,6 +150,46 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+
+        {/* Recent Active Tasks Feed */}
+        {recentTasks.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardTitle}>📌 Ostatnie Zadania Montażowe</Text>
+              <TouchableOpacity onPress={() => router.push('/tasks/create' as any)}>
+                <Text style={styles.viewAllText}>+ Dodaj</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.recentTasksList}>
+              {recentTasks.map((tItem) => {
+                const st = (tItem.status || 'OPEN').toUpperCase();
+                let badgeBg = 'rgba(2, 132, 199, 0.15)';
+                let badgeColor = '#38BDF8';
+                if (st === 'IN_PROGRESS') { badgeBg = 'rgba(245, 158, 11, 0.15)'; badgeColor = '#F59E0B'; }
+                else if (st === 'DONE_WAITING_APPROVAL') { badgeBg = 'rgba(139, 92, 246, 0.2)'; badgeColor = '#A855F7'; }
+                else if (st === 'APPROVED' || st === 'CLOSED') { badgeBg = 'rgba(16, 185, 129, 0.15)'; badgeColor = '#10B981'; }
+                else if (st === 'REJECTED') { badgeBg = 'rgba(239, 68, 68, 0.15)'; badgeColor = '#EF4444'; }
+
+                return (
+                  <TouchableOpacity
+                    key={tItem.id}
+                    style={styles.recentTaskRow}
+                    activeOpacity={0.7}
+                    onPress={() => router.push(`/tasks/${tItem.id}` as any)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.recentTaskTitle} numberOfLines={1}>{tItem.title}</Text>
+                      <Text style={styles.recentTaskPlan}>📐 {tItem.plan_name}</Text>
+                    </View>
+                    <View style={[styles.recentTaskBadge, { backgroundColor: badgeBg }]}>
+                      <Text style={[styles.recentTaskBadgeText, { color: badgeColor }]}>{st}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* Quick Actions */}
         <View style={styles.actionsSection}>
@@ -398,6 +473,45 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
     fontWeight: '500',
+  },
+  viewAllText: {
+    color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  recentTasksList: {
+    marginTop: 8,
+    gap: 8,
+  },
+  recentTaskRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#0B0F19',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  recentTaskTitle: {
+    color: '#F8FAFC',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  recentTaskPlan: {
+    color: '#64748B',
+    fontSize: 11,
+  },
+  recentTaskBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  recentTaskBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
   },
   actionsSection: {
     gap: 12,

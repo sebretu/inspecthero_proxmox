@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,21 +8,37 @@ import {
   ScrollView,
   TextInput,
   Alert,
-  FlatList,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { getDatabase } from '../../src/db/database';
 import { PhotoService, TaskPhotoRow } from '../../src/features/photos/PhotoService';
+import { useAuth } from '../../src/auth/useAuth';
+
+export type TaskStatus =
+  | 'OPEN'
+  | 'IN_PROGRESS'
+  | 'DONE_WAITING_APPROVAL'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'open'
+  | 'in_progress'
+  | 'closed';
 
 interface TaskDetail {
   id: string;
   plan_id: string;
   title: string;
   description: string | null;
-  status: 'open' | 'in_progress' | 'closed';
+  status: TaskStatus;
   priority: string | null;
+  assigned_user_id?: string | null;
+  assigned_user_name?: string | null;
+  due_date?: string | null;
+  rejection_reason?: string | null;
   pos_x?: number;
   pos_y?: number;
   version: number;
@@ -44,31 +60,43 @@ interface TaskComment {
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { isAdmin } = useAuth();
 
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [photos, setPhotos] = useState<TaskPhotoRow[]>([]);
+  const [selectedPhotoFilter, setSelectedPhotoFilter] = useState<'ALL' | 'BEFORE' | 'AFTER' | 'STANDARD'>('ALL');
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [capturingPhoto, setCapturingPhoto] = useState(false);
 
+  // Photo phase selector modal
+  const [photoTypeModalVisible, setPhotoTypeModalVisible] = useState(false);
+  const [pendingPickerSource, setPendingPickerSource] = useState<'camera' | 'gallery' | null>(null);
+
+  // Rejection modal
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState('');
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const db = await getDatabase();
 
-      // 1. Task info
+      // 1. Task info with joined breadcrumbs and assignee profile
       const taskRow = await db.getFirstAsync<TaskDetail>(`
         SELECT 
           t.*,
           p.name as plan_name,
           f.name as floor_name,
-          b.name as building_name
+          b.name as building_name,
+          COALESCE(pr.full_name, pr.email) as assigned_user_name
         FROM tasks t
         LEFT JOIN plans p ON t.plan_id = p.id
         LEFT JOIN floors f ON p.floor_id = f.id
         LEFT JOIN buildings b ON f.building_id = b.id
+        LEFT JOIN profiles pr ON t.assigned_user_id = pr.id
         WHERE t.id = ?;
       `, [id]);
       setTask(taskRow ?? null);
@@ -97,7 +125,7 @@ export default function TaskDetailScreen() {
     loadData();
   }, [loadData]);
 
-  const updateStatus = async (nextStatus: 'open' | 'in_progress' | 'closed') => {
+  const updateStatus = async (nextStatus: TaskStatus, rejectionReason?: string) => {
     if (!task) return;
     try {
       const db = await getDatabase();
@@ -105,8 +133,8 @@ export default function TaskDetailScreen() {
       const now = new Date().toISOString();
 
       await db.runAsync(
-        'UPDATE tasks SET status = ?, version = ?, updated_at = ? WHERE id = ?;',
-        [nextStatus, nextVersion, now, task.id]
+        'UPDATE tasks SET status = ?, rejection_reason = ?, version = ?, updated_at = ? WHERE id = ?;',
+        [nextStatus, rejectionReason || null, nextVersion, now, task.id]
       );
 
       await db.runAsync(`
@@ -117,15 +145,38 @@ export default function TaskDetailScreen() {
         `mut-${Date.now()}-${task.id}`,
         task.id,
         task.version,
-        JSON.stringify({ status: nextStatus, updated_at: now }),
+        JSON.stringify({
+          status: nextStatus,
+          rejection_reason: rejectionReason || null,
+          updated_at: now,
+        }),
         now,
         now,
       ]);
 
-      setTask((prev) => (prev ? { ...prev, status: nextStatus, version: nextVersion, updated_at: now } : null));
+      setTask((prev) => (prev ? {
+        ...prev,
+        status: nextStatus,
+        rejection_reason: rejectionReason ?? prev.rejection_reason,
+        version: nextVersion,
+        updated_at: now,
+      } : null));
+
+      if (nextStatus === 'REJECTED') {
+        setRejectModalVisible(false);
+        setRejectionReasonInput('');
+      }
     } catch (err: any) {
       Alert.alert('Błąd zapisu', err?.message || 'Nie udało się zaktualizować statusu zadania');
     }
+  };
+
+  const handleConfirmReject = () => {
+    if (!rejectionReasonInput.trim()) {
+      Alert.alert('Wymagany powód', 'Wprowadź powód odrzucenia zadania.');
+      return;
+    }
+    updateStatus('REJECTED', rejectionReasonInput.trim());
   };
 
   const handleAddComment = async () => {
@@ -170,46 +221,58 @@ export default function TaskDetailScreen() {
     }
   };
 
-  const handleTakePhoto = async () => {
-    if (!task) return;
-    try {
-      setCapturingPhoto(true);
-      const photo = await PhotoService.capturePhoto(task.id);
-      if (photo) {
-        setPhotos((prev) => [photo, ...prev]);
-      }
-    } catch (err: any) {
-      Alert.alert('Aparat', err?.message || 'Nie udało się wykonać zdjęcia');
-    } finally {
-      setCapturingPhoto(false);
-    }
+  const initiatePhotoCapture = (source: 'camera' | 'gallery') => {
+    setPendingPickerSource(source);
+    setPhotoTypeModalVisible(true);
   };
 
-  const handlePickPhoto = async () => {
-    if (!task) return;
+  const handleExecutePhotoPick = async (photoType: 'BEFORE' | 'AFTER' | 'STANDARD') => {
+    setPhotoTypeModalVisible(false);
+    if (!task || !pendingPickerSource) return;
+
     try {
       setCapturingPhoto(true);
-      const photo = await PhotoService.pickPhoto(task.id);
+      let photo: TaskPhotoRow | null = null;
+      if (pendingPickerSource === 'camera') {
+        photo = await PhotoService.capturePhoto(task.id, photoType);
+      } else {
+        photo = await PhotoService.pickPhoto(task.id, photoType);
+      }
+
       if (photo) {
         setPhotos((prev) => [photo, ...prev]);
       }
     } catch (err: any) {
-      Alert.alert('Galeria', err?.message || 'Nie udało się wybrać zdjęcia');
+      Alert.alert('Zdjęcie', err?.message || 'Nie udało się dołączyć zdjęcia');
     } finally {
       setCapturingPhoto(false);
+      setPendingPickerSource(null);
     }
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'closed':
-        return { label: 'ZAMKNIĘTE', bg: 'rgba(34, 197, 94, 0.15)', text: '#22C55E' };
-      case 'in_progress':
-        return { label: 'W TRAKCIE', bg: 'rgba(234, 179, 8, 0.15)', text: '#EAB308' };
+    const s = status.toUpperCase();
+    switch (s) {
+      case 'APPROVED':
+      case 'CLOSED':
+        return { label: 'ZATWIERDZONE', bg: 'rgba(16, 185, 129, 0.15)', text: '#10B981', border: '#10B981' };
+      case 'DONE_WAITING_APPROVAL':
+        return { label: 'DO ODBIORU', bg: 'rgba(139, 92, 246, 0.2)', text: '#A855F7', border: '#A855F7' };
+      case 'IN_PROGRESS':
+        return { label: 'W TRAKCIE', bg: 'rgba(245, 158, 11, 0.15)', text: '#F59E0B', border: '#F59E0B' };
+      case 'REJECTED':
+        return { label: 'ODRZUCONE', bg: 'rgba(239, 68, 68, 0.15)', text: '#EF4444', border: '#EF4444' };
       default:
-        return { label: 'OTWARTE', bg: 'rgba(56, 189, 248, 0.15)', text: '#38BDF8' };
+        return { label: 'OTWARTE', bg: 'rgba(2, 132, 199, 0.15)', text: '#38BDF8', border: '#0284C7' };
     }
   };
+
+  const filteredPhotos = useMemo(() => {
+    if (selectedPhotoFilter === 'ALL') return photos;
+    return photos.filter((p) => (p.photo_type || 'STANDARD').toUpperCase() === selectedPhotoFilter);
+  }, [photos, selectedPhotoFilter]);
+
+  const normalizedStatus = (task?.status || 'OPEN').toUpperCase();
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
@@ -237,52 +300,139 @@ export default function TaskDetailScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
-          {/* Breadcrumbs */}
-          <View style={styles.breadcrumbCard}>
-            <Text style={styles.breadcrumbText}>
-              🏢 {task.building_name || 'Budynek'} › 📍 {task.floor_name || 'Kondygnacja'} › 📐 {task.plan_name || 'Rzut'}
-            </Text>
-          </View>
+          {/* Breadcrumbs & Navigation to Plan */}
+          <TouchableOpacity
+            style={styles.breadcrumbCard}
+            onPress={() => router.push(`/plans/${task.plan_id}` as any)}
+          >
+            <View style={styles.breadcrumbRow}>
+              <Text style={styles.breadcrumbText}>
+                🏢 {task.building_name || 'Budynek'} › 📍 {task.floor_name || 'Kondygnacja'} › 📐 {task.plan_name || 'Rzut'}
+              </Text>
+              <Text style={styles.planLinkBadge}>Pokaż na rzucie ↗</Text>
+            </View>
+          </TouchableOpacity>
 
           {/* Main Card */}
           <View style={styles.card}>
-            <Text style={styles.taskTitle}>{task.title}</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.taskTitle}>{task.title}</Text>
+              <View
+                style={[
+                  styles.statusPill,
+                  {
+                    backgroundColor: getStatusBadge(task.status).bg,
+                    borderColor: getStatusBadge(task.status).border,
+                  },
+                ]}
+              >
+                <Text style={[styles.statusPillText, { color: getStatusBadge(task.status).text }]}>
+                  {getStatusBadge(task.status).label}
+                </Text>
+              </View>
+            </View>
+
             {task.description ? (
               <Text style={styles.taskDesc}>{task.description}</Text>
             ) : null}
 
+            {/* Rejection notice if rejected */}
+            {task.rejection_reason ? (
+              <View style={styles.rejectionBox}>
+                <Text style={styles.rejectionTitle}>⚠️ UWAGI DO POPRAWY (ODRZUCONO):</Text>
+                <Text style={styles.rejectionContent}>{task.rejection_reason}</Text>
+              </View>
+            ) : null}
+
             <View style={styles.metaGrid}>
               <View style={styles.metaCol}>
-                <Text style={styles.metaLabel}>PRIORYTET</Text>
-                <Text style={styles.metaValue}>{task.priority?.toUpperCase() || 'NORMALNY'}</Text>
+                <Text style={styles.metaLabel}>PRZYPISANY MONTER</Text>
+                <Text style={styles.metaValue}>{task.assigned_user_name || 'Nieprzypisany'}</Text>
               </View>
               <View style={styles.metaCol}>
-                <Text style={styles.metaLabel}>WERSJA REKORDU</Text>
+                <Text style={styles.metaLabel}>TERMIN (DUE DATE)</Text>
+                <Text style={styles.metaValue}>
+                  {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Brak terminu'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={[styles.metaGrid, { borderTopWidth: 0, paddingTop: 6 }]}>
+              <View style={styles.metaCol}>
+                <Text style={styles.metaLabel}>PRIORYTET</Text>
+                <Text style={[styles.metaValue, task.priority === 'urgent' ? { color: '#EF4444' } : {}]}>
+                  {task.priority?.toUpperCase() || 'NORMALNY'}
+                </Text>
+              </View>
+              <View style={styles.metaCol}>
+                <Text style={styles.metaLabel}>WERSJA OFFLINE</Text>
                 <Text style={styles.metaValue}>v{task.version} (SQLite)</Text>
               </View>
             </View>
           </View>
 
-          {/* Status Control */}
-          <View style={styles.statusSection}>
-            <Text style={styles.sectionHeading}>ZMIEŃ STATUS (TRYB OFFLINE)</Text>
+          {/* Supervisor / Worker Workflow Actions */}
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionHeading}>CYKL REALIZACJI I ZATWIERDZENIE (QA)</Text>
+
+            {/* Quick Action Buttons */}
+            <View style={styles.workflowActionGrid}>
+              {normalizedStatus === 'OPEN' && (
+                <TouchableOpacity
+                  style={[styles.workflowBtn, { backgroundColor: '#D97706' }]}
+                  onPress={() => updateStatus('IN_PROGRESS')}
+                >
+                  <Text style={styles.workflowBtnText}>⚙️ Rozpocznij realizację</Text>
+                </TouchableOpacity>
+              )}
+
+              {(normalizedStatus === 'OPEN' || normalizedStatus === 'IN_PROGRESS' || normalizedStatus === 'REJECTED') && (
+                <TouchableOpacity
+                  style={[styles.workflowBtn, { backgroundColor: '#7C3AED' }]}
+                  onPress={() => updateStatus('DONE_WAITING_APPROVAL')}
+                >
+                  <Text style={styles.workflowBtnText}>⏳ Zgłoś do odbioru (Kierownik)</Text>
+                </TouchableOpacity>
+              )}
+
+              {normalizedStatus === 'DONE_WAITING_APPROVAL' && (
+                <View style={styles.approvalActionRow}>
+                  <TouchableOpacity
+                    style={[styles.approvalBtn, { backgroundColor: '#059669' }]}
+                    onPress={() => updateStatus('APPROVED')}
+                  >
+                    <Text style={styles.workflowBtnText}>✓ Zatwierdź odbiór</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.approvalBtn, { backgroundColor: '#DC2626' }]}
+                    onPress={() => setRejectModalVisible(true)}
+                  >
+                    <Text style={styles.workflowBtnText}>✕ Odrzuć z uwagami</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* Manual Status Selector */}
+            <Text style={[styles.metaLabel, { marginTop: 14, marginBottom: 8 }]}>PRZEŁĄCZ STATUS RĘCZNIE:</Text>
             <View style={styles.statusButtonsRow}>
-              {(['open', 'in_progress', 'closed'] as const).map((st) => {
+              {(['OPEN', 'IN_PROGRESS', 'DONE_WAITING_APPROVAL', 'APPROVED', 'REJECTED'] as const).map((st) => {
                 const badge = getStatusBadge(st);
-                const isActive = task.status === st;
+                const isActive = normalizedStatus === st;
                 return (
                   <TouchableOpacity
                     key={st}
                     style={[
                       styles.statusToggleBtn,
-                      isActive && { backgroundColor: badge.bg, borderColor: badge.text },
+                      isActive && { backgroundColor: badge.bg, borderColor: badge.border },
                     ]}
                     onPress={() => updateStatus(st)}
                   >
                     <Text
                       style={[
                         styles.statusToggleText,
-                        isActive ? { color: badge.text } : { color: '#64748B' },
+                        isActive ? { color: badge.text, fontWeight: '800' } : { color: '#64748B' },
                       ]}
                     >
                       {badge.label}
@@ -293,21 +443,21 @@ export default function TaskDetailScreen() {
             </View>
           </View>
 
-          {/* Photos Section */}
+          {/* Photos Section with BEFORE/AFTER Filter */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionHeading}>DOKUMENTACJA ZDJĘCIOWA ({photos.length})</Text>
               <View style={styles.photoActionsRow}>
                 <TouchableOpacity
                   style={styles.photoActionBtn}
-                  onPress={handleTakePhoto}
+                  onPress={() => initiatePhotoCapture('camera')}
                   disabled={capturingPhoto}
                 >
                   <Text style={styles.photoActionBtnText}>📸 Aparat</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.photoActionBtn}
-                  onPress={handlePickPhoto}
+                  onPress={() => initiatePhotoCapture('gallery')}
                   disabled={capturingPhoto}
                 >
                   <Text style={styles.photoActionBtnText}>🖼️ Galeria</Text>
@@ -315,12 +465,32 @@ export default function TaskDetailScreen() {
               </View>
             </View>
 
-            {photos.length === 0 ? (
-              <Text style={styles.emptySectionText}>Brak dodanych zdjęć do tego zadania.</Text>
+            {/* Photo Filter Tabs */}
+            <View style={styles.photoFilterRow}>
+              {(['ALL', 'BEFORE', 'AFTER', 'STANDARD'] as const).map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  style={[styles.photoFilterChip, selectedPhotoFilter === f && styles.photoFilterChipActive]}
+                  onPress={() => setSelectedPhotoFilter(f)}
+                >
+                  <Text style={[styles.photoFilterChipText, selectedPhotoFilter === f && styles.photoFilterChipTextActive]}>
+                    {f === 'ALL' ? 'Wszystkie' : f === 'BEFORE' ? 'Przed (BEFORE)' : f === 'AFTER' ? 'Po (AFTER)' : 'Montaż'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {filteredPhotos.length === 0 ? (
+              <Text style={styles.emptySectionText}>
+                {selectedPhotoFilter === 'ALL'
+                  ? 'Brak dodanych zdjęć do tego zadania.'
+                  : `Brak zdjęć w kategorii ${selectedPhotoFilter}.`}
+              </Text>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosScroll}>
-                {photos.map((p) => {
+                {filteredPhotos.map((p) => {
                   const imageSource = p.local_uri || p.url || '';
+                  const phaseLabel = (p.photo_type || 'STANDARD').toUpperCase();
                   return (
                     <View key={p.id} style={styles.photoWrapper}>
                       <Image
@@ -329,6 +499,18 @@ export default function TaskDetailScreen() {
                         contentFit="cover"
                         transition={200}
                       />
+                      <View
+                        style={[
+                          styles.photoPhaseTag,
+                          phaseLabel === 'BEFORE'
+                            ? { backgroundColor: '#F59E0B' }
+                            : phaseLabel === 'AFTER'
+                            ? { backgroundColor: '#10B981' }
+                            : { backgroundColor: '#0284C7' },
+                        ]}
+                      >
+                        <Text style={styles.photoPhaseTagText}>{phaseLabel}</Text>
+                      </View>
                       <View style={styles.photoStatusTag}>
                         <Text style={styles.photoStatusText}>
                           {p.upload_status === 'uploaded' ? '🟢 Wgrane' : '🟡 Offline'}
@@ -343,7 +525,7 @@ export default function TaskDetailScreen() {
 
           {/* Comments Section */}
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionHeading}>KOMENTARZE I UWAGI MONTERA ({comments.length})</Text>
+            <Text style={styles.sectionHeading}>DZIENNIK ZDARZEŃ I NOTATKI ({comments.length})</Text>
 
             {comments.length === 0 ? (
               <Text style={styles.emptySectionText}>Brak komentarzy. Dodaj pierwszą notatkę poniżej.</Text>
@@ -363,7 +545,7 @@ export default function TaskDetailScreen() {
             <View style={styles.addCommentRow}>
               <TextInput
                 style={styles.commentInput}
-                placeholder="Napisz komentarz / notatkę..."
+                placeholder="Napisz komentarz / notatkę wykonawczą..."
                 placeholderTextColor="#64748B"
                 value={newComment}
                 onChangeText={setNewComment}
@@ -383,6 +565,83 @@ export default function TaskDetailScreen() {
           </View>
         </ScrollView>
       )}
+
+      {/* Photo Type Selection Modal */}
+      <Modal visible={photoTypeModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Wybierz Fazę Zdjęcia</Text>
+            <Text style={styles.modalSubtitle}>Określ kontekst dodawanego zdjęcia:</Text>
+
+            <TouchableOpacity
+              style={[styles.phaseSelectBtn, { borderColor: '#F59E0B' }]}
+              onPress={() => handleExecutePhotoPick('BEFORE')}
+            >
+              <Text style={[styles.phaseSelectText, { color: '#F59E0B' }]}>📸 STAN PRZED MONTAŻEM (BEFORE)</Text>
+              <Text style={styles.phaseSelectDesc}>Inwentaryzacja stanu zastanego / trasy</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.phaseSelectBtn, { borderColor: '#0284C7' }]}
+              onPress={() => handleExecutePhotoPick('STANDARD')}
+            >
+              <Text style={[styles.phaseSelectText, { color: '#38BDF8' }]}>🛠️ DOKUMENTACJA MONTAŻU (STANDARD)</Text>
+              <Text style={styles.phaseSelectDesc}>Bieżące postępy prac instalacyjnych</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.phaseSelectBtn, { borderColor: '#10B981' }]}
+              onPress={() => handleExecutePhotoPick('AFTER')}
+            >
+              <Text style={[styles.phaseSelectText, { color: '#10B981' }]}>✓ STAN PO MONTAŻU (AFTER - QA)</Text>
+              <Text style={styles.phaseSelectDesc}>Gotowy element zgłaszany do odbioru</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalCancelBtn}
+              onPress={() => setPhotoTypeModalVisible(false)}
+            >
+              <Text style={styles.modalCancelText}>Anuluj</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Rejection Reason Modal */}
+      <Modal visible={rejectModalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={[styles.modalTitle, { color: '#EF4444' }]}>Odrzucenie Zadania (QA)</Text>
+            <Text style={styles.modalSubtitle}>Wpisz konkretne uwagi dla montera:</Text>
+
+            <TextInput
+              style={styles.rejectionInput}
+              multiline
+              numberOfLines={4}
+              placeholder="Np. Niewłaściwy promień gięcia kabla E30, brak etykiety..."
+              placeholderTextColor="#64748B"
+              value={rejectionReasonInput}
+              onChangeText={setRejectionReasonInput}
+            />
+
+            <View style={styles.modalActionsRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setRejectModalVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Anuluj</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalConfirmBtn, { backgroundColor: '#DC2626' }]}
+                onPress={handleConfirmReject}
+              >
+                <Text style={styles.modalConfirmText}>Odrzuć z uwagami</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -396,6 +655,27 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    color: '#94A3B8',
+    marginBottom: 16,
+  },
+  backBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#0284C7',
+    borderRadius: 8,
+  },
+  backBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
   breadcrumbCard: {
     backgroundColor: '#0B0F19',
     padding: 12,
@@ -404,9 +684,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1E293B',
   },
+  breadcrumbRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   breadcrumbText: {
     fontSize: 12,
     color: '#94A3B8',
+    flex: 1,
+  },
+  planLinkBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#38BDF8',
+    marginLeft: 8,
   },
   card: {
     backgroundColor: '#0F172A',
@@ -416,23 +708,60 @@ const styles = StyleSheet.create({
     borderColor: '#1E293B',
     marginBottom: 14,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
   taskTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#F8FAFC',
-    marginBottom: 10,
+    flex: 1,
+    marginRight: 10,
+  },
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   taskDesc: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#94A3B8',
-    lineHeight: 22,
-    marginBottom: 18,
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  rejectionBox: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    marginBottom: 14,
+  },
+  rejectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#EF4444',
+    marginBottom: 4,
+  },
+  rejectionContent: {
+    fontSize: 13,
+    color: '#FCA5A5',
+    lineHeight: 18,
   },
   metaGrid: {
     flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: '#1E293B',
-    paddingTop: 14,
+    paddingTop: 12,
   },
   metaCol: {
     flex: 1,
@@ -449,28 +778,61 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#F8FAFC',
   },
-  statusSection: {
-    backgroundColor: '#0F172A',
-    borderRadius: 14,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    marginBottom: 14,
-  },
   sectionCard: {
     backgroundColor: '#0F172A',
     borderRadius: 14,
-    padding: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#1E293B',
     marginBottom: 14,
   },
   sectionHeading: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
-    color: '#64748B',
-    letterSpacing: 1,
+    color: '#94A3B8',
+    letterSpacing: 0.5,
     marginBottom: 12,
+  },
+  workflowActionGrid: {
+    marginBottom: 6,
+  },
+  workflowBtn: {
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  workflowBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  approvalActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  approvalBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  statusButtonsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  statusToggleBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  statusToggleText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -480,146 +842,221 @@ const styles = StyleSheet.create({
   },
   photoActionsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   photoActionBtn: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: '#1E293B',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#38BDF8',
+    borderColor: '#334155',
   },
   photoActionBtnText: {
-    color: '#38BDF8',
+    color: '#F8FAFC',
     fontSize: 11,
     fontWeight: '700',
   },
+  photoFilterRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 12,
+  },
+  photoFilterChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  photoFilterChipActive: {
+    backgroundColor: '#0284C7',
+    borderColor: '#38BDF8',
+  },
+  photoFilterChipText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  photoFilterChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  emptySectionText: {
+    color: '#64748B',
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
   photosScroll: {
     flexDirection: 'row',
-    marginTop: 4,
   },
   photoWrapper: {
     marginRight: 10,
-    borderRadius: 10,
-    overflow: 'hidden',
     position: 'relative',
-    borderWidth: 1,
-    borderColor: '#1E293B',
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   photoThumb: {
-    width: 120,
-    height: 120,
-    borderRadius: 10,
+    width: 110,
+    height: 110,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+  },
+  photoPhaseTag: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  photoPhaseTagText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '900',
   },
   photoStatusTag: {
     position: 'absolute',
     bottom: 4,
-    left: 4,
+    right: 4,
     backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 2,
     borderRadius: 4,
   },
   photoStatusText: {
-    fontSize: 9,
     color: '#F8FAFC',
+    fontSize: 8,
     fontWeight: '700',
   },
   commentsList: {
-    gap: 8,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   commentItem: {
-    backgroundColor: '#0B0F19',
+    backgroundColor: '#1E293B',
+    padding: 10,
     borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#1E293B',
+    marginBottom: 6,
   },
   commentText: {
-    fontSize: 14,
     color: '#F8FAFC',
-    lineHeight: 20,
+    fontSize: 13,
     marginBottom: 4,
   },
   commentMeta: {
+    color: '#64748B',
     fontSize: 10,
-    color: '#64748B',
-  },
-  emptySectionText: {
-    fontSize: 13,
-    color: '#64748B',
-    marginVertical: 6,
   },
   addCommentRow: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 6,
+    alignItems: 'center',
   },
   commentInput: {
     flex: 1,
-    backgroundColor: '#030712',
+    backgroundColor: '#1E293B',
     borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     color: '#F8FAFC',
-    fontSize: 14,
+    fontSize: 13,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#334155',
   },
   commentSendBtn: {
     backgroundColor: '#0284C7',
     paddingHorizontal: 16,
-    justifyContent: 'center',
+    paddingVertical: 10,
     borderRadius: 8,
   },
   commentSendBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
   btnDisabled: {
     opacity: 0.5,
   },
-  statusButtonsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  statusToggleBtn: {
+  modalOverlay: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#1E293B',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  statusToggleText: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  center: {
-    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: 20,
   },
-  emptyTitle: {
-    fontSize: 18,
+  modalBox: {
+    backgroundColor: '#0F172A',
+    borderRadius: 14,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
     color: '#F8FAFC',
-    fontWeight: '700',
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  backBtn: {
-    backgroundColor: '#0284C7',
+  modalSubtitle: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 16,
+  },
+  phaseSelectBtn: {
+    backgroundColor: '#1E293B',
+    borderWidth: 1.5,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+  },
+  phaseSelectText: {
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  phaseSelectDesc: {
+    fontSize: 10,
+    color: '#94A3B8',
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  modalCancelText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  rejectionInput: {
+    backgroundColor: '#1E293B',
+    borderRadius: 8,
+    padding: 12,
+    color: '#F8FAFC',
+    fontSize: 13,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    textAlignVertical: 'top',
+    height: 100,
+    marginBottom: 16,
+  },
+  modalActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    alignItems: 'center',
+  },
+  modalConfirmBtn: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
   },
-  backBtnText: {
+  modalConfirmText: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
