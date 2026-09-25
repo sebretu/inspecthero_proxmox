@@ -17,6 +17,7 @@ import { WebView } from 'react-native-webview';
 import { getDatabase, withTransaction } from '../../src/db/database';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { useAuth } from '../../src/auth/useAuth';
+import { TileCacheService } from '../../src/features/tiles/TileCacheService';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -79,10 +80,11 @@ export default function InteractivePlanScreen() {
   const router = useRouter();
   const webViewRef = useRef<WebView>(null);
   const { t } = useLanguage();
-  const { isAdmin } = useAuth();
+  const { isAdmin, session } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<PlanInfo | null>(null);
+  const [isLocalTileCached, setIsLocalTileCached] = useState(false);
   const [floors, setFloors] = useState<FloorOption[]>([]);
   const [currentFloorId, setCurrentFloorId] = useState<string | null>(null);
 
@@ -138,6 +140,10 @@ export default function InteractivePlanScreen() {
       setCurrentFloorId(activePlan.floor_id || null);
 
       const activePlanId = activePlan.id;
+
+      // Check if tiles for this plan exist offline in FileSystem
+      const isCached = await TileCacheService.isPlanCachedLocally(activePlanId);
+      setIsLocalTileCached(isCached);
 
       // 2. Fetch Tasks on Plan
       const taskRows = await db.getAllAsync<TaskPin>(
@@ -227,6 +233,10 @@ export default function InteractivePlanScreen() {
         }
       } else if (data.type === 'MAP_CLICK') {
         setNewPinCoords({ x: Math.round(data.x), y: Math.round(data.y) });
+      } else if (data.type === 'TILE_ERROR') {
+        if (__DEV__) {
+          console.warn('[Leaflet WebView] Tile error:', data.url, data.coords);
+        }
       }
     } catch (e) {
       console.warn('[InteractivePlan] Parse message error:', e);
@@ -357,6 +367,8 @@ export default function InteractivePlanScreen() {
     const width = plan?.width || 1920;
     const height = plan?.height || 1080;
     const planId = plan?.id || id || '';
+    const token = session?.access_token || '';
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
 
     const visibleTasks = layerTasks ? tasks : [];
     const visibleBma = layerBma ? bmaDevices : [];
@@ -368,10 +380,15 @@ export default function InteractivePlanScreen() {
       <html>
       <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
+          * {
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+            -webkit-box-sizing: border-box;
+          }
           html, body, #map {
             width: 100%;
             height: 100%;
@@ -380,50 +397,73 @@ export default function InteractivePlanScreen() {
             background-color: #030712;
             overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            touch-action: pan-x pan-y pinch-zoom;
+            -webkit-user-select: none;
+            user-select: none;
           }
           .custom-pin {
+            width: 28px;
+            height: 28px;
+            box-sizing: border-box;
+            -webkit-box-sizing: border-box;
+            border-radius: 50% !important;
+            -webkit-border-radius: 50% !important;
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 50%;
             color: #ffffff;
             font-weight: 800;
             font-size: 11px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.7);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
             border: 2px solid #ffffff;
             cursor: pointer;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            flex-shrink: 0;
             transition: transform 0.15s ease;
           }
           .custom-pin:hover {
-            transform: scale(1.2);
+            transform: scale(1.15) translateZ(0);
+            -webkit-transform: scale(1.15) translateZ(0);
           }
           .pin-open { background-color: #38BDF8; }
           .pin-in_progress { background-color: #EAB308; }
           .pin-closed { background-color: #22C55E; }
           .pin-bma {
             background-color: #EF4444;
-            border-radius: 6px;
             border-color: #FCA5A5;
+            border-radius: 50% !important;
+            -webkit-border-radius: 50% !important;
           }
           .pin-circuit {
             background-color: #A855F7;
-            border-radius: 6px;
             border-color: #E9D5FF;
+            border-radius: 50% !important;
+            -webkit-border-radius: 50% !important;
           }
           .pin-label {
             position: absolute;
-            bottom: -16px;
+            bottom: -18px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(15, 23, 42, 0.9);
+            -webkit-transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.92);
             color: #F8FAFC;
             font-size: 9px;
             font-weight: 700;
-            padding: 1px 4px;
+            padding: 1px 5px;
             border-radius: 4px;
+            -webkit-border-radius: 4px;
             white-space: nowrap;
             border: 1px solid #334155;
             pointer-events: none;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+          }
+          .leaflet-container {
+            background-color: #030712 !important;
           }
           .leaflet-popup-content-wrapper {
             background-color: #0F172A;
@@ -442,80 +482,45 @@ export default function InteractivePlanScreen() {
         <script>
           const width = ${width};
           const height = ${height};
-          const bounds = [[0, 0], [height, width]];
           const planId = "${planId}";
+          const token = "${token}";
+          const apiUrl = "${apiUrl}";
+          const maxZoom = 5;
+          const minZoom = 1;
+          const tileSize = 256;
+
+          const gridW = Math.ceil(width / tileSize);
+          const gridH = Math.ceil(height / tileSize);
+          const worldPxW = gridW * tileSize;
+          const worldPxH = gridH * tileSize;
+
+          // Standard CRS.Simple coordinates:
+          // Top-left: [0, 0], Bottom-right: [-worldPxH / 2^maxZoom, worldPxW / 2^maxZoom]
+          const sw = [-worldPxH / Math.pow(2, maxZoom), 0];
+          const ne = [0, worldPxW / Math.pow(2, maxZoom)];
+          const bounds = [sw, ne];
 
           const map = L.map('map', {
             crs: L.CRS.Simple,
-            minZoom: -2,
-            maxZoom: 4,
+            minZoom: minZoom,
+            maxZoom: maxZoom + 1,
             zoomSnap: 0.25,
+            zoomDelta: 0.5,
             attributionControl: false,
+            maxBounds: bounds,
+            maxBoundsViscosity: 0.8,
           });
 
-          // 1. Primary Raster Tiles Layer
-          if (planId && planId !== 'pln-sample-001') {
-            const tileUrl = 'https://inspecthero.pl/api/tiles/' + planId + '/{z}/{x}/{y}.png';
-            L.tileLayer(tileUrl, {
-              crs: L.CRS.Simple,
-              minZoom: -2,
-              maxZoom: 4,
-              maxNativeZoom: 3,
-              tileSize: 256,
-              noWrap: true,
-              bounds: bounds,
-              errorTileUrl: '',
-            }).addTo(map);
+          // HTML Escaping Helper
+          function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#39;');
           }
-
-          // 2. Blueprint Architectural Canvas (Grid & Rooms)
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          
-          ctx.fillStyle = '#0B0F19';
-          ctx.fillRect(0, 0, width, height);
-
-          // Grid Lines
-          ctx.strokeStyle = '#1E293B';
-          ctx.lineWidth = 1.5;
-          for (let x = 0; x < width; x += 100) {
-            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-          }
-          for (let y = 0; y < height; y += 100) {
-            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-          }
-
-          // Structural Walls
-          ctx.strokeStyle = '#38BDF8';
-          ctx.lineWidth = 5;
-          ctx.strokeRect(60, 60, width - 120, height - 120);
-
-          // Rooms & Zones
-          ctx.strokeStyle = '#334155';
-          ctx.lineWidth = 2.5;
-          ctx.strokeRect(120, 120, 450, 320);
-          ctx.strokeRect(620, 120, 500, 320);
-          ctx.strokeRect(1170, 120, 630, 320);
-          ctx.strokeRect(120, 500, 750, 450);
-          ctx.strokeRect(920, 500, 880, 450);
-
-          ctx.fillStyle = '#64748B';
-          ctx.font = 'bold 22px sans-serif';
-          ctx.fillText('BIURO 101 (WEST)', 160, 180);
-          ctx.fillText('BIURO 102 (CENTER)', 660, 180);
-          ctx.fillText('SALA KONFERENCYJNA A', 1220, 180);
-          ctx.fillText('OPEN SPACE MONTAŻ', 160, 560);
-          ctx.fillText('GŁÓWNA ROZDZIELNICA ELEKTRYCZNA (RG)', 960, 560);
-
-          if (!planId || planId === 'pln-sample-001') {
-            L.imageOverlay(canvas.toDataURL(), bounds).addTo(map);
-          }
-          map.fitBounds(bounds);
-
-          // Marker Storage for fast updates
-          const taskMarkers = {};
 
           // Helper to send message to React Native
           function send(obj) {
@@ -524,34 +529,25 @@ export default function InteractivePlanScreen() {
             }
           }
 
-          // Map Click (Add Pin)
-          map.on('click', function(e) {
-            const x = e.latlng.lng;
-            const y = height - e.latlng.lat;
-            if (x >= 0 && x <= width && y >= 0 && y <= height) {
-              send({ type: 'MAP_CLICK', x: x, y: y });
-            }
-          });
+          // Marker Storage for fast updates
+          const taskMarkers = {};
 
-          // Render Tasks
-          const tasksData = ${JSON.stringify(visibleTasks)};
-          tasksData.forEach(function(t) {
-            window.addTaskMarker(t);
-          });
-
+          // GLOBAL FUNCTIONS DEFINED BEFORE USAGE
           window.addTaskMarker = function(t) {
-            const lat = height - (t.pos_y || 400);
-            const lng = t.pos_x || 400;
+            if (!t) return;
+            const lat = -(t.pos_y || 400) / Math.pow(2, maxZoom);
+            const lng = (t.pos_x || 400) / Math.pow(2, maxZoom);
             const statusClass = 'pin-' + (t.status || 'open');
+            const safeTitle = escapeHtml(t.title || 'Zadanie').substring(0, 20);
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="custom-pin ' + statusClass + '" style="width: 28px; height: 28px;">📌<span class="pin-label">' + (t.title || 'Zadanie').substring(0, 15) + '</span></div>',
+              html: '<div class="custom-pin ' + statusClass + '" style="width: 28px; height: 28px;">📌<span class="pin-label">' + safeTitle + '</span></div>',
               iconSize: [28, 28],
               iconAnchor: [14, 14],
             });
 
-            const marker = L.marker([lat, lng], { icon }).addTo(map);
+            const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
             marker.on('click', function(e) {
               L.DomEvent.stopPropagation(e);
               send({ type: 'TASK_CLICK', id: t.id });
@@ -572,49 +568,48 @@ export default function InteractivePlanScreen() {
             }
           };
 
-          // Render BMA
-          const bmaData = ${JSON.stringify(visibleBma)};
-          bmaData.forEach(function(b) {
-            const lat = height - (b.pos_y || 300);
-            const lng = b.pos_x || 300;
+          window.addBmaMarker = function(b) {
+            if (!b) return;
+            const lat = -(b.pos_y || 300) / Math.pow(2, maxZoom);
+            const lng = (b.pos_x || 300) / Math.pow(2, maxZoom);
+            const safeLabel = escapeHtml(b.device_number || 'BMA').substring(0, 15);
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="custom-pin pin-bma" style="width: 26px; height: 26px;">🚨<span class="pin-label">' + (b.device_number || 'BMA') + '</span></div>',
+              html: '<div class="custom-pin pin-bma" style="width: 26px; height: 26px;">🚨<span class="pin-label">' + safeLabel + '</span></div>',
               iconSize: [26, 26],
               iconAnchor: [13, 13],
             });
 
-            const marker = L.marker([lat, lng], { icon }).addTo(map);
+            const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
             marker.on('click', function(e) {
               L.DomEvent.stopPropagation(e);
               send({ type: 'BMA_CLICK', id: b.id });
             });
-          });
+          };
 
-          // Render Circuits
-          const circuitData = ${JSON.stringify(visibleCircuits)};
-          circuitData.forEach(function(c) {
-            const lat = height - (c.pos_y || 500);
-            const lng = c.pos_x || 500;
+          window.addCircuitMarker = function(c) {
+            if (!c) return;
+            const lat = -(c.pos_y || 500) / Math.pow(2, maxZoom);
+            const lng = (c.pos_x || 500) / Math.pow(2, maxZoom);
+            const safeName = escapeHtml(c.circuit_name || 'Obwód').substring(0, 15);
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="custom-pin pin-circuit" style="width: 26px; height: 26px;">⚡<span class="pin-label">' + (c.circuit_name || 'Obwód') + '</span></div>',
+              html: '<div class="custom-pin pin-circuit" style="width: 26px; height: 26px;">⚡<span class="pin-label">' + safeName + '</span></div>',
               iconSize: [26, 26],
               iconAnchor: [13, 13],
             });
 
-            const marker = L.marker([lat, lng], { icon }).addTo(map);
+            const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
             marker.on('click', function(e) {
               L.DomEvent.stopPropagation(e);
               send({ type: 'CIRCUIT_CLICK', id: c.id });
             });
-          });
+          };
 
-          // Render Cables & Trays
-          const cableData = ${JSON.stringify(visibleCables)};
-          cableData.forEach(function(c) {
+          window.addCablePolyline = function(c) {
+            if (!c) return;
             let pts = [];
             try {
               if (c.points_json) pts = JSON.parse(c.points_json);
@@ -622,7 +617,7 @@ export default function InteractivePlanScreen() {
 
             if (pts && pts.length >= 2) {
               const latlngs = pts.map(function(p) {
-                return [height - p.y, p.x];
+                return [-p.y / Math.pow(2, maxZoom), p.x / Math.pow(2, maxZoom)];
               });
               const poly = L.polyline(latlngs, {
                 color: c.cable_type && c.cable_type.includes('E30') ? '#F97316' : '#38BDF8',
@@ -636,6 +631,113 @@ export default function InteractivePlanScreen() {
                 send({ type: 'CABLE_CLICK', id: c.id });
               });
             }
+          };
+
+          // 1. Primary Raster Tiles Layer
+          if (planId && planId !== 'pln-sample-001') {
+            const tokenParam = token ? '?token=' + encodeURIComponent(token) : '';
+            const localTileDir = "${isLocalTileCached ? TileCacheService.getPlanTilesDir(planId) : ''}";
+            const tileUrl = localTileDir
+              ? localTileDir + '{z}/{x}/{y}.png'
+              : apiUrl + '/api/tiles/' + planId + '/{z}/{x}/{y}.png' + tokenParam;
+
+            const tileLayer = L.tileLayer(tileUrl, {
+              minZoom: minZoom,
+              maxZoom: maxZoom + 1,
+              maxNativeZoom: maxZoom,
+              tileSize: tileSize,
+              noWrap: true,
+              bounds: bounds,
+              detectRetina: false,
+              updateWhenZooming: false,
+              keepBuffer: 6,
+              errorTileUrl: '',
+            }).addTo(map);
+
+            tileLayer.on('tileerror', function(e) {
+              send({
+                type: 'TILE_ERROR',
+                url: e.tile && e.tile.src ? e.tile.src : '',
+                coords: e.coords,
+              });
+            });
+          }
+
+          // 2. Blueprint Architectural Canvas (Fallback for sample plan or offline preview)
+          if (!planId || planId === 'pln-sample-001') {
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#0B0F19';
+            ctx.fillRect(0, 0, width, height);
+
+            // Grid Lines
+            ctx.strokeStyle = '#1E293B';
+            ctx.lineWidth = 1.5;
+            for (let x = 0; x < width; x += 100) {
+              ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+            }
+            for (let y = 0; y < height; y += 100) {
+              ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+            }
+
+            // Structural Walls
+            ctx.strokeStyle = '#38BDF8';
+            ctx.lineWidth = 5;
+            ctx.strokeRect(60, 60, width - 120, height - 120);
+
+            // Rooms & Zones
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 2.5;
+            ctx.strokeRect(120, 120, 450, 320);
+            ctx.strokeRect(620, 120, 500, 320);
+            ctx.strokeRect(1170, 120, 630, 320);
+            ctx.strokeRect(120, 500, 750, 450);
+            ctx.strokeRect(920, 500, 880, 450);
+
+            ctx.fillStyle = '#64748B';
+            ctx.font = 'bold 22px sans-serif';
+            ctx.fillText('BIURO 101 (WEST)', 160, 180);
+            ctx.fillText('BIURO 102 (CENTER)', 660, 180);
+            ctx.fillText('SALA KONFERENCYJNA A', 1220, 180);
+            ctx.fillText('OPEN SPACE MONTAŻ', 160, 560);
+            ctx.fillText('GŁÓWNA ROZDZIELNICA ELEKTRYCZNA (RG)', 960, 560);
+
+            L.imageOverlay(canvas.toDataURL(), bounds).addTo(map);
+          }
+
+          map.fitBounds(bounds);
+
+          // Map Click (Add Pin)
+          map.on('click', function(e) {
+            const x = Math.round(e.latlng.lng * Math.pow(2, maxZoom));
+            const y = Math.round(-e.latlng.lat * Math.pow(2, maxZoom));
+            if (x >= 0 && x <= width && y >= 0 && y <= height) {
+              send({ type: 'MAP_CLICK', x: x, y: y });
+            }
+          });
+
+          // Render Elements (Safe calling now that functions are defined!)
+          const tasksData = ${JSON.stringify(visibleTasks)};
+          tasksData.forEach(function(t) {
+            window.addTaskMarker(t);
+          });
+
+          const bmaData = ${JSON.stringify(visibleBma)};
+          bmaData.forEach(function(b) {
+            window.addBmaMarker(b);
+          });
+
+          const circuitData = ${JSON.stringify(visibleCircuits)};
+          circuitData.forEach(function(c) {
+            window.addCircuitMarker(c);
+          });
+
+          const cableData = ${JSON.stringify(visibleCables)};
+          cableData.forEach(function(c) {
+            window.addCablePolyline(c);
           });
         </script>
       </body>
@@ -735,6 +837,16 @@ export default function InteractivePlanScreen() {
             onMessage={handleWebViewMessage}
             javaScriptEnabled={true}
             domStorageEnabled={true}
+            allowFileAccess={true}
+            allowFileAccessFromFileURLs={true}
+            allowUniversalAccessFromFileURLs={true}
+            scalesPageToFit={false}
+            scrollEnabled={false}
+            bounces={false}
+            overScrollMode="never"
+            mixedContentMode="always"
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
           />
         </View>
       )}
