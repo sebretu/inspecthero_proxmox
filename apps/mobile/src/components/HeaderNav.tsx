@@ -15,7 +15,7 @@ import { useAuth } from '../auth/useAuth';
 export function HeaderNav() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
-  const { isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin, isMod } = useAuth();
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [adminVisible, setAdminVisible] = useState(false);
@@ -36,17 +36,23 @@ export function HeaderNav() {
     { key: 'uv_circuits', label: t('uv_circuits', 'STROMKREISE VON UV-PLAN'), route: '/circuits', icon: '⚡' },
     { key: 'bma_automatik', label: t('bma_automatik', 'BMA AUTOMATIK'), route: '/circuits', icon: '🚨' },
     { key: 'maengelanzeige', label: t('maengelanzeige', 'MÄNGELANZEIGE'), route: '/tasks/create', icon: '📝' },
-    { key: 'chargers', label: t('chargers', 'LADEGERÄT-INSTALLATION'), route: '/circuits', icon: '🔋' },
-    { key: 'cable_auto', label: t('cable_auto', 'KABEL-AUTOMATISIERUNG'), route: '/cables', icon: '🔄' },
-    { key: 'pdf_tool', label: t('pdf_tool', 'NARZĘDZIE PDF'), route: '/plans', icon: '📄' },
+    ...(isAdmin
+      ? [
+          { key: 'chargers', label: t('chargers', 'LADEGERÄT-INSTALLATION'), route: '/circuits', icon: '🔋' },
+          { key: 'cable_auto', label: t('cable_auto', 'KABEL-AUTOMATISIERUNG'), route: '/cables', icon: '🔄' },
+          { key: 'pdf_tool', label: t('pdf_tool', 'NARZĘDZIE PDF'), route: '/plans', icon: '📄' },
+          { key: 'aufmass', label: t('aufmass', 'AUFMASS'), route: '/plans', icon: '📏' },
+        ]
+      : []),
     { key: 'echeck', label: t('echeck', 'E-CHECK'), route: '/circuits', icon: '⚡' },
     { key: 'materials_orders', label: t('materials_orders', 'ANFORDERUNGEN'), route: '/orders', icon: '📦' },
     { key: 'questions', label: t('questions', 'FRAGEN'), route: '/tasks/create', icon: '❓' },
-    { key: 'aufmass', label: t('aufmass', 'AUFMASS'), route: '/plans', icon: '📏' },
-    { key: 'employees', label: t('employees', 'MITARBEITER'), route: '/attendance', icon: '👥' },
+    ...(isMod || isAdmin
+      ? [{ key: 'employees', label: t('employees', 'MITARBEITER / ZEITERFASSUNG'), route: '/attendance', icon: '👥' }]
+      : []),
   ];
 
-  // Admin Menu items (Only for Admin/Moderator roles)
+  // Admin Menu items (Only for Admin roles)
   const adminItems = [
     { key: 'yolo_annotator', label: '⚡ YOLO ANNOTATOR', route: '/plans' },
     { key: 'symbol_detection', label: '🔍 SYMBOL DETECTION', route: '/plans' },
@@ -65,6 +71,7 @@ export function HeaderNav() {
     { key: 'errors', label: '⚠️ FEHLER', route: '/tasks/create' },
     { key: 'upload_plan', label: '⬆️ PLAN HOCHLADEN', route: '/plans' },
   ];
+
 
   const currentFlag = LANGUAGES.find((l) => l.code === language)?.flag || '🇩🇪';
 

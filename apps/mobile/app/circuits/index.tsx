@@ -6,16 +6,23 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDatabase } from '../../src/db/database';
+import { authSupabase } from '../../src/auth/authClient';
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
 
 interface StromkreisRow {
   id: string;
   plan_id: string;
   circuit_name: string;
   fuse_type: string | null;
+  pos_x?: number;
+  pos_y?: number;
   version: number;
 }
 
@@ -25,45 +32,101 @@ interface BmaDeviceRow {
   device_number: string;
   device_type: string;
   status: string | null;
+  pos_x?: number;
+  pos_y?: number;
   version: number;
 }
 
+interface PlanOption {
+  id: string;
+  name: string;
+  project_name?: string;
+}
+
 export default function CircuitsScreen() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'circuits' | 'bma'>('circuits');
+  const [plans, setPlans] = useState<PlanOption[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('all');
   const [circuits, setCircuits] = useState<StromkreisRow[]>([]);
   const [devices, setDevices] = useState<BmaDeviceRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const syncCircuitsFromApi = async (db: any) => {
+    try {
+      const { data: { session } } = await authSupabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      // Fetch plans list
+      const planRows = await db.getAllAsync<PlanOption>(`
+        SELECT p.id, p.name, COALESCE(pr.name, '') as project_name 
+        FROM plans p 
+        LEFT JOIN projects pr ON p.project_id = pr.id 
+        WHERE p.deleted_at IS NULL AND p.id != 'pln-sample-001'
+        ORDER BY p.name ASC;
+      `);
+      setPlans(planRows);
+      if (planRows.length > 0 && selectedPlanId === 'all') {
+        setSelectedPlanId(planRows[0].id);
+      }
+    } catch (e) {
+      console.warn('[Circuits] Sync error:', e);
+    }
+  };
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const db = await getDatabase();
+      await syncCircuitsFromApi(db);
+
+      const circuitFilter = selectedPlanId !== 'all' ? `AND plan_id = '${selectedPlanId}'` : '';
+      const bmaFilter = selectedPlanId !== 'all' ? `AND plan_id = '${selectedPlanId}'` : '';
 
       const circuitRows = await db.getAllAsync<StromkreisRow>(
-        'SELECT * FROM stromkreise WHERE deleted_at IS NULL ORDER BY circuit_name ASC;'
+        `SELECT * FROM stromkreise WHERE deleted_at IS NULL ${circuitFilter} ORDER BY circuit_name ASC;`
       );
       setCircuits(circuitRows);
 
       const bmaRows = await db.getAllAsync<BmaDeviceRow>(
-        'SELECT * FROM bma_devices WHERE deleted_at IS NULL ORDER BY device_number ASC;'
+        `SELECT * FROM bma_devices WHERE deleted_at IS NULL ${bmaFilter} ORDER BY device_number ASC;`
       );
       setDevices(bmaRows);
     } catch (err) {
       console.error('[CircuitsScreen] Error loading circuits & BMA:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, []);
+  }, [selectedPlanId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
+
+  const openPlanMap = (planIdToOpen?: string) => {
+    const targetId = (planIdToOpen && planIdToOpen !== 'all') ? planIdToOpen : (plans[0]?.id || selectedPlanId);
+    if (targetId && targetId !== 'all') {
+      router.push({ pathname: '/plans/[id]', params: { id: targetId } } as any);
+    } else {
+      router.push('/plans' as any);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <Stack.Screen
         options={{
-          title: 'Rozdzielnice & BMA',
+          title: 'Stromkreise & BMA',
           headerShown: true,
           headerBackTitle: 'Wstecz',
           headerStyle: { backgroundColor: '#0B0F19' },
@@ -72,6 +135,48 @@ export default function CircuitsScreen() {
         }}
       />
 
+      {/* Plan Selector & Map Banner */}
+      <View style={styles.topControlSection}>
+        {plans.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.planScroll}>
+            <TouchableOpacity
+              style={[styles.planChip, selectedPlanId === 'all' && styles.planChipActive]}
+              onPress={() => setSelectedPlanId('all')}
+            >
+              <Text style={[styles.planChipText, selectedPlanId === 'all' && styles.planChipTextActive]}>
+                Wszystkie plany
+              </Text>
+            </TouchableOpacity>
+            {plans.map((pl) => (
+              <TouchableOpacity
+                key={pl.id}
+                style={[styles.planChip, selectedPlanId === pl.id && styles.planChipActive]}
+                onPress={() => setSelectedPlanId(pl.id)}
+              >
+                <Text style={[styles.planChipText, selectedPlanId === pl.id && styles.planChipTextActive]}>
+                  📐 {pl.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
+        <TouchableOpacity
+          style={styles.openMapBanner}
+          activeOpacity={0.8}
+          onPress={() => openPlanMap(selectedPlanId)}
+        >
+          <Text style={styles.mapBannerIcon}>🗺️</Text>
+          <View style={styles.mapBannerTextCol}>
+            <Text style={styles.mapBannerTitle}>Otwórz interaktywną mapę planu 2D</Text>
+            <Text style={styles.mapBannerSubtitle}>
+              Przeglądaj piny obwodów, gniazd, oświetlenia i czujek BMA na rzucie PDF
+            </Text>
+          </View>
+          <Text style={styles.mapBannerArrow}>➔</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Tabs */}
       <View style={styles.tabBar}>
         <TouchableOpacity
@@ -79,7 +184,7 @@ export default function CircuitsScreen() {
           onPress={() => setActiveTab('circuits')}
         >
           <Text style={[styles.tabText, activeTab === 'circuits' && styles.tabTextActive]}>
-            ⚡ Obwody ({circuits.length})
+            ⚡ Obwody elektryczne ({circuits.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -95,32 +200,47 @@ export default function CircuitsScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#38BDF8" />
+          <Text style={styles.loadingText}>Ładowanie danych instalacji...</Text>
         </View>
       ) : activeTab === 'circuits' ? (
         <FlatList
           data={circuits}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#38BDF8"
+              colors={['#38BDF8']}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.center}>
               <Text style={styles.emptyTitle}>Brak obwodów</Text>
-              <Text style={styles.emptySubtitle}>Brak zdefiniowanych obwodów w rozdzielnicach.</Text>
+              <Text style={styles.emptySubtitle}>
+                Brak zdefiniowanych obwodów w rozdzielnicach dla wybranego planu.
+              </Text>
             </View>
           }
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.card}
+              activeOpacity={0.8}
+              onPress={() => openPlanMap(item.plan_id)}
+            >
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>{item.circuit_name}</Text>
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>ROZDZIELNICA RG</Text>
                 </View>
               </View>
-              <Text style={styles.cardDesc}>Zabezpieczenie: {item.fuse_type || 'B16A'}</Text>
+              <Text style={styles.cardDesc}>Zabezpieczenie: {item.fuse_type || 'B16A / RCD 30mA'}</Text>
               <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Stan: <Text style={styles.metaValue}>🟢 Sprawny</Text></Text>
-                <Text style={styles.metaLabel}>Wersja: <Text style={styles.metaValue}>v{item.version}</Text></Text>
+                <Text style={styles.metaLabel}>Stan: <Text style={styles.metaValue}>🟢 Aktywny na planie</Text></Text>
+                <Text style={styles.viewOnMapText}>Pokaż na mapie ➔</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
         />
       ) : (
@@ -128,14 +248,26 @@ export default function CircuitsScreen() {
           data={devices}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#38BDF8"
+              colors={['#38BDF8']}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.center}>
               <Text style={styles.emptyTitle}>Brak urządzeń BMA</Text>
-              <Text style={styles.emptySubtitle}>Brak czujek sygnalizacji pożarowej.</Text>
+              <Text style={styles.emptySubtitle}>Brak czujek pożarowych dla wybranego planu.</Text>
             </View>
           }
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.card}
+              activeOpacity={0.8}
+              onPress={() => openPlanMap(item.plan_id)}
+            >
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>{item.device_number}</Text>
                 <View style={[styles.badge, { borderColor: '#22C55E' }]}>
@@ -144,10 +276,10 @@ export default function CircuitsScreen() {
               </View>
               <Text style={styles.cardDesc}>{item.device_type}</Text>
               <View style={styles.metaRow}>
-                <Text style={styles.metaLabel}>Pętla: <Text style={styles.metaValue}>Pętla 1 (Kond. +1)</Text></Text>
-                <Text style={styles.metaLabel}>Wersja: <Text style={styles.metaValue}>v{item.version}</Text></Text>
+                <Text style={styles.metaLabel}>Stan: <Text style={styles.metaValue}>🟢 Sprawny</Text></Text>
+                <Text style={styles.viewOnMapText}>Pokaż na mapie ➔</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
         />
       )}
@@ -160,18 +292,81 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#030712',
   },
+  topControlSection: {
+    backgroundColor: '#0B0F19',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+  },
+  planScroll: {
+    marginBottom: 10,
+  },
+  planChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  planChipActive: {
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+    borderColor: '#38BDF8',
+  },
+  planChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  planChipTextActive: {
+    color: '#38BDF8',
+    fontWeight: '700',
+  },
+  openMapBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
+  },
+  mapBannerIcon: {
+    fontSize: 24,
+    marginRight: 10,
+  },
+  mapBannerTextCol: {
+    flex: 1,
+  },
+  mapBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#38BDF8',
+    marginBottom: 2,
+  },
+  mapBannerSubtitle: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  mapBannerArrow: {
+    fontSize: 16,
+    color: '#38BDF8',
+    fontWeight: '800',
+    marginLeft: 8,
+  },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#0B0F19',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
     gap: 8,
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 8,
     alignItems: 'center',
     backgroundColor: '#1E293B',
@@ -182,7 +377,7 @@ const styles = StyleSheet.create({
     borderColor: '#38BDF8',
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#94A3B8',
   },
@@ -234,6 +429,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: '#1E293B',
     paddingTop: 10,
@@ -246,11 +442,21 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontWeight: '600',
   },
+  viewOnMapText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#38BDF8',
+  },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+  },
+  loadingText: {
+    color: '#94A3B8',
+    marginTop: 12,
+    fontSize: 14,
   },
   emptyTitle: {
     fontSize: 18,

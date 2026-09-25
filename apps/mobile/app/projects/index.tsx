@@ -13,6 +13,10 @@ import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDatabase } from '../../src/db/database';
 
+import { authSupabase } from '../../src/auth/authClient';
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
+
 interface ProjectItem {
   id: string;
   name: string;
@@ -28,9 +32,43 @@ export default function ProjectsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  const syncProjectsFromApi = async (db: any) => {
+    try {
+      const { data: { session } } = await authSupabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/projects`, { headers });
+      if (res.ok) {
+        const json = await res.json();
+        const apiProjects = Array.isArray(json) ? json : (json?.data || []);
+        if (apiProjects.length > 0) {
+          const now = new Date().toISOString();
+          for (const p of apiProjects) {
+            await db.runAsync(
+              `INSERT INTO projects (id, name, status, created_at, updated_at, version)
+               VALUES (?, ?, ?, ?, ?, 1)
+               ON CONFLICT(id) DO UPDATE SET name = excluded.name, status = excluded.status, updated_at = excluded.updated_at;`,
+              [p.id, p.name, p.status || 'ACTIVE', p.created_at || now, p.updated_at || now]
+            );
+          }
+          // Remove legacy sample project
+          await db.runAsync("DELETE FROM projects WHERE id = 'proj-sample-001';").catch(() => {});
+        }
+      }
+    } catch (apiErr) {
+      console.warn('[ProjectsScreen] API sync skipped or failed:', apiErr);
+    }
+  };
+
   const loadProjects = useCallback(async () => {
     try {
       const db = await getDatabase();
+      // Try background fetch & sync from API
+      await syncProjectsFromApi(db);
+
       const rows = await db.getAllAsync<ProjectItem>(`
         SELECT 
           p.id, 
@@ -41,7 +79,7 @@ export default function ProjectsScreen() {
            JOIN plans pl ON t.plan_id = pl.id 
            WHERE pl.project_id = p.id AND t.deleted_at IS NULL) as task_count
         FROM projects p 
-        WHERE p.deleted_at IS NULL 
+        WHERE p.deleted_at IS NULL AND p.id != 'proj-sample-001'
         ORDER BY p.name ASC;
       `);
       setProjects(rows);
@@ -52,6 +90,7 @@ export default function ProjectsScreen() {
       setRefreshing(false);
     }
   }, []);
+
 
   useEffect(() => {
     loadProjects();

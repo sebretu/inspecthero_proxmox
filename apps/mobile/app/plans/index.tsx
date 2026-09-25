@@ -12,9 +12,15 @@ import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDatabase } from '../../src/db/database';
 
+import { authSupabase } from '../../src/auth/authClient';
+import { ScrollView, RefreshControl } from 'react-native';
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
+
 interface PlanItem {
   id: string;
   name: string;
+  project_id?: string;
   project_name?: string;
   building_name?: string;
   floor_name?: string;
@@ -22,21 +28,71 @@ interface PlanItem {
   bma_count?: number;
 }
 
+interface ProjectOption {
+  id: string;
+  name: string;
+}
+
 export default function PlansListScreen() {
   const router = useRouter();
   const [plans, setPlans] = useState<PlanItem[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const syncPlansFromApi = async (db: any) => {
+    try {
+      const { data: { session } } = await authSupabase.auth.getSession();
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      // 1. Fetch live projects
+      const pRes = await fetch(`${API_BASE_URL}/api/projects`, { headers });
+      let projs: ProjectOption[] = [];
+      if (pRes.ok) {
+        const pJson = await pRes.json();
+        const rawProjs = Array.isArray(pJson) ? pJson : (pJson?.data || []);
+        projs = rawProjs.map((p: any) => ({ id: p.id, name: p.name }));
+        setProjects(projs);
+      }
+
+      // 2. Fetch plans for projects
+      const now = new Date().toISOString();
+      for (const pr of projs.slice(0, 10)) {
+        const planRes = await fetch(`${API_BASE_URL}/api/plans?projectId=${encodeURIComponent(pr.id)}`, { headers });
+        if (planRes.ok) {
+          const planJson = await planRes.json();
+          const plansList = Array.isArray(planJson) ? planJson : (planJson?.data || []);
+          for (const pl of plansList) {
+            const planName = pl.name || pl.pdf_path?.split('/')?.pop() || 'Plan architektoniczny';
+            await db.runAsync(
+              `INSERT INTO plans (id, project_id, floor_id, name, width, height, created_at, updated_at, version)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+               ON CONFLICT(id) DO UPDATE SET name = excluded.name, project_id = excluded.project_id, updated_at = excluded.updated_at;`,
+              [pl.id, pr.id, pl.floor_id || null, planName, pl.image_width || 1920, pl.image_height || 1080, pl.created_at || now, pl.updated_at || now]
+            );
+          }
+        }
+      }
+    } catch (apiErr) {
+      console.warn('[PlansList] Live API sync skipped or failed:', apiErr);
+    }
+  };
 
   const loadPlans = useCallback(async () => {
     try {
-      setLoading(true);
       const db = await getDatabase();
-      
+      await syncPlansFromApi(db);
+
       const rows = await db.getAllAsync<PlanItem>(`
         SELECT 
           p.id, 
           p.name, 
+          p.project_id,
           COALESCE(pr.name, 'Projekt ogólny') as project_name,
           COALESCE(b.name, '') as building_name,
           COALESCE(f.name, '') as floor_name,
@@ -46,45 +102,24 @@ export default function PlansListScreen() {
         LEFT JOIN projects pr ON p.project_id = pr.id
         LEFT JOIN floors f ON p.floor_id = f.id
         LEFT JOIN buildings b ON f.building_id = b.id
-        WHERE p.deleted_at IS NULL
+        WHERE p.deleted_at IS NULL AND p.id != 'pln-sample-001'
         ORDER BY pr.name ASC, p.name ASC;
       `);
 
-      if (rows.length === 0) {
-        // Fallback sample if empty
-        setPlans([
-          {
-            id: 'e6a8e578-831e-4509-9b9a-41eeea3d6f4c',
-            name: '00_EG_Uebersicht.pdf (Parter)',
-            project_name: 'SEGRO Park Berlin City',
-            floor_name: 'Parter (EG)',
-            task_count: 5,
-            bma_count: 12,
-          },
-          {
-            id: 'a52140bb-5899-4c5c-9c3f-4e0e227fcda3',
-            name: '9030_GR_BMA_Gesamt-A0.pdf',
-            project_name: 'SEGRO Park Berlin City',
-            floor_name: 'Pętla BMA Ogólna',
-            task_count: 2,
-            bma_count: 34,
-          },
-          {
-            id: 'ee006f85-0ec7-4ca3-b8f4-41d3d6e5a409',
-            name: '01_1OG_Bueros.pdf (1. Piętro)',
-            project_name: 'SEGRO Park Berlin City',
-            floor_name: '1. Piętro Biura',
-            task_count: 8,
-            bma_count: 18,
-          },
-        ]);
-      } else {
-        setPlans(rows);
+      setPlans(rows);
+
+      // Extract unique projects from local DB if not yet set
+      const dbProjs = await db.getAllAsync<ProjectOption>(
+        "SELECT id, name FROM projects WHERE deleted_at IS NULL AND id != 'proj-sample-001' ORDER BY name ASC;"
+      );
+      if (dbProjs.length > 0) {
+        setProjects(dbProjs);
       }
     } catch (err) {
       console.error('[PlansList] Load error:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -92,13 +127,19 @@ export default function PlansListScreen() {
     loadPlans();
   }, [loadPlans]);
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadPlans();
+  };
+
   const filteredPlans = plans.filter((p) => {
     const q = search.toLowerCase();
-    return (
+    const matchesProject = selectedProjectId === 'all' || p.project_id === selectedProjectId;
+    const matchesSearch =
       p.name.toLowerCase().includes(q) ||
       (p.project_name && p.project_name.toLowerCase().includes(q)) ||
-      (p.floor_name && p.floor_name.toLowerCase().includes(q))
-    );
+      (p.floor_name && p.floor_name.toLowerCase().includes(q));
+    return matchesProject && matchesSearch;
   });
 
   return (
@@ -122,6 +163,34 @@ export default function PlansListScreen() {
           value={search}
           onChangeText={setSearch}
         />
+
+        {/* Project Selector Horizontal Scroll */}
+        {projects.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.projectFilterRow}>
+            <TouchableOpacity
+              style={[styles.filterChip, selectedProjectId === 'all' && styles.filterChipActive]}
+              onPress={() => setSelectedProjectId('all')}
+            >
+              <Text style={[styles.filterChipText, selectedProjectId === 'all' && styles.filterChipTextActive]}>
+                Wszystkie ({plans.length})
+              </Text>
+            </TouchableOpacity>
+            {projects.map((pr) => {
+              const count = plans.filter((p) => p.project_id === pr.id).length;
+              return (
+                <TouchableOpacity
+                  key={pr.id}
+                  style={[styles.filterChip, selectedProjectId === pr.id && styles.filterChipActive]}
+                  onPress={() => setSelectedProjectId(pr.id)}
+                >
+                  <Text style={[styles.filterChipText, selectedProjectId === pr.id && styles.filterChipTextActive]}>
+                    🏢 {pr.name} ({count})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
       </View>
 
       {loading ? (
@@ -134,6 +203,14 @@ export default function PlansListScreen() {
           data={filteredPlans}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#38BDF8"
+              colors={['#38BDF8']}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.center}>
               <Text style={styles.emptyTitle}>Brak rzutów</Text>
@@ -175,6 +252,7 @@ export default function PlansListScreen() {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -196,6 +274,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1E293B',
   },
+  projectFilterRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  filterChipActive: {
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+    borderColor: '#38BDF8',
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  filterChipTextActive: {
+    color: '#38BDF8',
+    fontWeight: '700',
+  },
+
   list: {
     padding: 16,
   },
