@@ -13,11 +13,14 @@ import {
   TextInput,
   Alert,
   Dimensions,
+  Pressable,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { authSupabase } from '../../src/auth/authClient';
+import { useLanguage } from '../../src/i18n/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
@@ -45,25 +48,35 @@ interface MaengelDocument {
   items_count?: number;
 }
 
-interface MaengelItem {
+export interface MaengelPhoto {
+  id: string;
+  url: string;
+  caption?: string | null;
+  photo_type?: 'BEFORE' | 'AFTER' | 'GENERAL' | null;
+  created_at?: string;
+}
+
+export interface MaengelItem {
   id: string;
   document_id: string;
-  item_number?: string;
-  title: string;
-  description: string | null;
-  trade?: string | null;
-  location?: string | null;
-  deadline?: string | null;
+  project_id?: string;
+  item_number: string;
+  trade_or_company?: string | null; // e.g. KDSK, ETEC, Philips, Elektro, BMA
+  location?: string | null; // e.g. 1.OG Raum 102
+  page_number: number;
+  original_text: string;
+  ai_relevance?: string;
+  is_selected?: boolean;
+  our_documentation?: string | null; // Bauleitung / Admin Notizen
+  user_documentation?: string | null; // Protokół naprawy / Kommentar durch Mitarbeiter
   status: 'OPEN' | 'IN_PROGRESS' | 'ZU_KLAEREN' | 'DONE' | 'NOT_RELEVANT';
-  before_photo_url?: string | null;
-  after_photo_url?: string | null;
-  user_doc?: string | null;
-  response_text?: string | null;
   created_at?: string;
+  photos?: MaengelPhoto[];
 }
 
 export default function MaengelanzeigeScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
   const { projectId: initialProjectId, docId: initialDocId } = useLocalSearchParams<{
     projectId?: string;
     docId?: string;
@@ -77,17 +90,19 @@ export default function MaengelanzeigeScreen() {
   const [selectedDocId, setSelectedDocId] = useState<string>(initialDocId || '');
   const [items, setItems] = useState<MaengelItem[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [tradeFilter, setTradeFilter] = useState<string>('ALL');
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [scanning, setScanning] = useState(false);
 
   // Fullscreen Photo Lightbox
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
-  // Status Edit Modal
+  // Status & Comment Edit Modal
   const [editingItem, setEditingItem] = useState<MaengelItem | null>(null);
-  const [responseNotes, setResponseNotes] = useState('');
+  const [userDocText, setUserDocText] = useState('');
+  const [adminDocText, setAdminDocText] = useState('');
+  const [selectedNextStatus, setSelectedNextStatus] = useState<MaengelItem['status']>('OPEN');
   const [updating, setUpdating] = useState(false);
 
   const loadProjectsAndDocs = useCallback(async () => {
@@ -98,7 +113,7 @@ export default function MaengelanzeigeScreen() {
         ? { Authorization: `Bearer ${session.access_token}` }
         : {};
 
-      // 0. Load Companies (Firmen)
+      // 0. Load Companies (Firmen / Zleceniodawcy)
       try {
         const cRes = await fetch(`${API_BASE_URL}/api/companies`, { headers });
         if (cRes.ok) {
@@ -157,7 +172,36 @@ export default function MaengelanzeigeScreen() {
       if (iRes.ok) {
         const iJson = await iRes.json();
         const iList = Array.isArray(iJson) ? iJson : (iJson?.data || []);
-        setItems(iList);
+        const formatted: MaengelItem[] = (iList || []).map((i: any) => ({
+          id: i.id,
+          document_id: i.document_id,
+          project_id: i.project_id,
+          item_number: i.item_number ? String(i.item_number) : '',
+          trade_or_company: i.trade_or_company || i.trade || null,
+          location: i.location || null,
+          page_number: i.page_number || 1,
+          original_text: i.original_text || i.description || i.title || 'Keine Mängelbeschreibung vorhanden',
+          our_documentation: i.our_documentation || null,
+          user_documentation: i.user_documentation || i.response_text || null,
+          status: i.status || 'OPEN',
+          photos: (i.photos || i.maengelanzeige_photos || []).map((p: any) => {
+            let pt = p.photo_type;
+            if (!pt) {
+              if (p.caption?.includes('[NACHHER]')) pt = 'AFTER';
+              else if (p.caption?.includes('[VORHER]')) pt = 'BEFORE';
+              else pt = 'BEFORE';
+            }
+            return {
+              id: p.id,
+              url: p.url,
+              caption: p.caption || null,
+              photo_type: pt,
+              created_at: p.created_at,
+            };
+          }),
+          created_at: i.created_at,
+        }));
+        setItems(formatted);
       }
     } catch (err) {
       console.warn('[Maengelanzeige] Items load error:', err);
@@ -177,7 +221,12 @@ export default function MaengelanzeigeScreen() {
     loadProjectsAndDocs().then(() => loadItems());
   };
 
-  const updateItemStatus = async (item: MaengelItem, nextStatus: MaengelItem['status'], notes?: string) => {
+  const updateItemDetails = async (
+    item: MaengelItem,
+    nextStatus: MaengelItem['status'],
+    userDoc?: string,
+    adminDoc?: string
+  ) => {
     try {
       setUpdating(true);
       const { data: { session } } = await authSupabase.auth.getSession();
@@ -189,7 +238,8 @@ export default function MaengelanzeigeScreen() {
       const payload = {
         id: item.id,
         status: nextStatus,
-        response_text: notes !== undefined ? notes : item.response_text,
+        user_documentation: userDoc !== undefined ? userDoc : item.user_documentation,
+        our_documentation: adminDoc !== undefined ? adminDoc : item.our_documentation,
       };
 
       const res = await fetch(`${API_BASE_URL}/api/maengelanzeige/items`, {
@@ -200,108 +250,157 @@ export default function MaengelanzeigeScreen() {
 
       if (res.ok) {
         setItems((prev) =>
-          prev.map((i) => (i.id === item.id ? { ...i, status: nextStatus, response_text: notes ?? i.response_text } : i))
+          prev.map((i) =>
+            i.id === item.id
+              ? {
+                  ...i,
+                  status: nextStatus,
+                  user_documentation: userDoc !== undefined ? userDoc : i.user_documentation,
+                  our_documentation: adminDoc !== undefined ? adminDoc : i.our_documentation,
+                }
+              : i
+          )
         );
         setEditingItem(null);
       } else {
-        Alert.alert('Błąd', 'Nie udało się zaktualizować statusu wady na serwerze.');
+        Alert.alert('Fehler', 'Status konnte auf dem Server nicht aktualisiert werden.');
       }
     } catch (err: any) {
-      Alert.alert('Błąd', err?.message || 'Błąd połączenia');
+      Alert.alert('Fehler', err?.message || 'Verbindungsfehler');
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleTakeDefectPhoto = async (item: MaengelItem) => {
+  const handleUploadDefectPhoto = async (
+    item: MaengelItem,
+    useCamera = true,
+    photoType: 'BEFORE' | 'AFTER' = 'AFTER'
+  ) => {
     try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Brak uprawnień', 'Aplikacja potrzebuje dostępu do aparatu.');
-        return;
+      let result;
+      if (useCamera) {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert('Berechtigung erforderlich', 'Aktivieren Sie den Kamerazugriff in den Einstellungen.');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          quality: 0.7,
+          base64: true,
+          allowsEditing: false,
+        });
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync({
+          quality: 0.7,
+          base64: true,
+          allowsEditing: false,
+        });
       }
 
-      const result = await ImagePicker.launchCameraAsync({
-        quality: 0.8,
-        allowsEditing: false,
-      });
-
       if (!result.canceled && result.assets && result.assets[0]) {
-        const localUri = result.assets[0].uri;
-        // Upload photo to backend
-        const { data: { session } } = await authSupabase.auth.getSession();
-        const formData = new FormData();
-        formData.append('photo', {
-          uri: localUri,
-          name: `mangel_${item.id}_${Date.now()}.jpg`,
-          type: 'image/jpeg',
-        } as any);
-        formData.append('mangelId', item.id);
+        const asset = result.assets[0];
+        let base64 = asset.base64;
+        if (!base64 && asset.uri) {
+          base64 = await FileSystem.readAsStringAsync(asset.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+        }
 
-        const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, {
+        if (!base64) {
+          Alert.alert('Fehler', 'Foto konnte nicht codiert werden.');
+          return;
+        }
+
+        setLoading(true);
+        const { data: { session } } = await authSupabase.auth.getSession();
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        };
+
+        const payload = {
+          itemId: item.id,
+          imageBase64: base64,
+          fileName: `mangel_${item.id}_${Date.now()}.jpg`,
+          caption: photoType === 'AFTER' ? '[NACHHER] Mangel behoben' : '[VORHER] Mangelaufnahme',
+          photoType,
+        };
+
+        const res = await fetch(`${API_BASE_URL}/api/maengelanzeige/photos`, {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session?.access_token || ''}`,
-          },
-          body: formData,
+          headers,
+          body: JSON.stringify(payload),
         });
 
-        if (uploadRes.ok) {
-          const uploadJson = await uploadRes.json();
-          const publicUrl = uploadJson.url || uploadJson.data?.url || localUri;
-
-          await fetch(`${API_BASE_URL}/api/maengelanzeige/items`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${session?.access_token || ''}`,
-            },
-            body: JSON.stringify({
-              id: item.id,
-              after_photo_url: publicUrl,
-              status: 'DONE',
-            }),
-          });
-
+        if (res.ok) {
+          const photoJson = await res.json();
+          const newPhoto = photoJson?.data || photoJson;
           setItems((prev) =>
-            prev.map((i) => (i.id === item.id ? { ...i, after_photo_url: publicUrl, status: 'DONE' } : i))
+            prev.map((i) => {
+              if (i.id === item.id) {
+                const cur = i.photos || [];
+                return {
+                  ...i,
+                  status: photoType === 'AFTER' && i.status === 'OPEN' ? 'IN_PROGRESS' : i.status,
+                  photos: [...cur, newPhoto],
+                };
+              }
+              return i;
+            })
           );
-          Alert.alert('Sukces', 'Zdjęcie usunięcia wady zostało przesłane.');
+          Alert.alert('Erfolg', 'Nachher-Foto wurde erfolgreich hochgeladen und dem Mangel zugeordnet!');
         } else {
-          // Fallback set local URI for immediate view
-          setItems((prev) =>
-            prev.map((i) => (i.id === item.id ? { ...i, after_photo_url: localUri, status: 'DONE' } : i))
-          );
+          Alert.alert('Fehler', 'Upload des Fotos fehlgeschlagen.');
         }
       }
     } catch (err: any) {
-      Alert.alert('Błąd', err?.message || 'Nie udało się dodać zdjęcia.');
+      Alert.alert('Fehler', err?.message || 'Upload-Fehler');
+    } finally {
+      setLoading(false);
     }
   };
 
   const getStatusInfo = (status: MaengelItem['status']) => {
     switch (status) {
-      case 'DONE':
-        return { label: 'USUNIĘTO / GOTOWE', bg: 'rgba(34, 197, 94, 0.15)', text: '#22C55E', icon: '✅' };
+      case 'OPEN':
+        return { label: '🚨 OFFEN', bg: '#EF444425', text: '#EF4444', icon: '🚨' };
       case 'IN_PROGRESS':
-        return { label: 'W TRAKCIE NAPRAWY', bg: 'rgba(234, 179, 8, 0.15)', text: '#EAB308', icon: '⏳' };
+        return { label: '⏳ IN BEARBEITUNG', bg: '#EAB30825', text: '#EAB308', icon: '⏳' };
       case 'ZU_KLAEREN':
-        return { label: 'DO WYJAŚNIENIA', bg: 'rgba(168, 85, 247, 0.15)', text: '#A855F7', icon: '❓' };
-      case 'NOT_RELEVANT':
-        return { label: 'NIE DOTYCZY', bg: 'rgba(100, 116, 139, 0.15)', text: '#94A3B8', icon: '🚫' };
+        return { label: '❓ ZU KLÄREN', bg: '#A855F725', text: '#A855F7', icon: '❓' };
+      case 'DONE':
+        return { label: '✅ BEHOBEN', bg: '#22C55E25', text: '#22C55E', icon: '✅' };
       default:
-        return { label: 'NOWA WADA (OPEN)', bg: 'rgba(239, 68, 68, 0.15)', text: '#EF4444', icon: '🚨' };
+        return { label: 'NICHT RELEVANT', bg: '#64748B25', text: '#94A3B8', icon: '⚪' };
     }
   };
 
-  const filteredItems = items.filter((item) => {
-    if (statusFilter === 'ALL') return true;
-    return item.status === statusFilter;
-  });
+  const getTradeColor = (trade?: string | null) => {
+    if (!trade) return { bg: 'rgba(56, 189, 248, 0.15)', text: '#38BDF8', border: '#38BDF8' };
+    const tUp = trade.toUpperCase();
+    if (tUp.includes('KDSK')) return { bg: 'rgba(245, 158, 11, 0.2)', text: '#F59E0B', border: '#F59E0B' };
+    if (tUp.includes('ETEC')) return { bg: 'rgba(56, 189, 248, 0.2)', text: '#38BDF8', border: '#38BDF8' };
+    if (tUp.includes('PHILIPS')) return { bg: 'rgba(168, 85, 247, 0.2)', text: '#C084FC', border: '#A855F7' };
+    if (tUp.includes('ELEKTRO') || tUp.includes('EL')) return { bg: 'rgba(59, 130, 246, 0.2)', text: '#60A5FA', border: '#3B82F6' };
+    if (tUp.includes('BMA') || tUp.includes('BRAND')) return { bg: 'rgba(239, 68, 68, 0.2)', text: '#F87171', border: '#EF4444' };
+    if (tUp.includes('HKLS') || tUp.includes('HEIZ') || tUp.includes('SAN')) return { bg: 'rgba(6, 182, 212, 0.2)', text: '#22D3EE', border: '#06B6D4' };
+    if (tUp.includes('TROCKEN') || tUp.includes('BAU')) return { bg: 'rgba(16, 185, 129, 0.2)', text: '#34D399', border: '#10B981' };
+    return { bg: 'rgba(148, 163, 184, 0.2)', text: '#CBD5E1', border: '#64748B' };
+  };
 
   const visibleProjects = projects.filter((p) => {
     if (!selectedCompanyId) return true;
     return p.company_id === selectedCompanyId;
+  });
+
+  // Extract all unique trades from current items
+  const uniqueTrades = Array.from(new Set(items.map((i) => i.trade_or_company).filter(Boolean))) as string[];
+
+  const filteredItems = items.filter((item) => {
+    if (statusFilter !== 'ALL' && item.status !== statusFilter) return false;
+    if (tradeFilter !== 'ALL' && item.trade_or_company !== tradeFilter) return false;
+    return true;
   });
 
   return (
@@ -310,26 +409,24 @@ export default function MaengelanzeigeScreen() {
         options={{
           title: 'Mängelanzeige (Protokoły Wad)',
           headerShown: true,
-          headerBackTitle: 'Wróć',
+          headerBackTitle: 'Zurück',
           headerStyle: { backgroundColor: '#0B0F19' },
           headerTintColor: '#38BDF8',
-          headerTitleStyle: { color: '#F8FAFC', fontWeight: '700' },
+          headerTitleStyle: { color: '#F8FAFC', fontWeight: '800' },
         }}
       />
 
-      {/* 0. Company (Firma) Switcher Bar */}
+      {/* 0. Company (Firma / Auftraggeber) Filter Bar */}
       {companies.length > 0 && (
         <View style={[styles.topSelectorBar, { borderBottomWidth: 0, paddingBottom: 4 }]}>
-          <Text style={styles.selectorLabel}>FIRMA / ZLECENIODAWCA:</Text>
+          <Text style={styles.selectorLabel}>FIRMA / AUFTRAGGEBER:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollBar}>
             <TouchableOpacity
               style={[styles.projChip, !selectedCompanyId && styles.projChipActive]}
-              onPress={() => {
-                setSelectedCompanyId('');
-              }}
+              onPress={() => setSelectedCompanyId('')}
             >
               <Text style={[styles.projChipText, !selectedCompanyId && styles.projChipTextActive]}>
-                🏢 Wszystkie firmy
+                🏢 Alle Firmen ({companies.length})
               </Text>
             </TouchableOpacity>
             {companies.map((c) => (
@@ -378,7 +475,7 @@ export default function MaengelanzeigeScreen() {
       {/* 2. Documents (Protokoły PDF) Switcher */}
       {documents.length > 0 && (
         <View style={styles.docSelectorBar}>
-          <Text style={styles.selectorLabel}>PROTOKÓŁ PDF / DOKUMENT:</Text>
+          <Text style={styles.selectorLabel}>PROTOKOLL-DOKUMENT (PDF):</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollBar}>
             {documents.map((d) => (
               <TouchableOpacity
@@ -387,7 +484,7 @@ export default function MaengelanzeigeScreen() {
                 onPress={() => setSelectedDocId(d.id)}
               >
                 <Text style={[styles.docChipText, selectedDocId === d.id && styles.docChipTextActive]}>
-                  📑 {d.title || d.file_name || 'Protokół wad'}
+                  📑 {d.title || d.file_name || 'Mängelprotokoll'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -395,15 +492,50 @@ export default function MaengelanzeigeScreen() {
         </View>
       )}
 
-      {/* 3. Status Filter Bar */}
+      {/* 3. Trade Filter Bar (KDSK, ETEC, Philips, etc.) */}
+      {uniqueTrades.length > 0 && (
+        <View style={[styles.tradeFilterBar]}>
+          <Text style={styles.selectorLabel}>GEWERK / FIRMA (KDSK, ETEC, PHILIPS...):</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollBar}>
+            <TouchableOpacity
+              style={[styles.tradeChip, tradeFilter === 'ALL' && styles.tradeChipActive]}
+              onPress={() => setTradeFilter('ALL')}
+            >
+              <Text style={[styles.tradeChipText, tradeFilter === 'ALL' && styles.tradeChipTextActive]}>
+                Alle Gewerke ({items.length})
+              </Text>
+            </TouchableOpacity>
+            {uniqueTrades.map((tr) => {
+              const tc = getTradeColor(tr);
+              const isActive = tradeFilter === tr;
+              return (
+                <TouchableOpacity
+                  key={tr}
+                  style={[
+                    styles.tradeChip,
+                    { borderColor: tc.border, backgroundColor: isActive ? tc.bg : '#0F172A' },
+                  ]}
+                  onPress={() => setTradeFilter(tr)}
+                >
+                  <Text style={[styles.tradeChipText, { color: isActive ? '#FFFFFF' : tc.text, fontWeight: '800' }]}>
+                    🏢 {tr}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* 4. Status Filter Bar */}
       <View style={styles.filterBar}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {[
-            { id: 'ALL', label: `Wszystkie (${items.length})` },
-            { id: 'OPEN', label: `🚨 Otwarte (${items.filter((i) => i.status === 'OPEN').length})` },
-            { id: 'IN_PROGRESS', label: `⏳ W trakcie (${items.filter((i) => i.status === 'IN_PROGRESS').length})` },
-            { id: 'ZU_KLAEREN', label: `❓ Wyjaśnić (${items.filter((i) => i.status === 'ZU_KLAEREN').length})` },
-            { id: 'DONE', label: `✅ Zrobione (${items.filter((i) => i.status === 'DONE').length})` },
+            { id: 'ALL', label: `Alle (${items.length})` },
+            { id: 'OPEN', label: `🚨 Offen (${items.filter((i) => i.status === 'OPEN').length})` },
+            { id: 'IN_PROGRESS', label: `⏳ In Bearbeitung (${items.filter((i) => i.status === 'IN_PROGRESS').length})` },
+            { id: 'ZU_KLAEREN', label: `❓ Zu klären (${items.filter((i) => i.status === 'ZU_KLAEREN').length})` },
+            { id: 'DONE', label: `✅ Behoben (${items.filter((i) => i.status === 'DONE').length})` },
           ].map((f) => (
             <TouchableOpacity
               key={f.id}
@@ -418,11 +550,11 @@ export default function MaengelanzeigeScreen() {
         </ScrollView>
       </View>
 
-      {/* 4. Main Defect List */}
+      {/* 5. Main Defect List (1:1 Web Parity) */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#38BDF8" />
-          <Text style={styles.loadingText}>Ładowanie protokołów i wad...</Text>
+          <Text style={styles.loadingText}>Mängelprotokolle werden geladen...</Text>
         </View>
       ) : (
         <FlatList
@@ -439,31 +571,64 @@ export default function MaengelanzeigeScreen() {
           }
           ListEmptyComponent={
             <View style={styles.center}>
-              <Text style={styles.emptyTitle}>Brak pozycji wad</Text>
+              <Text style={styles.emptyTitle}>Keine Mängeleinträge vorhanden</Text>
               <Text style={styles.emptySubtitle}>
                 {documents.length === 0
-                  ? 'Brak wgranych dokumentów Mängelanzeige dla tego projektu.'
-                  : 'Wszystkie wady w tym protokole zostały zrealizowane.'}
+                  ? 'Keine Mängelanzeige-Dokumente für dieses Projekt hochgeladen.'
+                  : 'Alle Mängel in diesem Protokoll entsprechen den gewählten Filtern.'}
               </Text>
             </View>
           }
           renderItem={({ item }) => {
             const statusInfo = getStatusInfo(item.status);
+            const tradeColor = getTradeColor(item.trade_or_company);
+
+            const beforePhotos = (item.photos || []).filter(
+              (p) => p.photo_type === 'BEFORE' || (!p.photo_type && p.caption?.includes('[VORHER]'))
+            );
+            const afterPhotos = (item.photos || []).filter(
+              (p) => p.photo_type === 'AFTER' || (!p.photo_type && p.caption?.includes('[NACHHER]'))
+            );
+            const generalPhotos = (item.photos || []).filter(
+              (p) => p.photo_type === 'GENERAL' || (!beforePhotos.includes(p) && !afterPhotos.includes(p))
+            );
+
             return (
               <View style={styles.itemCard}>
-                {/* Header */}
+                {/* 1. Header Bar: Item Number, Trade/Company badge, Page, and Status */}
                 <View style={styles.itemCardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.itemNumberText}>
-                      {item.item_number ? `#${item.item_number} • ` : ''}{item.trade || 'Branża el.'}
-                    </Text>
-                    <Text style={styles.itemTitleText}>{item.title}</Text>
+                  <View style={styles.headerBadgesRow}>
+                    <View style={styles.itemNumBadge}>
+                      <Text style={styles.itemNumberText}>
+                        #{item.item_number || 'Pos'}
+                      </Text>
+                    </View>
+
+                    {item.trade_or_company ? (
+                      <View
+                        style={[
+                          styles.tradeBadge,
+                          { backgroundColor: tradeColor.bg, borderColor: tradeColor.border },
+                        ]}
+                      >
+                        <Text style={[styles.tradeBadgeText, { color: tradeColor.text }]}>
+                          🏢 {item.trade_or_company}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    <View style={styles.pageBadge}>
+                      <Text style={styles.pageBadgeText}>📄 S. {item.page_number}</Text>
+                    </View>
                   </View>
+
                   <TouchableOpacity
-                    style={[styles.statusBadge, { backgroundColor: statusInfo.bg }]}
+                    style={[styles.statusBadge, { backgroundColor: statusInfo.bg, borderColor: statusInfo.text }]}
                     onPress={() => {
                       setEditingItem(item);
-                      setResponseNotes(item.response_text || '');
+                      setSelectedNextStatus(item.status);
+                      setUserDocText(item.user_documentation || '');
+                      setAdminDocText(item.our_documentation || '');
                     }}
                   >
                     <Text style={[styles.statusBadgeText, { color: statusInfo.text }]}>
@@ -472,57 +637,128 @@ export default function MaengelanzeigeScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Location & Deadline */}
-                {(item.location || item.deadline) && (
-                  <View style={styles.metaRow}>
-                    {item.location ? <Text style={styles.metaBadge}>📍 {item.location}</Text> : null}
-                    {item.deadline ? <Text style={styles.metaBadgeDeadline}>⏱️ Termin: {item.deadline}</Text> : null}
-                  </View>
-                )}
-
-                {/* Description */}
-                {item.description ? (
-                  <Text style={styles.descText}>{item.description}</Text>
-                ) : null}
-
-                {/* Response notes */}
-                {item.response_text ? (
-                  <View style={styles.responseBox}>
-                    <Text style={styles.responseHeading}>ODPOWIEDŹ / PROTOKÓŁ NAPRAWY:</Text>
-                    <Text style={styles.responseText}>{item.response_text}</Text>
+                {/* 2. Location (Ort / Raum / Bauteil) */}
+                {item.location ? (
+                  <View style={styles.locationRow}>
+                    <Text style={styles.locationBadge}>📍 {item.location}</Text>
                   </View>
                 ) : null}
 
-                {/* Photos Row */}
-                <View style={styles.photosSection}>
-                  {item.before_photo_url ? (
-                    <TouchableOpacity
-                      style={styles.photoThumbWrapper}
-                      onPress={() => setLightboxUrl(item.before_photo_url!)}
-                    >
-                      <Image source={{ uri: item.before_photo_url }} style={styles.photoThumb} />
-                      <Text style={styles.photoLabel}>📸 Przed (PDF)</Text>
-                    </TouchableOpacity>
-                  ) : null}
+                {/* 3. Original Mangel Description (Originaltext aus Mängelanzeige) */}
+                <View style={styles.descBox}>
+                  <Text style={styles.descHeading}>MANGELBESCHREIBUNG / OPIS WADY:</Text>
+                  <Text style={styles.descText}>{item.original_text}</Text>
+                </View>
 
-                  {item.after_photo_url ? (
-                    <TouchableOpacity
-                      style={styles.photoThumbWrapper}
-                      onPress={() => setLightboxUrl(item.after_photo_url!)}
-                    >
-                      <Image source={{ uri: item.after_photo_url }} style={styles.photoThumb} />
-                      <Text style={[styles.photoLabel, { color: '#22C55E' }]}>📸 Po naprawie</Text>
-                    </TouchableOpacity>
-                  ) : null}
+                {/* 4. Bauleitung / Admin Dokumentation (falls vorhanden) */}
+                {item.our_documentation ? (
+                  <View style={styles.adminDocBox}>
+                    <Text style={styles.adminDocHeading}>👑 BAULEITUNG DOKUMENTATION:</Text>
+                    <Text style={styles.adminDocText}>{item.our_documentation}</Text>
+                  </View>
+                ) : null}
 
-                  {/* Add Photo Button */}
-                  <TouchableOpacity
-                    style={styles.addPhotoBtn}
-                    onPress={() => handleTakeDefectPhoto(item)}
-                  >
-                    <Text style={styles.addPhotoIcon}>📷</Text>
-                    <Text style={styles.addPhotoText}>Dodaj foto</Text>
-                  </TouchableOpacity>
+                {/* 5. Mitarbeiter Protokoll / Rückmeldung (falls vorhanden) */}
+                {item.user_documentation ? (
+                  <View style={styles.userDocBox}>
+                    <Text style={styles.userDocHeading}>🛠️ PROTOKOLL / RÜCKMELDUNG ZUR BEHEBUNG:</Text>
+                    <Text style={styles.userDocText}>{item.user_documentation}</Text>
+                  </View>
+                ) : null}
+
+                {/* 6. Photos Section: VORHER (Przed) & NACHHER (Po naprawie) */}
+                <View style={styles.photosContainer}>
+                  {/* Before Photos */}
+                  {beforePhotos.length > 0 && (
+                    <View style={styles.photoGroup}>
+                      <Text style={styles.photoGroupTitle}>📸 VORHER (PDF / Aufnahme):</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoThumbList}>
+                        {beforePhotos.map((p) => (
+                          <TouchableOpacity
+                            key={p.id}
+                            style={styles.photoThumbWrapper}
+                            onPress={() => setLightboxUrl(p.url)}
+                          >
+                            <Image source={{ uri: p.url }} style={styles.photoThumb} />
+                            <Text style={styles.photoLabel} numberOfLines={1}>
+                              {p.caption?.replace('[VORHER]', '').trim() || 'Vorher'}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+
+                  {/* After Photos */}
+                  {afterPhotos.length > 0 && (
+                    <View style={styles.photoGroup}>
+                      <Text style={[styles.photoGroupTitle, { color: '#22C55E' }]}>📸 NACHHER (Behebung / Po naprawie):</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoThumbList}>
+                        {afterPhotos.map((p) => (
+                          <TouchableOpacity
+                            key={p.id}
+                            style={[styles.photoThumbWrapper, { borderColor: '#22C55E' }]}
+                            onPress={() => setLightboxUrl(p.url)}
+                          >
+                            <Image source={{ uri: p.url }} style={styles.photoThumb} />
+                            <Text style={[styles.photoLabel, { color: '#22C55E' }]} numberOfLines={1}>
+                              {p.caption?.replace('[NACHHER]', '').trim() || 'Behoben'}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+
+                  {/* General Photos if any */}
+                  {generalPhotos.length > 0 && (
+                    <View style={styles.photoGroup}>
+                      <Text style={[styles.photoGroupTitle, { color: '#38BDF8' }]}>📸 WEITERE FOTOS:</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoThumbList}>
+                        {generalPhotos.map((p) => (
+                          <TouchableOpacity
+                            key={p.id}
+                            style={styles.photoThumbWrapper}
+                            onPress={() => setLightboxUrl(p.url)}
+                          >
+                            <Image source={{ uri: p.url }} style={styles.photoThumb} />
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+
+                  {/* Action Buttons: Add Photo & Edit Status */}
+                  <View style={styles.actionButtonsRow}>
+                    <TouchableOpacity
+                      style={styles.addCameraBtn}
+                      onPress={() => handleUploadDefectPhoto(item, true, 'AFTER')}
+                    >
+                      <Text style={styles.actionBtnIcon}>📷</Text>
+                      <Text style={styles.actionBtnText}>Nachher-Foto</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.addGalleryBtn}
+                      onPress={() => handleUploadDefectPhoto(item, false, 'AFTER')}
+                    >
+                      <Text style={styles.actionBtnIcon}>🖼️</Text>
+                      <Text style={styles.actionBtnText}>Galerie</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.editBtn}
+                      onPress={() => {
+                        setEditingItem(item);
+                        setSelectedNextStatus(item.status);
+                        setUserDocText(item.user_documentation || '');
+                        setAdminDocText(item.our_documentation || '');
+                      }}
+                    >
+                      <Text style={styles.actionBtnIcon}>✏️</Text>
+                      <Text style={[styles.actionBtnText, { color: '#38BDF8' }]}>Bearbeiten</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             );
@@ -530,11 +766,11 @@ export default function MaengelanzeigeScreen() {
         />
       )}
 
-      {/* 5. Lightbox Modal */}
+      {/* 6. Fullscreen Photo Lightbox Modal */}
       <Modal visible={!!lightboxUrl} transparent animationType="fade" onRequestClose={() => setLightboxUrl(null)}>
         <View style={styles.lightboxOverlay}>
           <TouchableOpacity style={styles.lightboxCloseBtn} onPress={() => setLightboxUrl(null)}>
-            <Text style={styles.lightboxCloseText}>✕ ZAMKNIJ</Text>
+            <Text style={styles.lightboxCloseText}>✕ SCHLIESSEN</Text>
           </TouchableOpacity>
           {lightboxUrl && (
             <Image source={{ uri: lightboxUrl }} style={styles.lightboxImage} resizeMode="contain" />
@@ -542,66 +778,85 @@ export default function MaengelanzeigeScreen() {
         </View>
       </Modal>
 
-      {/* 6. Edit Status & Response Modal */}
+      {/* 7. Full Status, Protokoll & Response Edit Modal */}
       <Modal visible={!!editingItem} transparent animationType="slide" onRequestClose={() => setEditingItem(null)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>📝 Zmień status wady</Text>
-            <Text style={styles.modalSubtitle}>{editingItem?.title}</Text>
-
-            <Text style={styles.modalFieldLabel}>STATUS WADY:</Text>
-            <View style={styles.statusButtonsGrid}>
-              {[
-                { id: 'OPEN', label: '🚨 OTWARTA', color: '#EF4444' },
-                { id: 'IN_PROGRESS', label: '⏳ W TRAKCIE', color: '#EAB308' },
-                { id: 'ZU_KLAEREN', label: '❓ DO WYJAŚNIENIA', color: '#A855F7' },
-                { id: 'DONE', label: '✅ USUNIĘTO', color: '#22C55E' },
-              ].map((st) => (
-                <TouchableOpacity
-                  key={st.id}
-                  style={[
-                    styles.statusSelectBtn,
-                    editingItem?.status === st.id && { borderColor: st.color, backgroundColor: `${st.color}20` },
-                  ]}
-                  onPress={() => {
-                    if (editingItem) {
-                      setEditingItem({ ...editingItem, status: st.id as any });
-                    }
-                  }}
-                >
-                  <Text style={[styles.statusSelectBtnText, { color: st.color }]}>{st.label}</Text>
-                </TouchableOpacity>
-              ))}
+        <Pressable style={styles.modalOverlay} onPress={() => setEditingItem(null)}>
+          <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalTitle}>📝 Mangel bearbeiten & Protokoll</Text>
+              <TouchableOpacity onPress={() => setEditingItem(null)}>
+                <Text style={styles.closeBtn}>✕</Text>
+              </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalFieldLabel}>NOTATKA / WYJAŚNIENIE USUNIĘCIA WADY:</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Wpisz jak wada została naprawiona..."
-              placeholderTextColor="#64748B"
-              value={responseNotes}
-              onChangeText={setResponseNotes}
-              multiline
-            />
+            <ScrollView style={{ maxHeight: 460 }}>
+              <Text style={styles.modalSubtitle}>
+                #{editingItem?.item_number} • {editingItem?.trade_or_company || 'Gewerk'} {editingItem?.location ? `• ${editingItem.location}` : ''}
+              </Text>
+              <Text style={styles.modalDescPreview} numberOfLines={3}>
+                {editingItem?.original_text}
+              </Text>
+
+              <Text style={styles.modalFieldLabel}>STATUS DES MANGELS:</Text>
+              <View style={styles.statusButtonsGrid}>
+                {[
+                  { id: 'OPEN', label: '🚨 OFFEN', color: '#EF4444' },
+                  { id: 'IN_PROGRESS', label: '⏳ IN BEARBEITUNG', color: '#EAB308' },
+                  { id: 'ZU_KLAEREN', label: '❓ ZU KLÄREN', color: '#A855F7' },
+                  { id: 'DONE', label: '✅ BEHOBEN', color: '#22C55E' },
+                ].map((st) => (
+                  <TouchableOpacity
+                    key={st.id}
+                    style={[
+                      styles.statusSelectBtn,
+                      selectedNextStatus === st.id && { borderColor: st.color, backgroundColor: `${st.color}25` },
+                    ]}
+                    onPress={() => setSelectedNextStatus(st.id as any)}
+                  >
+                    <Text style={[styles.statusSelectBtnText, { color: st.color }]}>{st.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.modalFieldLabel}>🛠️ RÜCKMELDUNG / PROTOKOLL ZUR BEHEBUNG (MITARBEITER):</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Beschreiben Sie die durchgeführte Mängelbeseitigung..."
+                placeholderTextColor="#64748B"
+                value={userDocText}
+                onChangeText={setUserDocText}
+                multiline
+              />
+
+              <Text style={[styles.modalFieldLabel, { color: '#EAB308' }]}>👑 BAULEITUNG / ADMIN NOTIZEN:</Text>
+              <TextInput
+                style={[styles.modalInput, { borderColor: '#EAB30840' }]}
+                placeholder="Interne Anweisung der Bauleitung..."
+                placeholderTextColor="#64748B"
+                value={adminDocText}
+                onChangeText={setAdminDocText}
+                multiline
+              />
+            </ScrollView>
 
             <View style={styles.modalActionsRow}>
               <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditingItem(null)}>
-                <Text style={styles.modalCancelBtnText}>Anuluj</Text>
+                <Text style={styles.modalCancelBtnText}>Abbrechen</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalSaveBtn}
                 disabled={updating}
                 onPress={() => {
                   if (editingItem) {
-                    updateItemStatus(editingItem, editingItem.status, responseNotes);
+                    updateItemDetails(editingItem, selectedNextStatus, userDocText, adminDocText);
                   }
                 }}
               >
-                <Text style={styles.modalSaveBtnText}>{updating ? 'Zapisywanie...' : 'Zapisz status'}</Text>
+                <Text style={styles.modalSaveBtnText}>{updating ? 'Speichern...' : '💾 Speichern'}</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -615,7 +870,7 @@ const styles = StyleSheet.create({
   topSelectorBar: {
     backgroundColor: '#0B0F19',
     paddingHorizontal: 12,
-    paddingTop: 10,
+    paddingTop: 8,
     paddingBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
@@ -624,6 +879,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#080E1E',
     paddingHorizontal: 12,
     paddingTop: 8,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+  },
+  tradeFilterBar: {
+    backgroundColor: '#0A0F1D',
+    paddingHorizontal: 12,
+    paddingTop: 6,
     paddingBottom: 6,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
@@ -680,6 +943,27 @@ const styles = StyleSheet.create({
   docChipTextActive: {
     color: '#C084FC',
   },
+  tradeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#0F172A',
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  tradeChipActive: {
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+    borderColor: '#38BDF8',
+  },
+  tradeChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  tradeChipTextActive: {
+    color: '#38BDF8',
+  },
   filterBar: {
     backgroundColor: '#030712',
     paddingHorizontal: 10,
@@ -711,155 +995,264 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 12,
-    paddingBottom: 40,
+    paddingBottom: 50,
   },
   itemCard: {
     backgroundColor: '#0F172A',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#1E293B',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   itemCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 6,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  headerBadgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    flex: 1,
+  },
+  itemNumBadge: {
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
   },
   itemNumberText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '900',
     color: '#38BDF8',
-    textTransform: 'uppercase',
   },
-  itemTitleText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#F8FAFC',
-    marginTop: 2,
+  tradeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  tradeBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  pageBadge: {
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  pageBadgeText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '600',
   },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
-    marginLeft: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginLeft: 6,
   },
   statusBadgeText: {
     fontSize: 10,
     fontWeight: '800',
   },
-  metaRow: {
-    flexDirection: 'row',
-    gap: 6,
+  locationRow: {
     marginBottom: 8,
-    flexWrap: 'wrap',
   },
-  metaBadge: {
-    fontSize: 10,
-    color: '#94A3B8',
-    backgroundColor: '#0B132B',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#1E293B',
-  },
-  metaBadgeDeadline: {
-    fontSize: 10,
-    color: '#EF4444',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+  locationBadge: {
+    fontSize: 11,
+    color: '#38BDF8',
+    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     fontWeight: '700',
+    alignSelf: 'flex-start',
   },
-  descText: {
-    fontSize: 12,
-    color: '#CBD5E1',
-    lineHeight: 18,
+  descBox: {
+    backgroundColor: '#1E293B50',
+    padding: 10,
+    borderRadius: 8,
     marginBottom: 8,
-  },
-  responseBox: {
-    backgroundColor: 'rgba(56, 189, 248, 0.08)',
     borderLeftWidth: 3,
     borderLeftColor: '#38BDF8',
-    padding: 8,
-    borderRadius: 6,
+  },
+  descHeading: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  descText: {
+    fontSize: 13,
+    color: '#F8FAFC',
+    lineHeight: 19,
+    fontWeight: '500',
+  },
+  adminDocBox: {
+    backgroundColor: 'rgba(234, 179, 8, 0.08)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#EAB308',
+    padding: 10,
+    borderRadius: 8,
     marginBottom: 8,
   },
-  responseHeading: {
-    fontSize: 9,
+  adminDocHeading: {
+    fontSize: 10,
     fontWeight: '800',
-    color: '#38BDF8',
-    marginBottom: 2,
+    color: '#EAB308',
+    letterSpacing: 0.5,
+    marginBottom: 3,
   },
-  responseText: {
-    fontSize: 11,
-    color: '#F8FAFC',
+  adminDocText: {
+    fontSize: 12,
+    color: '#FEF08A',
+    lineHeight: 18,
   },
-  photosSection: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
+  userDocBox: {
+    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#22C55E',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  userDocHeading: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#22C55E',
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  userDocText: {
+    fontSize: 12,
+    color: '#DCFCE7',
+    lineHeight: 18,
+  },
+  photosContainer: {
     marginTop: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#1E293B',
+  },
+  photoGroup: {
+    marginBottom: 8,
+  },
+  photoGroupTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+  photoThumbList: {
+    flexDirection: 'row',
   },
   photoThumbWrapper: {
-    alignItems: 'center',
+    marginRight: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#334155',
+    backgroundColor: '#000',
+    width: 80,
   },
   photoThumb: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: '#1E293B',
+    width: 80,
+    height: 80,
+    resizeMode: 'cover',
   },
   photoLabel: {
     fontSize: 9,
-    color: '#94A3B8',
-    marginTop: 2,
     fontWeight: '700',
+    color: '#94A3B8',
+    textAlign: 'center',
+    paddingVertical: 2,
+    backgroundColor: '#0F172A',
   },
-  addPhotoBtn: {
-    width: 60,
-    height: 60,
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  addCameraBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0284C7',
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  addGalleryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+    gap: 4,
+  },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#38BDF8',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(56, 189, 248, 0.05)',
+    gap: 4,
   },
-  addPhotoIcon: {
-    fontSize: 18,
+  actionBtnIcon: {
+    fontSize: 14,
   },
-  addPhotoText: {
-    fontSize: 9,
-    color: '#38BDF8',
-    fontWeight: '700',
-    marginTop: 2,
+  actionBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   center: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    justifyContent: 'center',
+    padding: 30,
   },
   loadingText: {
-    color: '#94A3B8',
     marginTop: 12,
+    color: '#94A3B8',
     fontSize: 13,
+    fontWeight: '600',
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
     color: '#F8FAFC',
-    marginBottom: 4,
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 6,
   },
   emptySubtitle: {
-    fontSize: 12,
     color: '#64748B',
+    fontSize: 13,
     textAlign: 'center',
+    lineHeight: 18,
   },
   lightboxOverlay: {
     flex: 1,
@@ -869,10 +1262,10 @@ const styles = StyleSheet.create({
   },
   lightboxCloseBtn: {
     position: 'absolute',
-    top: 48,
+    top: 50,
     right: 20,
-    backgroundColor: '#0F172A',
-    paddingHorizontal: 14,
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
     zIndex: 10,
@@ -883,93 +1276,125 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   lightboxImage: {
-    width: SCREEN_WIDTH - 20,
-    height: '80%',
+    width: '100%',
+    height: '85%',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    padding: 16,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'flex-end',
   },
   modalCard: {
     backgroundColor: '#0F172A',
-    borderRadius: 14,
-    padding: 18,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#38BDF8',
+    padding: 18,
+    paddingBottom: 36,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#F8FAFC',
-    marginBottom: 2,
+    color: '#38BDF8',
+  },
+  closeBtn: {
+    fontSize: 18,
+    color: '#94A3B8',
+    paddingHorizontal: 6,
   },
   modalSubtitle: {
     fontSize: 12,
+    fontWeight: '800',
+    color: '#E2E8F0',
+    marginBottom: 4,
+  },
+  modalDescPreview: {
+    fontSize: 11,
     color: '#94A3B8',
-    marginBottom: 14,
+    marginBottom: 12,
+    backgroundColor: '#1E293B40',
+    padding: 8,
+    borderRadius: 6,
   },
   modalFieldLabel: {
     fontSize: 10,
     fontWeight: '800',
     color: '#38BDF8',
+    marginTop: 8,
     marginBottom: 6,
+    letterSpacing: 0.5,
   },
   statusButtonsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 14,
+    gap: 8,
+    marginBottom: 12,
   },
   statusSelectBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
+    flex: 1,
+    minWidth: '45%',
     backgroundColor: '#1E293B',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#334155',
   },
   statusSelectBtnText: {
     fontSize: 11,
     fontWeight: '800',
   },
   modalInput: {
-    backgroundColor: '#030712',
+    backgroundColor: '#1E293B',
+    borderRadius: 8,
+    padding: 10,
     color: '#F8FAFC',
-    borderRadius: 10,
-    padding: 12,
-    height: 80,
+    fontSize: 13,
+    minHeight: 70,
     textAlignVertical: 'top',
-    fontSize: 12,
     borderWidth: 1,
-    borderColor: '#1E293B',
-    marginBottom: 16,
+    borderColor: '#334155',
+    marginBottom: 10,
   },
   modalActionsRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
     gap: 10,
+    marginTop: 10,
   },
   modalCancelBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    flex: 1,
+    backgroundColor: '#1E293B',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   modalCancelBtnText: {
     color: '#94A3B8',
-    fontWeight: '700',
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: '800',
   },
   modalSaveBtn: {
-    backgroundColor: '#38BDF8',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    flex: 2,
+    backgroundColor: '#0284C7',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
   },
   modalSaveBtnText: {
-    color: '#030712',
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '800',
-    fontSize: 12,
   },
 });
