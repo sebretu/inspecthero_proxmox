@@ -441,80 +441,138 @@ export default function InteractivePlanScreen() {
     }
   };
 
-  const createPinTask = async () => {
+  const [creationType, setCreationType] = useState<'task' | 'socket' | 'light' | 'cee' | 'edv' | 'bma'>('task');
+
+  const createPinEntity = async () => {
     if (!newPinCoords || !newTaskTitle.trim() || !plan) return;
     try {
       const db = await getDatabase();
-      const newTaskId = `tsk-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       const now = new Date().toISOString();
-
-      const newTask: TaskPin = {
-        id: newTaskId,
-        title: newTaskTitle.trim(),
-        description: newTaskDesc.trim() || undefined,
-        pos_x: newPinCoords.x,
-        pos_y: newPinCoords.y,
-        status: 'open',
-        priority: 'normal',
-        version: 1,
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
+      const token = session?.access_token;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       };
 
-      await db.runAsync(`
-        INSERT INTO tasks (
-          id, plan_id, title, description, status, priority, pos_x, pos_y, version, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?);
-      `, [
-        newTask.id,
-        plan.id,
-        newTask.title,
-        newTask.description || null,
-        newTask.status,
-        newTask.priority || 'normal',
-        newTask.pos_x,
-        newTask.pos_y,
-        now,
-        now,
-      ]);
+      if (creationType === 'task') {
+        const newTaskId = `tsk-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const newTask: TaskPin = {
+          id: newTaskId,
+          title: newTaskTitle.trim(),
+          description: newTaskDesc.trim() || undefined,
+          pos_x: newPinCoords.x,
+          pos_y: newPinCoords.y,
+          status: 'open',
+          priority: 'normal',
+          version: 1,
+        };
 
-      await db.runAsync(`
-        INSERT INTO mutations (
-          mutation_id, entity_type, entity_id, operation, base_version, payload, status, attempts, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?);
-      `, [
-        `mut-${Date.now()}-${newTask.id}`,
-        'task',
-        newTask.id,
-        'INSERT',
-        1,
-        JSON.stringify({
-          id: newTask.id,
-          plan_id: plan.id,
-          title: newTask.title,
-          description: newTask.description,
-          status: newTask.status,
-          priority: newTask.priority,
-          pos_x: newTask.pos_x,
-          pos_y: newTask.pos_y,
-        }),
-        'PENDING',
-        now,
-        now,
-      ]);
+        await db.runAsync(`
+          INSERT INTO tasks (
+            id, plan_id, title, description, status, priority, pos_x, pos_y, version, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?);
+        `, [
+          newTask.id,
+          plan.id,
+          newTask.title,
+          newTask.description || null,
+          newTask.status,
+          newTask.priority || 'normal',
+          newTask.pos_x,
+          newTask.pos_y,
+          now,
+          now,
+        ]);
 
-      setTasks((prev) => [...prev, newTask]);
+        await db.runAsync(`
+          INSERT INTO mutations (
+            mutation_id, entity_type, entity_id, operation, base_version, payload, status, attempts, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?);
+        `, [
+          `mut-${Date.now()}-${newTask.id}`,
+          'task',
+          newTask.id,
+          'INSERT',
+          1,
+          JSON.stringify({
+            id: newTask.id,
+            plan_id: plan.id,
+            title: newTask.title,
+            description: newTask.description,
+            status: newTask.status,
+            priority: newTask.priority,
+            pos_x: newTask.pos_x,
+            pos_y: newTask.pos_y,
+          }),
+          'PENDING',
+          now,
+          now,
+        ]);
+
+        setTasks((prev) => [...prev, newTask]);
+        webViewRef.current?.injectJavaScript(`
+          if (window.addTaskMarker) {
+            window.addTaskMarker(${JSON.stringify(newTask)});
+          }
+          true;
+        `);
+      } else if (creationType === 'bma') {
+        const newBmaId = `bma-${Date.now()}`;
+        const newBma: BmaPin = {
+          id: newBmaId,
+          device_number: newTaskTitle.trim(),
+          device_type: 'Rauchmelder',
+          pos_x: newPinCoords.x,
+          pos_y: newPinCoords.y,
+          status: 'OK',
+        };
+
+        await db.runAsync(`
+          INSERT INTO bma_devices (id, plan_id, device_number, device_type, pos_x, pos_y, status, version)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 1);
+        `, [newBma.id, plan.id, newBma.device_number, newBma.device_type, newBma.pos_x, newBma.pos_y, newBma.status]);
+
+        setBmaDevices((prev) => [...prev, newBma]);
+        webViewRef.current?.injectJavaScript(`
+          if (window.addBmaMarker) {
+            window.addBmaMarker(${JSON.stringify(newBma)});
+          }
+          true;
+        `);
+      } else {
+        // Circuit marker (socket, light, cee, edv)
+        const newCircId = `circ-${Date.now()}`;
+        const newCirc: CircuitPin = {
+          id: newCircId,
+          circuit_name: newTaskTitle.trim(),
+          circuit_code: newTaskTitle.trim(),
+          full_name: newTaskDesc.trim() || undefined,
+          type: creationType,
+          fuse_type: 'B16',
+          pos_x: newPinCoords.x,
+          pos_y: newPinCoords.y,
+        };
+
+        await db.runAsync(`
+          INSERT INTO stromkreise (id, plan_id, circuit_name, fuse_type, pos_x, pos_y, version)
+          VALUES (?, ?, ?, ?, ?, ?, 1);
+        `, [newCirc.id, plan.id, newCirc.circuit_name, newCirc.fuse_type || 'B16', newCirc.pos_x, newCirc.pos_y]);
+
+        setCircuits((prev) => [...prev, newCirc]);
+        webViewRef.current?.injectJavaScript(`
+          if (window.addCircuitMarker) {
+            window.addCircuitMarker(${JSON.stringify(newCirc)});
+          }
+          true;
+        `);
+      }
+
       setNewPinCoords(null);
       setNewTaskTitle('');
       setNewTaskDesc('');
-
-      // Inject new marker dynamically
-      webViewRef.current?.injectJavaScript(`
-        if (window.addTaskMarker) {
-          window.addTaskMarker(${JSON.stringify(newTask)});
-        }
-        true;
-      `);
     } catch (err: any) {
-      Alert.alert('Błąd', err?.message || 'Nie udało się dodać zadania');
+      Alert.alert('Błąd', err?.message || 'Nie udało się dodać obiektu');
     }
   };
 
@@ -1106,22 +1164,47 @@ export default function InteractivePlanScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.createPinModal}>
-            <Text style={styles.modalHeading}>📌 Nowy znacznik na rzucie 2D</Text>
+            <Text style={styles.modalHeading}>📍 Wstaw obiekt / znacznik na rzucie 2D</Text>
             <Text style={styles.coordsText}>
-              Współrzędne: X={newPinCoords?.x}, Y={newPinCoords?.y}
+              Pozycja na mapie: X={newPinCoords?.x}, Y={newPinCoords?.y}
             </Text>
+
+            <Text style={styles.typeSelectorLabel}>WYBIERZ TYP SYMBOLU:</Text>
+            <View style={styles.typeChipsRow}>
+              {[
+                { id: 'task', label: '📌 Zadanie' },
+                { id: 'socket', label: '🔌 Gniazdo' },
+                { id: 'light', label: '💡 Światło' },
+                { id: 'cee', label: '⚡ CEE' },
+                { id: 'edv', label: '🌐 EDV' },
+                { id: 'bma', label: '🚨 BMA' },
+              ].map((st) => (
+                <TouchableOpacity
+                  key={st.id}
+                  style={[
+                    styles.typeChip,
+                    creationType === st.id && styles.typeChipActive,
+                  ]}
+                  onPress={() => setCreationType(st.id as any)}
+                >
+                  <Text style={[styles.typeChipText, creationType === st.id && styles.typeChipTextActive]}>
+                    {st.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
             <TextInput
               style={styles.input}
-              placeholder="Tytuł zadania / usterki..."
+              placeholder={creationType === 'task' ? 'Tytuł zadania montażowego...' : creationType === 'bma' ? 'Numer czujki (np. 1/12)...' : 'Kod obwodu (np. 1Q1, UV-01)...'}
               placeholderTextColor="#64748B"
               value={newTaskTitle}
               onChangeText={setNewTaskTitle}
             />
 
             <TextInput
-              style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
-              placeholder="Opis zadania (opcjonalnie)..."
+              style={[styles.input, { height: 70, textAlignVertical: 'top' }]}
+              placeholder="Dodatkowy opis / specyfikacja (opcjonalnie)..."
               placeholderTextColor="#64748B"
               value={newTaskDesc}
               onChangeText={setNewTaskDesc}
@@ -1137,9 +1220,9 @@ export default function InteractivePlanScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.savePinBtn}
-                onPress={createPinTask}
+                onPress={createPinEntity}
               >
-                <Text style={styles.savePinBtnText}>Zapisz znacznik</Text>
+                <Text style={styles.savePinBtnText}>Wstaw na plan</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1351,8 +1434,41 @@ const styles = StyleSheet.create({
   coordsText: {
     fontSize: 11,
     color: '#38BDF8',
-    marginBottom: 14,
+    marginBottom: 10,
     fontWeight: '700',
+  },
+  typeSelectorLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  typeChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 12,
+  },
+  typeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  typeChipActive: {
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+    borderColor: '#38BDF8',
+  },
+  typeChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
+  },
+  typeChipTextActive: {
+    color: '#38BDF8',
   },
   input: {
     backgroundColor: '#1E293B',

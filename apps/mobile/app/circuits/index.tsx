@@ -136,13 +136,13 @@ export default function CircuitsScreen() {
       }
 
       // Fetch active current plans list
-      const planRows = await db.getAllAsync<PlanOption>(`
+      const planRows = (await db.getAllAsync(`
         SELECT p.id, p.name, p.project_id, COALESCE(pr.name, '') as project_name 
         FROM plans p 
         LEFT JOIN projects pr ON p.project_id = pr.id 
         WHERE p.deleted_at IS NULL AND p.id != 'pln-sample-001'
         ORDER BY pr.name ASC, p.name ASC;
-      `);
+      `)) as PlanOption[];
       setPlans(planRows);
       if (planRows.length > 0 && selectedPlanId === 'all') {
         setSelectedPlanId('all');

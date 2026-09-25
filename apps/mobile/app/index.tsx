@@ -161,10 +161,10 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={styles.moduleBtn}
               activeOpacity={0.8}
-              onPress={() => router.push('/attendance' as any)}
+              onPress={() => router.push('/maengelanzeige' as any)}
             >
-              <Text style={styles.moduleIcon}>⏱️</Text>
-              <Text style={styles.moduleTitle}>{t('hours_vacation', 'Stunden & Urlaub')}</Text>
+              <Text style={styles.moduleIcon}>📝</Text>
+              <Text style={styles.moduleTitle}>{t('maengelanzeige', 'Mängelanzeige')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

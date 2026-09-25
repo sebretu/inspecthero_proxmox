@@ -58,9 +58,9 @@ export default function CablesScreen() {
         headers['Authorization'] = `Bearer ${session.access_token}`;
       }
 
-      const planRows = await db.getAllAsync<PlanOption>(
+      const planRows = (await db.getAllAsync(
         "SELECT id, name FROM plans WHERE deleted_at IS NULL AND id != 'pln-sample-001' ORDER BY name ASC;"
-      );
+      )) as PlanOption[];
       setPlans(planRows);
       if (planRows.length > 0 && selectedPlanId === 'all') {
         setSelectedPlanId(planRows[0].id);

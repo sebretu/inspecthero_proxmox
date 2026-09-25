@@ -21,6 +21,7 @@ interface PlanItem {
   id: string;
   name: string;
   project_id: string;
+  building_id?: string;
   building_name?: string;
   floor_name?: string;
   task_count?: number;
@@ -28,16 +29,24 @@ interface PlanItem {
   circuit_count?: number;
 }
 
-interface ProjectGroup {
+interface BuildingGroup {
   id: string;
   name: string;
   plans: PlanItem[];
+}
+
+interface ProjectGroup {
+  id: string;
+  name: string;
+  buildings: BuildingGroup[];
+  totalPlansCount: number;
 }
 
 export default function PlansListScreen() {
   const router = useRouter();
   const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(new Set());
+  const [expandedBuildingIds, setExpandedBuildingIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -71,7 +80,37 @@ export default function PlansListScreen() {
           [p.id, p.name, p.status || 'ACTIVE', p.created_at || now, p.updated_at || now]
         );
 
-        // 2. Fetch only ACTIVE/CURRENT plans for this project (current=true)
+        // 2. Fetch buildings for this project
+        const bRes = await fetch(`${API_BASE_URL}/api/buildings?projectId=${encodeURIComponent(p.id)}`, { headers });
+        if (bRes.ok) {
+          const bJson = await bRes.json();
+          const bList = Array.isArray(bJson) ? bJson : (bJson?.data || []);
+          for (const b of bList) {
+            await db.runAsync(
+              `INSERT INTO buildings (id, project_id, name, created_at, updated_at, version)
+               VALUES (?, ?, ?, ?, ?, 1)
+               ON CONFLICT(id) DO UPDATE SET name = excluded.name, project_id = excluded.project_id, updated_at = excluded.updated_at;`,
+              [b.id, p.id, b.name, b.created_at || now, b.updated_at || now]
+            );
+          }
+        }
+
+        // 3. Fetch floors for this project
+        const fRes = await fetch(`${API_BASE_URL}/api/floors?projectId=${encodeURIComponent(p.id)}`, { headers });
+        if (fRes.ok) {
+          const fJson = await fRes.json();
+          const fList = Array.isArray(fJson) ? fJson : (fJson?.data || []);
+          for (const f of fList) {
+            await db.runAsync(
+              `INSERT INTO floors (id, building_id, name, level_number, created_at, updated_at, version)
+               VALUES (?, ?, ?, ?, ?, ?, 1)
+               ON CONFLICT(id) DO UPDATE SET name = excluded.name, building_id = excluded.building_id, updated_at = excluded.updated_at;`,
+              [f.id, f.building_id, f.name, f.level || 0, f.created_at || now, f.updated_at || now]
+            );
+          }
+        }
+
+        // 4. Fetch only ACTIVE/CURRENT plans for this project (current=true)
         const planRes = await fetch(`${API_BASE_URL}/api/plans?projectId=${encodeURIComponent(p.id)}&current=true`, { headers });
         if (planRes.ok) {
           const planJson = await planRes.json();
@@ -82,14 +121,14 @@ export default function PlansListScreen() {
             await db.runAsync(
               `INSERT INTO plans (id, project_id, floor_id, name, width, height, created_at, updated_at, version)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-               ON CONFLICT(id) DO UPDATE SET name = excluded.name, project_id = excluded.project_id, updated_at = excluded.updated_at;`,
+               ON CONFLICT(id) DO UPDATE SET name = excluded.name, project_id = excluded.project_id, floor_id = excluded.floor_id, updated_at = excluded.updated_at;`,
               [pl.id, p.id, pl.floor_id || null, planName, pl.image_width || 1920, pl.image_height || 1080, pl.created_at || now, pl.updated_at || now]
             );
           }
         }
       }
 
-      // 3. Prune old stale projects and old stale plans
+      // 5. Prune old stale projects and old stale plans
       if (validProjectIds.length > 0) {
         const pIdStr = validProjectIds.map((id) => `'${id}'`).join(',');
         await db.runAsync(`DELETE FROM projects WHERE id NOT IN (${pIdStr});`).catch(() => {});
@@ -108,9 +147,13 @@ export default function PlansListScreen() {
       const db = await getDatabase();
       await syncPlansAndProjectsFromApi(db);
 
-      // Query projects and their current plans
+      // Query projects, buildings and plans
       const projs = await db.getAllAsync<{ id: string; name: string }>(
         "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC;"
+      );
+
+      const allBuildings = await db.getAllAsync<{ id: string; project_id: string; name: string }>(
+        "SELECT id, project_id, name FROM buildings WHERE deleted_at IS NULL ORDER BY name ASC;"
       );
 
       const allPlans = await db.getAllAsync<PlanItem>(`
@@ -118,7 +161,8 @@ export default function PlansListScreen() {
           p.id, 
           p.name, 
           p.project_id,
-          COALESCE(b.name, '') as building_name,
+          b.id as building_id,
+          COALESCE(b.name, 'Główny budynek') as building_name,
           COALESCE(f.name, '') as floor_name,
           (SELECT COUNT(*) FROM tasks t WHERE t.plan_id = p.id AND t.deleted_at IS NULL) as task_count,
           (SELECT COUNT(*) FROM bma_devices bd WHERE bd.plan_id = p.id AND bd.deleted_at IS NULL) as bma_count,
@@ -130,18 +174,46 @@ export default function PlansListScreen() {
         ORDER BY p.name ASC;
       `);
 
-      const groups: ProjectGroup[] = projs.map((pr) => ({
-        id: pr.id,
-        name: pr.name,
-        plans: allPlans.filter((pl) => pl.project_id === pr.id),
-      }));
+      const groups: ProjectGroup[] = projs.map((pr) => {
+        const prPlans = allPlans.filter((pl) => pl.project_id === pr.id);
+        const prBuildings = allBuildings.filter((b) => b.project_id === pr.id);
+
+        // Group plans by building
+        const buildingMap: Record<string, BuildingGroup> = {};
+        for (const b of prBuildings) {
+          buildingMap[b.id] = { id: b.id, name: b.name, plans: [] };
+        }
+
+        for (const pl of prPlans) {
+          const bId = pl.building_id || 'unassigned';
+          if (!buildingMap[bId]) {
+            buildingMap[bId] = { id: bId, name: pl.building_name || 'Budynek', plans: [] };
+          }
+          buildingMap[bId].plans.push(pl);
+        }
+
+        const buildingsList = Object.values(buildingMap).filter((bg) => bg.plans.length > 0 || prBuildings.some((b) => b.id === bg.id));
+
+        return {
+          id: pr.id,
+          name: pr.name,
+          buildings: buildingsList,
+          totalPlansCount: prPlans.length,
+        };
+      });
 
       setProjectGroups(groups);
 
-      // Auto expand all projects with plans or first project
+      // Auto expand all projects & buildings
       setExpandedProjectIds((prev) => {
         if (prev.size > 0) return prev;
-        return new Set(groups.slice(0, 3).map((g) => g.id));
+        return new Set(groups.map((g) => g.id));
+      });
+      setExpandedBuildingIds((prev) => {
+        if (prev.size > 0) return prev;
+        const bSet = new Set<string>();
+        groups.forEach((g) => g.buildings.forEach((b) => bSet.add(b.id)));
+        return bSet;
       });
     } catch (err) {
       console.error('[PlansList] Load error:', err);
@@ -163,11 +235,17 @@ export default function PlansListScreen() {
   const toggleProjectExpand = (projectId: string) => {
     setExpandedProjectIds((prev) => {
       const next = new Set(prev);
-      if (next.has(projectId)) {
-        next.delete(projectId);
-      } else {
-        next.add(projectId);
-      }
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
+  };
+
+  const toggleBuildingExpand = (buildingId: string) => {
+    setExpandedBuildingIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(buildingId)) next.delete(buildingId);
+      else next.add(buildingId);
       return next;
     });
   };
@@ -177,22 +255,33 @@ export default function PlansListScreen() {
   const filteredGroups = projectGroups
     .map((g) => {
       const matchesProjectName = g.name.toLowerCase().includes(q);
-      const matchingPlans = g.plans.filter(
-        (p) =>
-          matchesProjectName ||
-          p.name.toLowerCase().includes(q) ||
-          (p.floor_name && p.floor_name.toLowerCase().includes(q)) ||
-          (p.building_name && p.building_name.toLowerCase().includes(q))
-      );
+      const filteredBuildings = g.buildings
+        .map((b) => {
+          const matchesBuildingName = b.name.toLowerCase().includes(q);
+          const matchingPlans = b.plans.filter(
+            (p) =>
+              matchesProjectName ||
+              matchesBuildingName ||
+              p.name.toLowerCase().includes(q) ||
+              (p.floor_name && p.floor_name.toLowerCase().includes(q))
+          );
+          return {
+            ...b,
+            plans: q ? matchingPlans : b.plans,
+            hasMatch: matchesBuildingName || matchingPlans.length > 0,
+          };
+        })
+        .filter((b) => (q ? b.hasMatch : true));
+
       return {
         ...g,
-        plans: q ? matchingPlans : g.plans,
-        hasMatch: matchesProjectName || matchingPlans.length > 0,
+        buildings: filteredBuildings,
+        hasMatch: matchesProjectName || filteredBuildings.length > 0,
       };
     })
     .filter((g) => (q ? g.hasMatch : true));
 
-  const totalPlansCount = projectGroups.reduce((acc, g) => acc + g.plans.length, 0);
+  const totalPlansCount = projectGroups.reduce((acc, g) => acc + g.totalPlansCount, 0);
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
@@ -211,7 +300,7 @@ export default function PlansListScreen() {
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Szukaj projektu, kondygnacji lub rzutu..."
+          placeholder="Szukaj projektu, budynku lub rzutu..."
           placeholderTextColor="#64748B"
           value={search}
           onChangeText={setSearch}
@@ -254,71 +343,103 @@ export default function PlansListScreen() {
             const isExpanded = expandedProjectIds.has(group.id) || q.length > 0;
             return (
               <View style={styles.projectCard}>
-                {/* Accordion Header */}
+                {/* Project Accordion Header */}
                 <TouchableOpacity
                   style={styles.accordionHeader}
                   activeOpacity={0.7}
                   onPress={() => toggleProjectExpand(group.id)}
                 >
                   <View style={styles.accordionLeft}>
-                    <Text style={styles.projectIcon}>🏢</Text>
+                    <Text style={styles.projectIcon}>📁</Text>
                     <View>
                       <Text style={styles.projectName}>{group.name}</Text>
                       <Text style={styles.projectSubtext}>
-                        {group.plans.length} {group.plans.length === 1 ? 'rzut' : group.plans.length < 5 ? 'rzuty' : 'rzutów'} kondygnacji
+                        {group.buildings.length} {group.buildings.length === 1 ? 'budynek' : 'budynków'} • {group.totalPlansCount} rzutów
                       </Text>
                     </View>
                   </View>
 
                   <View style={styles.accordionRight}>
                     <View style={styles.planCountBadge}>
-                      <Text style={styles.planCountText}>{group.plans.length}</Text>
+                      <Text style={styles.planCountText}>{group.totalPlansCount}</Text>
                     </View>
                     <Text style={styles.chevron}>{isExpanded ? '▲' : '▼'}</Text>
                   </View>
                 </TouchableOpacity>
 
-                {/* Accordion Body (Collapsible Plans List) */}
+                {/* Project Accordion Body (Buildings & Plans) */}
                 {isExpanded && (
                   <View style={styles.accordionBody}>
-                    {group.plans.length === 0 ? (
+                    {group.buildings.length === 0 ? (
                       <View style={styles.emptyPlansBox}>
-                        <Text style={styles.emptyPlansText}>Brak wgranych rzutów dla tego projektu.</Text>
+                        <Text style={styles.emptyPlansText}>Brak zdefiniowanych budynków i planów dla tego projektu.</Text>
                       </View>
                     ) : (
-                      group.plans.map((plan) => (
-                        <TouchableOpacity
-                          key={plan.id}
-                          style={styles.planItemCard}
-                          activeOpacity={0.8}
-                          onPress={() => router.push({ pathname: '/plans/[id]', params: { id: plan.id } } as any)}
-                        >
-                          <View style={styles.planMainRow}>
-                            <Text style={styles.planIcon}>📐</Text>
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.planTitle}>{plan.name}</Text>
-                              {plan.floor_name ? (
-                                <Text style={styles.floorTitle}>Kondygnacja: {plan.floor_name}</Text>
-                              ) : null}
-                            </View>
-                            <Text style={styles.arrowIcon}>➔</Text>
-                          </View>
-
-                          <View style={styles.badgeRow}>
-                            <View style={styles.badgeTask}>
-                              <Text style={styles.badgeTaskText}>📌 {plan.task_count || 0} zadań</Text>
-                            </View>
-                            <View style={styles.badgeBma}>
-                              <Text style={styles.badgeBmaText}>🚨 {plan.bma_count || 0} BMA</Text>
-                            </View>
-                            {plan.circuit_count ? (
-                              <View style={styles.badgeCircuit}>
-                                <Text style={styles.badgeCircuitText}>⚡ {plan.circuit_count} obwodów</Text>
+                      group.buildings.map((bldg) => {
+                        const isBldgExpanded = expandedBuildingIds.has(bldg.id) || q.length > 0;
+                        return (
+                          <View key={bldg.id} style={styles.buildingContainer}>
+                            {/* Building Header */}
+                            <TouchableOpacity
+                              style={styles.buildingHeader}
+                              activeOpacity={0.7}
+                              onPress={() => toggleBuildingExpand(bldg.id)}
+                            >
+                              <View style={styles.buildingHeaderLeft}>
+                                <Text style={styles.buildingIcon}>🏢</Text>
+                                <Text style={styles.buildingTitle}>{bldg.name}</Text>
                               </View>
-                            ) : null}
+                              <View style={styles.buildingHeaderRight}>
+                                <Text style={styles.buildingCountBadge}>{bldg.plans.length} rzutów</Text>
+                                <Text style={styles.chevronSmall}>{isBldgExpanded ? '▲' : '▼'}</Text>
+                              </View>
+                            </TouchableOpacity>
+
+                            {/* Plans under Building */}
+                            {isBldgExpanded && (
+                              <View style={styles.buildingPlansList}>
+                                {bldg.plans.length === 0 ? (
+                                  <Text style={styles.emptyBuildingPlans}>Brak aktywnych planów w tym budynku.</Text>
+                                ) : (
+                                  bldg.plans.map((plan) => (
+                                    <TouchableOpacity
+                                      key={plan.id}
+                                      style={styles.planItemCard}
+                                      activeOpacity={0.8}
+                                      onPress={() => router.push({ pathname: '/plans/[id]', params: { id: plan.id } } as any)}
+                                    >
+                                      <View style={styles.planMainRow}>
+                                        <Text style={styles.planIcon}>📐</Text>
+                                        <View style={{ flex: 1 }}>
+                                          <Text style={styles.planTitle}>{plan.name}</Text>
+                                          {plan.floor_name ? (
+                                            <Text style={styles.floorTitle}>Kondygnacja: {plan.floor_name}</Text>
+                                          ) : null}
+                                        </View>
+                                        <Text style={styles.arrowIcon}>➔</Text>
+                                      </View>
+
+                                      <View style={styles.badgeRow}>
+                                        <View style={styles.badgeTask}>
+                                          <Text style={styles.badgeTaskText}>📌 {plan.task_count || 0} zadań</Text>
+                                        </View>
+                                        <View style={styles.badgeBma}>
+                                          <Text style={styles.badgeBmaText}>🚨 {plan.bma_count || 0} BMA</Text>
+                                        </View>
+                                        {plan.circuit_count ? (
+                                          <View style={styles.badgeCircuit}>
+                                            <Text style={styles.badgeCircuitText}>⚡ {plan.circuit_count} obwodów</Text>
+                                          </View>
+                                        ) : null}
+                                      </View>
+                                    </TouchableOpacity>
+                                  ))
+                                )}
+                              </View>
+                            )}
                           </View>
-                        </TouchableOpacity>
-                      ))
+                        );
+                      })
                     )}
                   </View>
                 )}
@@ -507,6 +628,61 @@ const styles = StyleSheet.create({
     color: '#C084FC',
     fontSize: 10,
     fontWeight: '700',
+  },
+  buildingContainer: {
+    backgroundColor: '#0B132B',
+    borderRadius: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    overflow: 'hidden',
+  },
+  buildingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#0E1738',
+  },
+  buildingHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  buildingIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  buildingTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#38BDF8',
+  },
+  buildingHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  buildingCountBadge: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  chevronSmall: {
+    color: '#94A3B8',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  buildingPlansList: {
+    padding: 8,
+    gap: 8,
+    backgroundColor: '#060B1A',
+  },
+  emptyBuildingPlans: {
+    fontSize: 11,
+    color: '#64748B',
+    padding: 8,
+    textAlign: 'center',
   },
   center: {
     flex: 1,

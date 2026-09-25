@@ -35,7 +35,7 @@ export function HeaderNav() {
     { key: 'circuits', label: t('circuits', 'STROMKREISE'), route: '/circuits', icon: '⚡' },
     { key: 'uv_circuits', label: t('uv_circuits', 'STROMKREISE VON UV-PLAN'), route: '/circuits', icon: '⚡' },
     { key: 'bma_automatik', label: t('bma_automatik', 'BMA AUTOMATIK'), route: '/circuits', icon: '🚨' },
-    { key: 'maengelanzeige', label: t('maengelanzeige', 'MÄNGELANZEIGE'), route: '/tasks/create', icon: '📝' },
+    { key: 'maengelanzeige', label: t('maengelanzeige', 'MÄNGELANZEIGE'), route: '/maengelanzeige', icon: '📝' },
     ...(isAdmin
       ? [
           { key: 'chargers', label: t('chargers', 'LADEGERÄT-INSTALLATION'), route: '/circuits', icon: '🔋' },
@@ -57,7 +57,7 @@ export function HeaderNav() {
     { key: 'yolo_annotator', label: '⚡ YOLO ANNOTATOR', route: '/plans' },
     { key: 'symbol_detection', label: '🔍 SYMBOL DETECTION', route: '/plans' },
     { key: 'photo_doc', label: '📸 FOTO-DOKUMENTATION', route: '/projects' },
-    { key: 'maengelanzeige', label: '📝 MÄNGELANZEIGE', route: '/tasks/create' },
+    { key: 'maengelanzeige', label: '📝 MÄNGELANZEIGE', route: '/maengelanzeige' },
     { key: 'project_progress', label: '📊 PROJEKTFORTSCHRITT', route: '/projects' },
     { key: 'users', label: '👤 BENUTZER', route: '/attendance' },
     { key: 'companies', label: '🏢 UNTERNEHMEN', route: '/projects' },
