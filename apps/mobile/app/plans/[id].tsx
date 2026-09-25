@@ -460,17 +460,35 @@ export default function InteractivePlanScreen() {
       }
       setSymbols(loadedSymbols);
 
-      // 7. Fetch Floors
+      // 7. Fetch Floors and Sibling Plans for Quick Switcher
+      let planOptions: FloorOption[] = [];
       if (activePlan.project_id) {
-        const floorRows = await db.getAllAsync<FloorOption>(`
-          SELECT f.id, f.name, (SELECT p.id FROM plans p WHERE p.floor_id = f.id AND p.deleted_at IS NULL LIMIT 1) as plan_id
-          FROM floors f
-          JOIN buildings b ON f.building_id = b.id
-          WHERE b.project_id = ? AND f.deleted_at IS NULL
-          ORDER BY f.level_number ASC;
+        const rows = await db.getAllAsync<{ id: string; name: string; floor_name?: string }>(`
+          SELECT p.id, p.name, COALESCE(f.name, p.name) as floor_name
+          FROM plans p
+          LEFT JOIN floors f ON p.floor_id = f.id
+          WHERE p.project_id = ? AND p.deleted_at IS NULL
+          ORDER BY p.name ASC;
         `, [activePlan.project_id]);
-        setFloors(floorRows);
+        if (rows && rows.length > 0) {
+          planOptions = rows.map((r) => ({
+            id: r.id,
+            name: r.floor_name || r.name,
+            plan_id: r.id,
+          }));
+        }
       }
+      if (planOptions.length === 0) {
+        const allLocalPlans = await db.getAllAsync<{ id: string; name: string }>(
+          'SELECT id, name FROM plans WHERE deleted_at IS NULL ORDER BY name ASC LIMIT 15;'
+        );
+        planOptions = (allLocalPlans || []).map((p) => ({
+          id: p.id,
+          name: p.name,
+          plan_id: p.id,
+        }));
+      }
+      setFloors(planOptions);
     } catch (err) {
       console.error('[InteractivePlan] Load error:', err);
     } finally {

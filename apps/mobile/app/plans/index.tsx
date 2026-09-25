@@ -110,8 +110,8 @@ export default function PlansListScreen() {
           }
         }
 
-        // 4. Fetch only ACTIVE/CURRENT plans for this project (current=true)
-        const planRes = await fetch(`${API_BASE_URL}/api/plans?projectId=${encodeURIComponent(p.id)}&current=true`, { headers });
+        // 4. Fetch all plans for this project
+        const planRes = await fetch(`${API_BASE_URL}/api/plans?projectId=${encodeURIComponent(p.id)}`, { headers });
         if (planRes.ok) {
           const planJson = await planRes.json();
           const plansList = Array.isArray(planJson) ? planJson : (planJson?.data || []);
@@ -126,16 +126,6 @@ export default function PlansListScreen() {
             );
           }
         }
-      }
-
-      // 5. Prune old stale projects and old stale plans
-      if (validProjectIds.length > 0) {
-        const pIdStr = validProjectIds.map((id) => `'${id}'`).join(',');
-        await db.runAsync(`DELETE FROM projects WHERE id NOT IN (${pIdStr});`).catch(() => {});
-      }
-      if (validPlanIds.length > 0) {
-        const plIdStr = validPlanIds.map((id) => `'${id}'`).join(',');
-        await db.runAsync(`DELETE FROM plans WHERE id NOT IN (${plIdStr});`).catch(() => {});
       }
     } catch (apiErr) {
       console.warn('[PlansList] Live sync error:', apiErr);
@@ -174,9 +164,11 @@ export default function PlansListScreen() {
         ORDER BY p.name ASC;
       `);
 
+      const matchedPlanIds = new Set<string>();
       const groups: ProjectGroup[] = projs.map((pr) => {
-        const prPlans = allPlans.filter((pl) => pl.project_id === pr.id);
-        const prBuildings = allBuildings.filter((b) => b.project_id === pr.id);
+        const prPlans = (allPlans || []).filter((pl) => pl.project_id === pr.id);
+        prPlans.forEach((p) => matchedPlanIds.add(p.id));
+        const prBuildings = (allBuildings || []).filter((b) => b.project_id === pr.id);
 
         // Group plans by building
         const buildingMap: Record<string, BuildingGroup> = {};
@@ -187,7 +179,7 @@ export default function PlansListScreen() {
         for (const pl of prPlans) {
           const bId = pl.building_id || 'unassigned';
           if (!buildingMap[bId]) {
-            buildingMap[bId] = { id: bId, name: pl.building_name || 'Budynek', plans: [] };
+            buildingMap[bId] = { id: bId, name: pl.building_name || 'Główny budynek', plans: [] };
           }
           buildingMap[bId].plans.push(pl);
         }
@@ -202,19 +194,31 @@ export default function PlansListScreen() {
         };
       });
 
+      // Catch any standalone or unassigned plans
+      const orphanPlans = (allPlans || []).filter((pl) => !matchedPlanIds.has(pl.id));
+      if (orphanPlans.length > 0) {
+        groups.push({
+          id: 'unassigned-project',
+          name: 'Pozostałe / Rzuty architektoniczne',
+          buildings: [
+            {
+              id: 'unassigned-building',
+              name: 'Wszystkie rzuty',
+              plans: orphanPlans,
+            },
+          ],
+          totalPlansCount: orphanPlans.length,
+        });
+      }
+
       setProjectGroups(groups);
 
-      // Auto expand all projects & buildings
-      setExpandedProjectIds((prev) => {
-        if (prev.size > 0) return prev;
-        return new Set(groups.map((g) => g.id));
-      });
-      setExpandedBuildingIds((prev) => {
-        if (prev.size > 0) return prev;
-        const bSet = new Set<string>();
-        groups.forEach((g) => g.buildings.forEach((b) => bSet.add(b.id)));
-        return bSet;
-      });
+      // Auto expand all projects & buildings by default
+      const pSet = new Set<string>(groups.map((g) => g.id));
+      const bSet = new Set<string>();
+      groups.forEach((g) => g.buildings.forEach((b) => bSet.add(b.id)));
+      setExpandedProjectIds(pSet);
+      setExpandedBuildingIds(bSet);
     } catch (err) {
       console.error('[PlansList] Load error:', err);
     } finally {
@@ -310,6 +314,29 @@ export default function PlansListScreen() {
           <Text style={styles.summaryInfoText}>
             🏢 {projectGroups.length} projektów • 📐 {totalPlansCount} aktywnych rzutów
           </Text>
+          <View style={styles.expandToggleRow}>
+            <TouchableOpacity
+              style={styles.expandBtn}
+              onPress={() => {
+                const pSet = new Set<string>(projectGroups.map((g) => g.id));
+                const bSet = new Set<string>();
+                projectGroups.forEach((g) => g.buildings.forEach((b) => bSet.add(b.id)));
+                setExpandedProjectIds(pSet);
+                setExpandedBuildingIds(bSet);
+              }}
+            >
+              <Text style={styles.expandBtnText}>Rozwiń wszystko</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.expandBtn}
+              onPress={() => {
+                setExpandedProjectIds(new Set());
+                setExpandedBuildingIds(new Set());
+              }}
+            >
+              <Text style={styles.expandBtnText}>Zwiń</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -477,11 +504,33 @@ const styles = StyleSheet.create({
   },
   summaryInfoRow: {
     marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   summaryInfoText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#94A3B8',
+  },
+  expandToggleRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  expandBtn: {
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  expandBtnText: {
+    color: '#38BDF8',
+    fontSize: 11,
+    fontWeight: '700',
   },
   list: {
     padding: 14,
