@@ -8,9 +8,10 @@ export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [hasVdeAccess, setHasVdeAccess] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserRole = async (userId: string, token?: string) => {
+  const fetchUserProfile = async (userId: string, token?: string) => {
     try {
       if (token) {
         const res = await fetch(`${API_BASE_URL}/api/me`, {
@@ -21,8 +22,9 @@ export function useAuth() {
         if (res.ok) {
           const json = await res.json();
           const prof = json?.data?.profile || json?.profile;
-          if (prof?.role) {
-            setRole(prof.role);
+          if (prof) {
+            setRole(prof.role || 'WORKER');
+            setHasVdeAccess(!!prof.has_vde_access);
             return;
           }
         }
@@ -31,12 +33,14 @@ export function useAuth() {
       // Fallback to direct supabase query
       const { data } = await authSupabase
         .from('profiles')
-        .select('role')
+        .select('role, has_vde_access')
         .eq('id', userId)
         .single();
       setRole(data?.role || 'WORKER');
+      setHasVdeAccess(!!data?.has_vde_access);
     } catch {
       setRole('WORKER');
+      setHasVdeAccess(false);
     }
   };
 
@@ -46,9 +50,10 @@ export function useAuth() {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user?.id) {
-        fetchUserRole(session.user.id, session.access_token);
+        fetchUserProfile(session.user.id, session.access_token);
       } else {
         setRole(null);
+        setHasVdeAccess(false);
       }
       setLoading(false);
     });
@@ -59,9 +64,10 @@ export function useAuth() {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user?.id) {
-          fetchUserRole(session.user.id, session.access_token);
+          fetchUserProfile(session.user.id, session.access_token);
         } else {
           setRole(null);
+          setHasVdeAccess(false);
         }
         setLoading(false);
       }
@@ -77,6 +83,7 @@ export function useAuth() {
     setSession(null);
     setUser(null);
     setRole(null);
+    setHasVdeAccess(false);
   };
 
   const normalizedRole = (role || '').toUpperCase();
@@ -84,6 +91,16 @@ export function useAuth() {
   const isJozef = user?.email === 'jozef@demo.pl' || user?.email === 'jozesf@demo.pl';
   const isMod = isAdmin || normalizedRole === 'MODERATOR' || normalizedRole === 'MOD' || isJozef;
 
-  return { session, user, role, isAdmin, isMod, loading, isAuthenticated: !!session, signOut };
+  return {
+    session,
+    user,
+    role,
+    isAdmin,
+    isMod,
+    hasVdeAccess: isAdmin || hasVdeAccess,
+    loading,
+    isAuthenticated: !!session,
+    signOut,
+  };
 }
 

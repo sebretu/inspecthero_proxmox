@@ -12,7 +12,7 @@ import { useLanguage } from '../src/i18n/LanguageContext';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, isAuthenticated, signOut } = useAuth();
+  const { user, isAuthenticated, isAdmin, isMod, hasVdeAccess, signOut } = useAuth();
   const { t } = useLanguage();
 
   const [projectCount, setProjectCount] = useState<number>(0);
@@ -137,6 +137,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Module Row 1: Kable & Stromkreise (Elektro) */}
           <View style={styles.modulesRow}>
             <TouchableOpacity
               style={styles.moduleBtn}
@@ -157,7 +158,17 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Module Row 2: BMA Automatik (Separate!) & Mängelanzeige */}
           <View style={styles.modulesRow}>
+            <TouchableOpacity
+              style={[styles.moduleBtn, { borderColor: '#EF4444' }]}
+              activeOpacity={0.8}
+              onPress={() => router.push('/bma' as any)}
+            >
+              <Text style={styles.moduleIcon}>🚨</Text>
+              <Text style={[styles.moduleTitle, { color: '#EF4444' }]}>{t('bma_automatik', 'BMA AUTOMATIK')}</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.moduleBtn}
               activeOpacity={0.8}
@@ -166,7 +177,10 @@ export default function HomeScreen() {
               <Text style={styles.moduleIcon}>📝</Text>
               <Text style={styles.moduleTitle}>{t('maengelanzeige', 'Mängelanzeige')}</Text>
             </TouchableOpacity>
+          </View>
 
+          {/* Module Row 3: Materialien & E-Check (Only if hasVdeAccess or Admin) */}
+          <View style={styles.modulesRow}>
             <TouchableOpacity
               style={styles.moduleBtn}
               activeOpacity={0.8}
@@ -175,14 +189,68 @@ export default function HomeScreen() {
               <Text style={styles.moduleIcon}>📦</Text>
               <Text style={styles.moduleTitle}>{t('materials_catalog', 'Materialien')}</Text>
             </TouchableOpacity>
+
+            {hasVdeAccess || isAdmin ? (
+              <TouchableOpacity
+                style={[styles.moduleBtn, { borderColor: '#38BDF8' }]}
+                activeOpacity={0.8}
+                onPress={() => router.push('/echeck' as any)}
+              >
+                <Text style={styles.moduleIcon}>⚡</Text>
+                <Text style={[styles.moduleTitle, { color: '#38BDF8' }]}>{t('echeck', 'E-Check (VDE)')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.moduleBtn}
+                activeOpacity={0.8}
+                onPress={() => router.push('/tasks/create' as any)}
+              >
+                <Text style={styles.moduleIcon}>❓</Text>
+                <Text style={styles.moduleTitle}>{t('questions', 'Pytania / Info')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
+
+          {/* Module Row 4: Attendance for Moderators/Admins */}
+          {(isMod || isAdmin) && (
+            <View style={styles.modulesRow}>
+              <TouchableOpacity
+                style={[styles.moduleBtn, { borderColor: '#8B5CF6' }]}
+                activeOpacity={0.8}
+                onPress={() => router.push('/attendance' as any)}
+              >
+                <Text style={styles.moduleIcon}>👥</Text>
+                <Text style={[styles.moduleTitle, { color: '#8B5CF6' }]}>{t('employees', 'Pracownicy / Czas')}</Text>
+              </TouchableOpacity>
+
+              {isAdmin ? (
+                <TouchableOpacity
+                  style={[styles.moduleBtn, { borderColor: '#10B981' }]}
+                  activeOpacity={0.8}
+                  onPress={() => router.push('/plans' as any)}
+                >
+                  <Text style={styles.moduleIcon}>📏</Text>
+                  <Text style={[styles.moduleTitle, { color: '#10B981' }]}>{t('aufmass', 'Aufmaß (Admin)')}</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.moduleBtn}
+                  activeOpacity={0.8}
+                  onPress={() => router.push('/tasks/create' as any)}
+                >
+                  <Text style={styles.moduleIcon}>❓</Text>
+                  <Text style={styles.moduleTitle}>{t('questions', 'Pytania')}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
 
           <TouchableOpacity
             style={styles.secondaryButton}
             activeOpacity={0.8}
             onPress={() => router.push('/tasks/create' as any)}
           >
-            <Text style={styles.secondaryButtonText}>{t('add_task_offline', '+ Neue Offline-Aufgabe')}</Text>
+            <Text style={styles.secondaryButtonText}>{t('add_task_offline', '+ Nowe Zadanie Montażowe')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

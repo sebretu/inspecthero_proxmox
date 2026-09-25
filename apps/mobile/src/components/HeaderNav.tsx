@@ -15,7 +15,7 @@ import { useAuth } from '../auth/useAuth';
 export function HeaderNav() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
-  const { isAuthenticated, isAdmin, isMod } = useAuth();
+  const { isAuthenticated, isAdmin, isMod, hasVdeAccess } = useAuth();
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [adminVisible, setAdminVisible] = useState(false);
@@ -33,9 +33,11 @@ export function HeaderNav() {
     { key: 'plans', label: t('plans', 'PLÄNE'), route: '/plans', icon: '📐' },
     { key: 'cables', label: t('cables', 'KABEL'), route: '/cables', icon: '🔌' },
     { key: 'circuits', label: t('circuits', 'STROMKREISE'), route: '/circuits', icon: '⚡' },
-    { key: 'uv_circuits', label: t('uv_circuits', 'STROMKREISE VON UV-PLAN'), route: '/circuits', icon: '⚡' },
-    { key: 'bma_automatik', label: t('bma_automatik', 'BMA AUTOMATIK'), route: '/circuits', icon: '🚨' },
+    { key: 'bma_automatik', label: t('bma_automatik', 'BMA AUTOMATIK'), route: '/bma', icon: '🚨' },
     { key: 'maengelanzeige', label: t('maengelanzeige', 'MÄNGELANZEIGE'), route: '/maengelanzeige', icon: '📝' },
+    ...(hasVdeAccess || isAdmin
+      ? [{ key: 'echeck', label: t('echeck', 'E-CHECK (VDE)'), route: '/echeck', icon: '⚡' }]
+      : []),
     ...(isAdmin
       ? [
           { key: 'chargers', label: t('chargers', 'LADEGERÄT-INSTALLATION'), route: '/circuits', icon: '🔋' },
@@ -44,7 +46,6 @@ export function HeaderNav() {
           { key: 'aufmass', label: t('aufmass', 'AUFMASS'), route: '/plans', icon: '📏' },
         ]
       : []),
-    { key: 'echeck', label: t('echeck', 'E-CHECK'), route: '/circuits', icon: '⚡' },
     { key: 'materials_orders', label: t('materials_orders', 'ANFORDERUNGEN'), route: '/orders', icon: '📦' },
     { key: 'questions', label: t('questions', 'FRAGEN'), route: '/tasks/create', icon: '❓' },
     ...(isMod || isAdmin
