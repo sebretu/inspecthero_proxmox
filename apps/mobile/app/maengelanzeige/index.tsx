@@ -21,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { authSupabase } from '../../src/auth/authClient';
 import { useLanguage } from '../../src/i18n/LanguageContext';
+import { useAuth } from '../../src/auth/useAuth';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
@@ -67,8 +68,8 @@ export interface MaengelItem {
   original_text: string;
   ai_relevance?: string;
   is_selected?: boolean;
-  our_documentation?: string | null; // Bauleitung / Admin Notizen
-  user_documentation?: string | null; // Protokół naprawy / Kommentar durch Mitarbeiter
+  our_documentation?: string | null; // Bauleitung / Admin Notizen (Protected)
+  user_documentation?: string | null; // Protokół naprawy / Kommentar durch Mitarbeiter (Editable by Worker)
   status: 'OPEN' | 'IN_PROGRESS' | 'ZU_KLAEREN' | 'DONE' | 'NOT_RELEVANT';
   created_at?: string;
   photos?: MaengelPhoto[];
@@ -77,6 +78,7 @@ export interface MaengelItem {
 export default function MaengelanzeigeScreen() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { isAdmin, isMod } = useAuth();
   const { projectId: initialProjectId, docId: initialDocId } = useLocalSearchParams<{
     projectId?: string;
     docId?: string;
@@ -97,6 +99,9 @@ export default function MaengelanzeigeScreen() {
 
   // Fullscreen Photo Lightbox
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  // Photo Source Selection Sheet (Vorher vs Nachher / Kamera vs Galerie)
+  const [photoTarget, setPhotoTarget] = useState<{ item: MaengelItem; type: 'BEFORE' | 'AFTER' } | null>(null);
 
   // Status & Comment Edit Modal
   const [editingItem, setEditingItem] = useState<MaengelItem | null>(null);
@@ -235,12 +240,16 @@ export default function MaengelanzeigeScreen() {
         ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
       };
 
-      const payload = {
+      const payload: Record<string, any> = {
         id: item.id,
         status: nextStatus,
         user_documentation: userDoc !== undefined ? userDoc : item.user_documentation,
-        our_documentation: adminDoc !== undefined ? adminDoc : item.our_documentation,
       };
+
+      // Only allow updating Bauleitung / Admin notes if role is Admin or Mod
+      if (isAdmin || isMod) {
+        payload.our_documentation = adminDoc !== undefined ? adminDoc : item.our_documentation;
+      }
 
       const res = await fetch(`${API_BASE_URL}/api/maengelanzeige/items`, {
         method: 'PATCH',
@@ -256,7 +265,7 @@ export default function MaengelanzeigeScreen() {
                   ...i,
                   status: nextStatus,
                   user_documentation: userDoc !== undefined ? userDoc : i.user_documentation,
-                  our_documentation: adminDoc !== undefined ? adminDoc : i.our_documentation,
+                  our_documentation: isAdmin || isMod ? (adminDoc !== undefined ? adminDoc : i.our_documentation) : i.our_documentation,
                 }
               : i
           )
@@ -272,11 +281,12 @@ export default function MaengelanzeigeScreen() {
     }
   };
 
-  const handleUploadDefectPhoto = async (
+  const executePhotoUpload = async (
     item: MaengelItem,
-    useCamera = true,
-    photoType: 'BEFORE' | 'AFTER' = 'AFTER'
+    useCamera: boolean,
+    photoType: 'BEFORE' | 'AFTER'
   ) => {
+    setPhotoTarget(null);
     try {
       let result;
       if (useCamera) {
@@ -308,7 +318,7 @@ export default function MaengelanzeigeScreen() {
         }
 
         if (!base64) {
-          Alert.alert('Fehler', 'Foto konnte nicht codiert werden.');
+          Alert.alert('Fehler', 'Foto konnte nicht geladen werden.');
           return;
         }
 
@@ -322,7 +332,7 @@ export default function MaengelanzeigeScreen() {
         const payload = {
           itemId: item.id,
           imageBase64: base64,
-          fileName: `mangel_${item.id}_${Date.now()}.jpg`,
+          fileName: `mangel_${item.id}_${photoType.toLowerCase()}_${Date.now()}.jpg`,
           caption: photoType === 'AFTER' ? '[NACHHER] Mangel behoben' : '[VORHER] Mangelaufnahme',
           photoType,
         };
@@ -349,7 +359,10 @@ export default function MaengelanzeigeScreen() {
               return i;
             })
           );
-          Alert.alert('Erfolg', 'Nachher-Foto wurde erfolgreich hochgeladen und dem Mangel zugeordnet!');
+          Alert.alert(
+            'Erfolg',
+            `${photoType === 'AFTER' ? 'Nachher-Foto' : 'Vorher-Foto'} wurde erfolgreich hochgeladen!`
+          );
         } else {
           Alert.alert('Fehler', 'Upload des Fotos fehlgeschlagen.');
         }
@@ -394,7 +407,6 @@ export default function MaengelanzeigeScreen() {
     return p.company_id === selectedCompanyId;
   });
 
-  // Extract all unique trades from current items
   const uniqueTrades = Array.from(new Set(items.map((i) => i.trade_or_company).filter(Boolean))) as string[];
 
   const filteredItems = items.filter((item) => {
@@ -650,18 +662,21 @@ export default function MaengelanzeigeScreen() {
                   <Text style={styles.descText}>{item.original_text}</Text>
                 </View>
 
-                {/* 4. Bauleitung / Admin Dokumentation (falls vorhanden) */}
+                {/* 4. Bauleitung / Admin Dokumentation (Protected for regular workers) */}
                 {item.our_documentation ? (
                   <View style={styles.adminDocBox}>
-                    <Text style={styles.adminDocHeading}>👑 BAULEITUNG DOKUMENTATION:</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                      <Text style={styles.adminDocHeading}>👑 BAULEITUNG DOKUMENTATION:</Text>
+                      <Text style={{ fontSize: 10, color: '#EAB308', fontWeight: '700' }}>🔒 Admin</Text>
+                    </View>
                     <Text style={styles.adminDocText}>{item.our_documentation}</Text>
                   </View>
                 ) : null}
 
-                {/* 5. Mitarbeiter Protokoll / Rückmeldung (falls vorhanden) */}
+                {/* 5. Mitarbeiter Protokoll / Rückmeldung */}
                 {item.user_documentation ? (
                   <View style={styles.userDocBox}>
-                    <Text style={styles.userDocHeading}>🛠️ PROTOKOLL / RÜCKMELDUNG ZUR BEHEBUNG:</Text>
+                    <Text style={styles.userDocHeading}>🛠️ PROTOKOLL / RÜCKMELDUNG ZUR BEHEBUNG (MITARBEITER):</Text>
                     <Text style={styles.userDocText}>{item.user_documentation}</Text>
                   </View>
                 ) : null}
@@ -728,22 +743,22 @@ export default function MaengelanzeigeScreen() {
                     </View>
                   )}
 
-                  {/* Action Buttons: Add Photo & Edit Status */}
+                  {/* Action Buttons: Add Vorher-Foto, Add Nachher-Foto, Edit Status/Protokoll */}
                   <View style={styles.actionButtonsRow}>
                     <TouchableOpacity
-                      style={styles.addCameraBtn}
-                      onPress={() => handleUploadDefectPhoto(item, true, 'AFTER')}
+                      style={styles.addBeforeBtn}
+                      onPress={() => setPhotoTarget({ item, type: 'BEFORE' })}
                     >
-                      <Text style={styles.actionBtnIcon}>📷</Text>
-                      <Text style={styles.actionBtnText}>Nachher-Foto</Text>
+                      <Text style={styles.actionBtnIcon}>📸</Text>
+                      <Text style={styles.actionBtnText}>+ Vorher</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.addGalleryBtn}
-                      onPress={() => handleUploadDefectPhoto(item, false, 'AFTER')}
+                      style={styles.addAfterBtn}
+                      onPress={() => setPhotoTarget({ item, type: 'AFTER' })}
                     >
-                      <Text style={styles.actionBtnIcon}>🖼️</Text>
-                      <Text style={styles.actionBtnText}>Galerie</Text>
+                      <Text style={styles.actionBtnIcon}>✅</Text>
+                      <Text style={styles.actionBtnText}>+ Nachher</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -756,7 +771,7 @@ export default function MaengelanzeigeScreen() {
                       }}
                     >
                       <Text style={styles.actionBtnIcon}>✏️</Text>
-                      <Text style={[styles.actionBtnText, { color: '#38BDF8' }]}>Bearbeiten</Text>
+                      <Text style={[styles.actionBtnText, { color: '#38BDF8' }]}>Protokoll</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -778,7 +793,51 @@ export default function MaengelanzeigeScreen() {
         </View>
       </Modal>
 
-      {/* 7. Full Status, Protokoll & Response Edit Modal */}
+      {/* 7. Photo Source Picker Modal (Camera vs Gallery for Vorher / Nachher) */}
+      <Modal visible={!!photoTarget} transparent animationType="fade" onRequestClose={() => setPhotoTarget(null)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setPhotoTarget(null)}>
+          <View style={styles.photoPickerCard} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalTitle}>
+                {photoTarget?.type === 'AFTER' ? '📸 Nachher-Foto hinzufügen' : '📸 Vorher-Foto hinzufügen'}
+              </Text>
+              <TouchableOpacity onPress={() => setPhotoTarget(null)}>
+                <Text style={styles.closeBtn}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Mangel #{photoTarget?.item.item_number} • {photoTarget?.item.trade_or_company || 'Gewerk'}
+            </Text>
+
+            <View style={{ gap: 10, marginTop: 14 }}>
+              <TouchableOpacity
+                style={[styles.pickerChoiceBtn, { backgroundColor: '#0284C7' }]}
+                onPress={() => photoTarget && executePhotoUpload(photoTarget.item, true, photoTarget.type)}
+              >
+                <Text style={{ fontSize: 20 }}>📷</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pickerChoiceBtnText}>Kamera öffnen</Text>
+                  <Text style={styles.pickerChoiceSubtext}>Neues Foto direkt auf der Baustelle aufnehmen</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.pickerChoiceBtn, { backgroundColor: '#1E293B', borderWidth: 1, borderColor: '#334155' }]}
+                onPress={() => photoTarget && executePhotoUpload(photoTarget.item, false, photoTarget.type)}
+              >
+                <Text style={{ fontSize: 20 }}>🖼️</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pickerChoiceBtnText}>Aus Galerie wählen</Text>
+                  <Text style={styles.pickerChoiceSubtext}>Bereits vorhandenes Foto aus der Fotomediathek wählen</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* 8. Full Status, Protokoll & Response Edit Modal with User/Admin Permissions */}
       <Modal visible={!!editingItem} transparent animationType="slide" onRequestClose={() => setEditingItem(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setEditingItem(null)}>
           <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
@@ -818,6 +877,7 @@ export default function MaengelanzeigeScreen() {
                 ))}
               </View>
 
+              {/* Editable by Worker & Admin */}
               <Text style={styles.modalFieldLabel}>🛠️ RÜCKMELDUNG / PROTOKOLL ZUR BEHEBUNG (MITARBEITER):</Text>
               <TextInput
                 style={styles.modalInput}
@@ -828,15 +888,27 @@ export default function MaengelanzeigeScreen() {
                 multiline
               />
 
+              {/* Bauleitung / Admin Documentation: Protected for regular workers! */}
               <Text style={[styles.modalFieldLabel, { color: '#EAB308' }]}>👑 BAULEITUNG / ADMIN NOTIZEN:</Text>
-              <TextInput
-                style={[styles.modalInput, { borderColor: '#EAB30840' }]}
-                placeholder="Interne Anweisung der Bauleitung..."
-                placeholderTextColor="#64748B"
-                value={adminDocText}
-                onChangeText={setAdminDocText}
-                multiline
-              />
+              {isAdmin || isMod ? (
+                <TextInput
+                  style={[styles.modalInput, { borderColor: '#EAB30860' }]}
+                  placeholder="Interne Anweisung der Bauleitung..."
+                  placeholderTextColor="#64748B"
+                  value={adminDocText}
+                  onChangeText={setAdminDocText}
+                  multiline
+                />
+              ) : (
+                <View style={styles.protectedDocBox}>
+                  <Text style={styles.protectedDocText}>
+                    {editingItem?.our_documentation || 'Keine Anweisung durch die Bauleitung hinterlegt.'}
+                  </Text>
+                  <Text style={styles.protectedDocNotice}>
+                    🔒 Schreibgeschützt (Nur für Bauleitung / Admin bearbeitbar)
+                  </Text>
+                </View>
+              )}
             </ScrollView>
 
             <View style={styles.modalActionsRow}>
@@ -1115,7 +1187,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#EAB308',
     letterSpacing: 0.5,
-    marginBottom: 3,
   },
   adminDocText: {
     fontSize: 12,
@@ -1185,29 +1256,29 @@ const styles = StyleSheet.create({
   },
   actionButtonsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     marginTop: 6,
   },
-  addCameraBtn: {
+  addBeforeBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0284C7',
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 4,
-  },
-  addGalleryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 12,
+    backgroundColor: '#334155',
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#475569',
+    gap: 4,
+  },
+  addAfterBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#059669',
+    paddingVertical: 8,
+    borderRadius: 8,
     gap: 4,
   },
   editBtn: {
@@ -1215,7 +1286,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
@@ -1223,12 +1294,57 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   actionBtnIcon: {
-    fontSize: 14,
+    fontSize: 13,
   },
   actionBtnText: {
     fontSize: 11,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  photoPickerCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#38BDF8',
+    padding: 18,
+    width: '90%',
+    alignSelf: 'center',
+  },
+  pickerChoiceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    gap: 12,
+  },
+  pickerChoiceBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  pickerChoiceSubtext: {
+    color: '#94A3B8',
+    fontSize: 11,
+  },
+  protectedDocBox: {
+    backgroundColor: 'rgba(234, 179, 8, 0.05)',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(234, 179, 8, 0.2)',
+    marginBottom: 10,
+  },
+  protectedDocText: {
+    color: '#FEF08A',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  protectedDocNotice: {
+    color: '#EAB308',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 6,
   },
   center: {
     flex: 1,
