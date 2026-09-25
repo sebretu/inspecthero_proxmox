@@ -116,64 +116,94 @@ export default function InteractivePlanScreen() {
       setLoading(true);
       const db = await getDatabase();
 
-      // 1. Fetch Plan
-      let planRow = await db.getFirstAsync<PlanInfo>(
-        'SELECT id, project_id, floor_id, name, width, height, image_url, pdf_url FROM plans WHERE id = ? AND deleted_at IS NULL;',
-        [id]
-      );
+      // 1. Fetch Plan from SQLite
+      let planRow: PlanInfo | null = null;
+      if (id) {
+        planRow = await db.getFirstAsync<PlanInfo>(
+          'SELECT id, project_id, floor_id, name, width, height, image_url, pdf_url FROM plans WHERE id = ? AND deleted_at IS NULL;',
+          [id]
+        );
+      }
 
-      if (!planRow) {
-        // Fallback to first available plan in SQLite
+      if (!planRow && !id) {
+        // Only if NO id is provided at all, fallback to first plan in SQLite
         planRow = await db.getFirstAsync<PlanInfo>(
           'SELECT id, project_id, floor_id, name, width, height, image_url, pdf_url FROM plans WHERE deleted_at IS NULL LIMIT 1;'
         );
       }
 
-      const activePlan = planRow || {
-        id: id || 'pln-sample-001',
-        name: 'Rzut Kondygnacji (Leaflet 2D)',
-        width: 1920,
-        height: 1080,
+      const activePlanId = id || planRow?.id || 'pln-sample-001';
+
+      // 2. Fetch real metadata from server if online
+      let fetchedWidth = planRow?.width || 1920;
+      let fetchedHeight = planRow?.height || 1080;
+
+      try {
+        const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
+        const token = session?.access_token;
+        const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+        const metaRes = await fetch(`${apiUrl}/api/tiles/${activePlanId}/meta${tokenParam}`);
+        if (metaRes.ok) {
+          const meta = await metaRes.json();
+          if (meta.imageWidth && meta.imageHeight) {
+            fetchedWidth = meta.imageWidth;
+            fetchedHeight = meta.imageHeight;
+          } else if (meta.gridW && meta.gridH && meta.tileSize) {
+            fetchedWidth = meta.gridW * meta.tileSize;
+            fetchedHeight = meta.gridH * meta.tileSize;
+          }
+        }
+      } catch (e) {
+        // offline fallback
+      }
+
+      const activePlan: PlanInfo = {
+        id: activePlanId,
+        name: planRow?.name || `Plan architektoniczny (${activePlanId.slice(0, 8)})`,
+        project_id: planRow?.project_id,
+        floor_id: planRow?.floor_id,
+        width: fetchedWidth,
+        height: fetchedHeight,
+        image_url: planRow?.image_url,
+        pdf_url: planRow?.pdf_url,
       };
 
       setPlan(activePlan);
       setCurrentFloorId(activePlan.floor_id || null);
 
-      const activePlanId = activePlan.id;
-
       // Check if tiles for this plan exist offline in FileSystem
       const isCached = await TileCacheService.isPlanCachedLocally(activePlanId);
       setIsLocalTileCached(isCached);
 
-      // 2. Fetch Tasks on Plan
+      // 3. Fetch Tasks on Plan
       const taskRows = await db.getAllAsync<TaskPin>(
         'SELECT id, title, description, pos_x, pos_y, status, priority, version FROM tasks WHERE plan_id = ? AND deleted_at IS NULL;',
         [activePlanId]
       );
       setTasks(taskRows);
 
-      // 3. Fetch BMA Devices
+      // 4. Fetch BMA Devices
       const bmaRows = await db.getAllAsync<BmaPin>(
         'SELECT id, device_number, device_type, pos_x, pos_y, status FROM bma_devices WHERE plan_id = ? AND deleted_at IS NULL;',
         [activePlanId]
       );
       setBmaDevices(bmaRows);
 
-      // 4. Fetch Cables
+      // 5. Fetch Cables
       const cableRows = await db.getAllAsync<CablePin>(
         'SELECT id, cable_number, cable_type, length, status, points_json FROM cables WHERE plan_id = ? AND deleted_at IS NULL;',
         [activePlanId]
       );
       setCables(cableRows);
 
-      // 5. Fetch Circuits
+      // 6. Fetch Circuits
       const circuitRows = await db.getAllAsync<CircuitPin>(
         'SELECT id, circuit_name, fuse_type, pos_x, pos_y FROM stromkreise WHERE plan_id = ? AND deleted_at IS NULL;',
         [activePlanId]
       );
       setCircuits(circuitRows);
 
-      // 6. Fetch Sibling Floors
+      // 7. Fetch Sibling Floors
       if (activePlan.project_id) {
         const floorRows = await db.getAllAsync<FloorOption>(`
           SELECT f.id, f.name, (SELECT p.id FROM plans p WHERE p.floor_id = f.id AND p.deleted_at IS NULL LIMIT 1) as plan_id
@@ -189,7 +219,7 @@ export default function InteractivePlanScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, session?.access_token]);
 
   useEffect(() => {
     loadPlan();
@@ -634,7 +664,7 @@ export default function InteractivePlanScreen() {
           };
 
           // 1. Primary Raster Tiles Layer
-          if (planId && planId !== 'pln-sample-001') {
+          if (planId) {
             const tokenParam = token ? '?token=' + encodeURIComponent(token) : '';
             const localTileDir = "${isLocalTileCached ? TileCacheService.getPlanTilesDir(planId) : ''}";
             const tileUrl = localTileDir
@@ -661,51 +691,6 @@ export default function InteractivePlanScreen() {
                 coords: e.coords,
               });
             });
-          }
-
-          // 2. Blueprint Architectural Canvas (Fallback for sample plan or offline preview)
-          if (!planId || planId === 'pln-sample-001') {
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            
-            ctx.fillStyle = '#0B0F19';
-            ctx.fillRect(0, 0, width, height);
-
-            // Grid Lines
-            ctx.strokeStyle = '#1E293B';
-            ctx.lineWidth = 1.5;
-            for (let x = 0; x < width; x += 100) {
-              ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-            }
-            for (let y = 0; y < height; y += 100) {
-              ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-            }
-
-            // Structural Walls
-            ctx.strokeStyle = '#38BDF8';
-            ctx.lineWidth = 5;
-            ctx.strokeRect(60, 60, width - 120, height - 120);
-
-            // Rooms & Zones
-            ctx.strokeStyle = '#334155';
-            ctx.lineWidth = 2.5;
-            ctx.strokeRect(120, 120, 450, 320);
-            ctx.strokeRect(620, 120, 500, 320);
-            ctx.strokeRect(1170, 120, 630, 320);
-            ctx.strokeRect(120, 500, 750, 450);
-            ctx.strokeRect(920, 500, 880, 450);
-
-            ctx.fillStyle = '#64748B';
-            ctx.font = 'bold 22px sans-serif';
-            ctx.fillText('BIURO 101 (WEST)', 160, 180);
-            ctx.fillText('BIURO 102 (CENTER)', 660, 180);
-            ctx.fillText('SALA KONFERENCYJNA A', 1220, 180);
-            ctx.fillText('OPEN SPACE MONTAŻ', 160, 560);
-            ctx.fillText('GŁÓWNA ROZDZIELNICA ELEKTRYCZNA (RG)', 960, 560);
-
-            L.imageOverlay(canvas.toDataURL(), bounds).addTo(map);
           }
 
           map.fitBounds(bounds);
