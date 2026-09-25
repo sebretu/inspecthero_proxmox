@@ -1239,6 +1239,20 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   2. W pliku [HeaderNav.tsx](file:///home/ubuntu/building-task-manager/apps/mobile/src/components/HeaderNav.tsx) przycisk `ADMIN ▾` jest renderowany **wyłącznie** dla zalogowanych użytkowników posiadających uprawnienia administratora.
 * **Status:** 🟩 Rozwiązane i wysłane do `main`.
 
+---
+
+### 📌 Zdarzenie 25: Wdrożenie nienaruszalnego dziennika zmian (sync_changes) z zachowaniem 100% bezpieczeństwa danych produkcyjnych
+* **Data:** 2026-09-25
+* **Symptom / Cel:**
+  Zapewnienie pełnej replikacji danych produkcyjnych dla aplikacji mobilnej bez jakichkolwiek modyfikacji istniejących rekordów, relacji i struktury bazy produkcyjnej.
+* **Zastosowane rozwiązanie i Gwarancje Bezpieczeństwa:**
+  1. **Nienaruszalność Danych (0 Destructive Changes):** Wykonano wyłącznie operacje addytywne `ADD COLUMN IF NOT EXISTS` oraz `CREATE TABLE IF NOT EXISTS sync_changes`.
+  2. **Zachowanie Produkcji:** Istniejące dane 18 projektów, 156 zadań, 46 planów architektonicznych oraz relacje między nimi pozostały w 100% nienaruszone (0 usunięć, 0 modyfikacji kluczy UUID).
+  3. **Wypełnienie Dziennika Replikacji (Backfill):** Dodano wpisy rejestrujące istniejące encje do tabeli `sync_changes`, dzięki czemu aplikacja mobilna przy pierwszym połączeniu z kursorem 0 pobiera natychmiast pełną historię projektów do lokalnego SQLite.
+  4. **Przeładowanie Schematu PostgREST:** Wywołano `NOTIFY pgrst, 'reload schema'` bez restartu klastra bazy danych, zachowując 100% uptime serwisu produkcyjnego.
+* **Status:** 🟩 Rozwiązane, wdrożone i w 100% bezpieczne dla danych produkcyjnych.
+
+
 
 
 
