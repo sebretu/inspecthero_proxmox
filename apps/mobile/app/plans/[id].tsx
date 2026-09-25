@@ -861,20 +861,42 @@ export default function InteractivePlanScreen() {
 
           .pin-label {
             position: absolute;
-            bottom: -20px;
+            bottom: -22px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(15, 23, 42, 0.95);
             color: #F8FAFC;
             font-size: 9px;
-            font-weight: 700;
-            padding: 1px 6px;
+            font-weight: 800;
+            padding: 2px 6px;
             border-radius: 4px;
             white-space: nowrap;
             border: 1px solid #334155;
             pointer-events: none;
             box-shadow: 0 1px 4px rgba(0,0,0,0.6);
             z-index: 10;
+          }
+          .cable-badge {
+            background: rgba(15, 23, 42, 0.95);
+            color: #F8FAFC;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+            border: 1.5px solid #38BDF8;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+            display: inline-block;
+          }
+          .plan-tooltip {
+            background-color: #0F172A !important;
+            border: 1px solid #38BDF8 !important;
+            color: #F8FAFC !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            border-radius: 6px !important;
+            padding: 4px 8px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.7) !important;
           }
           .leaflet-container {
             background-color: #030712 !important;
@@ -950,11 +972,23 @@ export default function InteractivePlanScreen() {
             if (type === 'sym_light' || type === 'light') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="34" fill="rgba(234,179,8,0.18)" stroke="#EAB308" stroke-width="8"/><line x1="26" y1="26" x2="74" y2="74" stroke="#EAB308" stroke-width="8" stroke-linecap="round"/><line x1="74" y1="26" x2="26" y2="74" stroke="#EAB308" stroke-width="8" stroke-linecap="round"/></svg>';
             }
+            if (type === 'sym_wandleuchte' || type === 'wandleuchte') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><line x1="15" y1="50" x2="85" y2="50" stroke="#CA8A04" stroke-width="8" stroke-linecap="round"/><circle cx="50" cy="30" r="22" fill="rgba(234,179,8,0.25)" stroke="#CA8A04" stroke-width="7"/><line x1="36" y1="16" x2="64" y2="44" stroke="#CA8A04" stroke-width="6"/><line x1="64" y1="16" x2="36" y2="44" stroke="#CA8A04" stroke-width="6"/></svg>';
+            }
+            if (type === 'sym_led_stripe' || type === 'led_stripe') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="40" width="70" height="20" rx="6" fill="rgba(250,204,21,0.25)" stroke="#FACC15" stroke-width="6"/><circle cx="28" cy="50" r="4" fill="#FACC15"/><circle cx="50" cy="50" r="4" fill="#FACC15"/><circle cx="72" cy="50" r="4" fill="#FACC15"/></svg>';
+            }
             if (type === 'sym_switch' || type === 'switch') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="32" fill="none" stroke="#F59E0B" stroke-width="8"/><line x1="50" y1="50" x2="78" y2="22" stroke="#F59E0B" stroke-width="8" stroke-linecap="round"/><circle cx="78" cy="22" r="5" fill="#F59E0B"/></svg>';
             }
             if (type === 'sym_edv' || type === 'edv') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="18" y="18" width="64" height="64" rx="10" fill="rgba(16,185,129,0.15)" stroke="#10B981" stroke-width="8"/><rect x="36" y="42" width="28" height="24" rx="4" fill="none" stroke="#10B981" stroke-width="6"/><line x1="50" y1="66" x2="50" y2="52" stroke="#10B981" stroke-width="6"/></svg>';
+            }
+            if (type === 'sym_kabelauslass' || type === 'kabelauslass') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="34" fill="none" stroke="#64748B" stroke-width="8"/><line x1="50" y1="16" x2="50" y2="50" stroke="#64748B" stroke-width="8"/><circle cx="50" cy="50" r="8" fill="#64748B"/></svg>';
+            }
+            if (type === 'sym_verteiler' || type === 'verteiler') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" fill="rgba(139,92,246,0.2)" stroke="#8B5CF6" stroke-width="8"/><line x1="15" y1="15" x2="85" y2="85" stroke="#8B5CF6" stroke-width="6"/><text x="50" y="80" fill="#8B5CF6" font-size="18" font-weight="900" text-anchor="middle">UV</text></svg>';
             }
             if (type === 'detector_blue' || type === 'bma_smoke') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="42" fill="rgba(56,189,248,0.2)" stroke="#0284C7" stroke-width="8"/><circle cx="50" cy="50" r="22" fill="none" stroke="#0284C7" stroke-width="6"/><circle cx="50" cy="50" r="8" fill="#0284C7"/></svg>';
@@ -968,17 +1002,44 @@ export default function InteractivePlanScreen() {
             if (type === 'handmelder' || type === 'bma_rop') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" rx="8" fill="rgba(220,38,38,0.2)" stroke="#DC2626" stroke-width="8"/><circle cx="50" cy="50" r="16" fill="#DC2626"/><text x="50" y="80" fill="#DC2626" font-size="14" font-weight="900" text-anchor="middle">BMA</text></svg>';
             }
-            if (type === 'sirene' || type === 'bma_siren') {
+            if (type === 'sirene' || type === 'sirene_up' || type === 'bma_siren') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><polygon points="30,35 60,15 60,85 30,65" fill="#F97316" stroke="#C2410C" stroke-width="6"/><rect x="18" y="38" width="14" height="24" fill="#C2410C"/><path d="M 70 30 A 25 25 0 0 1 70 70" fill="none" stroke="#EA580C" stroke-width="6" stroke-linecap="round"/></svg>';
+            }
+            if (type === 'sirene_right') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;transform: rotate(90deg);"><polygon points="30,35 60,15 60,85 30,65" fill="#F97316" stroke="#C2410C" stroke-width="6"/><rect x="18" y="38" width="14" height="24" fill="#C2410C"/><path d="M 70 30 A 25 25 0 0 1 70 70" fill="none" stroke="#EA580C" stroke-width="6" stroke-linecap="round"/></svg>';
+            }
+            if (type === 'sirene_down') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;transform: rotate(180deg);"><polygon points="30,35 60,15 60,85 30,65" fill="#F97316" stroke="#C2410C" stroke-width="6"/><rect x="18" y="38" width="14" height="24" fill="#C2410C"/><path d="M 70 30 A 25 25 0 0 1 70 70" fill="none" stroke="#EA580C" stroke-width="6" stroke-linecap="round"/></svg>';
+            }
+            if (type === 'sirene_left') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;transform: rotate(270deg);"><polygon points="30,35 60,15 60,85 30,65" fill="#F97316" stroke="#C2410C" stroke-width="6"/><rect x="18" y="38" width="14" height="24" fill="#C2410C"/><path d="M 70 30 A 25 25 0 0 1 70 70" fill="none" stroke="#EA580C" stroke-width="6" stroke-linecap="round"/></svg>';
+            }
+            if (type === 'koppler') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="20" y="20" width="60" height="60" rx="6" fill="#991B1B" stroke="#7F1D1D" stroke-width="8"/><circle cx="50" cy="50" r="14" fill="#FFFFFF"/></svg>';
             }
             if (type === 'bmz') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="12" y="12" width="76" height="76" rx="8" fill="#B91C1C" stroke="#7F1D1D" stroke-width="8"/><text x="50" y="60" fill="#FFFFFF" font-size="24" font-weight="900" font-family="sans-serif" text-anchor="middle">BMZ</text></svg>';
             }
-            if (type === 'notlicht_pikto' || type === 'notleuchte') {
+            if (type === 'notlicht_pikto' || type === 'notleuchte' || type === 'notlicht_pikto_right' || type === 'notlicht_pikto_gross_right') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 30 50 L 55 30 L 55 42 L 75 42 L 75 58 L 55 58 L 55 70 Z" fill="#FFFFFF"/></svg>';
+            }
+            if (type === 'notlicht_pikto_left') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 70 50 L 45 30 L 45 42 L 25 42 L 25 58 L 45 58 L 45 70 Z" fill="#FFFFFF"/></svg>';
+            }
+            if (type === 'notlicht_pikto_down') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 50 70 L 30 45 L 42 45 L 42 25 L 58 25 L 58 45 L 70 45 Z" fill="#FFFFFF"/></svg>';
+            }
+            if (type === 'notlicht_pikto_up') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 50 25 L 30 50 L 42 50 L 42 70 L 58 70 L 58 50 L 70 50 Z" fill="#FFFFFF"/></svg>';
             }
             if (type === 'revisionsklappe') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" fill="rgba(245,158,11,0.15)" stroke="#D97706" stroke-width="7"/><line x1="15" y1="15" x2="85" y2="85" stroke="#D97706" stroke-width="6"/><line x1="15" y1="85" x2="85" y2="15" stroke="#D97706" stroke-width="6"/></svg>';
+            }
+            if (type === 'abdeckung') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" fill="rgba(100,116,139,0.3)" stroke="#64748B" stroke-width="6" stroke-dasharray="8,8"/></svg>';
+            }
+            if (type === 'anderungen') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><path d="M 20 50 A 15 15 0 0 1 40 30 A 20 20 0 0 1 70 30 A 15 15 0 0 1 85 50 A 15 15 0 0 1 70 70 A 20 20 0 0 1 35 70 A 15 15 0 0 1 20 50 Z" fill="rgba(220,38,38,0.2)" stroke="#DC2626" stroke-width="6"/></svg>';
             }
             if (type === 'warmepumpe_aussen') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" rx="10" fill="rgba(2,132,199,0.15)" stroke="#0284C7" stroke-width="7"/><circle cx="50" cy="50" r="26" fill="none" stroke="#0284C7" stroke-width="5"/><path d="M 50 24 L 50 76 M 24 50 L 76 50 M 32 32 L 68 68 M 32 68 L 68 32" stroke="#0284C7" stroke-width="4"/></svg>';
@@ -986,8 +1047,26 @@ export default function InteractivePlanScreen() {
             if (type === 'warmepumpe_innen') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="20" y="12" width="60" height="76" rx="8" fill="rgba(14,165,233,0.15)" stroke="#0284C7" stroke-width="7"/><line x1="30" y1="35" x2="70" y2="35" stroke="#0284C7" stroke-width="5"/><circle cx="50" cy="60" r="14" fill="none" stroke="#0284C7" stroke-width="4"/></svg>';
             }
+            if (type === 'infrarotheizung') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="25" width="70" height="50" rx="8" fill="rgba(249,115,22,0.18)" stroke="#F97316" stroke-width="7"/><path d="M 30 40 Q 40 30 50 40 T 70 40 M 30 55 Q 40 45 50 55 T 70 55" fill="none" stroke="#F97316" stroke-width="5"/></svg>';
+            }
+            if (type === 'geraet_box') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" rx="8" fill="rgba(99,102,241,0.2)" stroke="#6366F1" stroke-width="7"/><circle cx="35" cy="40" r="8" fill="#6366F1"/><circle cx="65" cy="40" r="8" fill="#6366F1"/><rect x="30" y="62" width="40" height="10" rx="3" fill="#6366F1"/></svg>';
+            }
+            if (type === 'temperaturfuehler') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="38" fill="rgba(16,185,129,0.18)" stroke="#10B981" stroke-width="7"/><path d="M 50 25 L 50 58 M 44 64 A 8 8 0 1 0 56 64 A 8 8 0 0 0 44 64" fill="#10B981" stroke="#10B981" stroke-width="4"/></svg>';
+            }
+            if (type === 'heizkreisverteiler') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="25" width="70" height="50" rx="6" fill="rgba(2,132,199,0.18)" stroke="#0284C7" stroke-width="7"/><circle cx="32" cy="50" r="6" fill="#0284C7"/><circle cx="50" cy="50" r="6" fill="#0284C7"/><circle cx="68" cy="50" r="6" fill="#0284C7"/></svg>';
+            }
+            if (type === 'pufferspeicher') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="25" y="20" width="50" height="60" rx="14" fill="rgba(100,116,139,0.25)" stroke="#64748B" stroke-width="7"/><line x1="25" y1="40" x2="75" y2="40" stroke="#64748B" stroke-width="5"/><line x1="25" y1="60" x2="75" y2="60" stroke="#64748B" stroke-width="5"/></svg>';
+            }
             if (type === 'kabeltrasse') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><line x1="15" y1="30" x2="85" y2="30" stroke="#64748B" stroke-width="8"/><line x1="15" y1="70" x2="85" y2="70" stroke="#64748B" stroke-width="8"/><line x1="30" y1="30" x2="30" y2="70" stroke="#64748B" stroke-width="6"/><line x1="50" y1="30" x2="50" y2="70" stroke="#64748B" stroke-width="6"/><line x1="70" y1="30" x2="70" y2="70" stroke="#64748B" stroke-width="6"/></svg>';
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><line x1="15" y1="30" x2="85" y2="30" stroke="#059669" stroke-width="8"/><line x1="15" y1="70" x2="85" y2="70" stroke="#059669" stroke-width="8"/><line x1="30" y1="30" x2="30" y2="70" stroke="#059669" stroke-width="6"/><line x1="50" y1="30" x2="50" y2="70" stroke="#059669" stroke-width="6"/><line x1="70" y1="30" x2="70" y2="70" stroke="#059669" stroke-width="6"/></svg>';
+            }
+            if (type === 'kabelzug' || type === 'freie_leitung') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><path d="M 15 50 Q 35 25 50 50 T 85 50" fill="none" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/><circle cx="15" cy="50" r="5" fill="' + c + '"/><circle cx="85" cy="50" r="5" fill="' + c + '"/></svg>';
             }
 
             // Fallback CAD circle glyph
@@ -1022,7 +1101,7 @@ export default function InteractivePlanScreen() {
             const lat = -(t.pos_y || 400) / Math.pow(2, maxZoom);
             const lng = (t.pos_x || 400) / Math.pow(2, maxZoom);
             const statusClass = 'pin-' + (t.status || 'OPEN');
-            const safeTitle = escapeHtml(t.title || 'Zadanie').substring(0, 20);
+            const safeTitle = escapeHtml(t.title || 'Zadanie');
 
             let statusIcon = '📌';
             const st = (t.status || '').toUpperCase();
@@ -1033,12 +1112,13 @@ export default function InteractivePlanScreen() {
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="custom-pin ' + statusClass + '" style="width: 30px; height: 30px;">' + statusIcon + '<span class="pin-label">' + safeTitle + '</span></div>',
-              iconSize: [30, 30],
-              iconAnchor: [15, 15],
+              html: '<div class="custom-pin ' + statusClass + '" style="width: 32px; height: 32px;">' + statusIcon + '<span class="pin-label">' + safeTitle + '</span></div>',
+              iconSize: [32, 32],
+              iconAnchor: [16, 16],
             });
 
             const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
+            marker.bindTooltip('<b>' + safeTitle + '</b><br/>Status: ' + st + (t.priority ? '<br/>Priorytet: ' + escapeHtml(t.priority) : ''), { direction: 'top', className: 'plan-tooltip' });
             marker.on('click', function(e) {
               L.DomEvent.stopPropagation(e);
               send({ type: 'TASK_CLICK', id: t.id });
@@ -1049,17 +1129,20 @@ export default function InteractivePlanScreen() {
             if (!c) return;
             const lat = -(c.pos_y || 500) / Math.pow(2, maxZoom);
             const lng = (c.pos_x || 500) / Math.pow(2, maxZoom);
-            const safeName = escapeHtml(c.circuit_code || c.short_label || c.circuit_name || 'Obwód').substring(0, 15);
+            const title = escapeHtml(c.circuit_name || c.circuit_code || c.short_label || 'Obwód');
+            const fuse = escapeHtml(c.fuse_type || (c.breaker_current ? (c.breaker_curve || 'B') + c.breaker_current + 'A' : ''));
+            const fullLabel = fuse ? title + ' (' + fuse + ')' : title;
             const svgHtml = getVectorSvgHtml(c.type || 'sym_socket', c.color || '#38BDF8', 0);
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="svg-marker-container"><div class="svg-marker-box">' + svgHtml + '</div><span class="pin-label">' + safeName + '</span></div>',
-              iconSize: [34, 34],
-              iconAnchor: [17, 17],
+              html: '<div class="svg-marker-container"><div class="svg-marker-box" style="border-color: #38BDF8aa;">' + svgHtml + '</div><span class="pin-label">' + fullLabel + '</span></div>',
+              iconSize: [36, 36],
+              iconAnchor: [18, 18],
             });
 
             const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
+            marker.bindTooltip('<b>' + title + '</b>' + (fuse ? '<br/>Bezpiecznik: ' + fuse : '') + (c.phase ? '<br/>Faza: L' + c.phase : ''), { direction: 'top', className: 'plan-tooltip' });
             marker.on('click', function(e) {
               L.DomEvent.stopPropagation(e);
               send({ type: 'CIRCUIT_CLICK', id: c.id });
@@ -1071,18 +1154,26 @@ export default function InteractivePlanScreen() {
             const lat = -(s.pos_y || (s.y_norm * height)) / Math.pow(2, maxZoom);
             const lng = (s.pos_x || (s.x_norm * width)) / Math.pow(2, maxZoom);
             const def = symbolMeta.find(function(d) { return d.id === s.symbol_type; }) || { emoji: '📍', color: '#38BDF8' };
-            const safeLabel = escapeHtml(s.label || s.symbol_type).substring(0, 18);
+            const mainLabel = escapeHtml(s.label || def.name || s.symbol_type);
+            const subLabel = s.loop_number ? 'P' + s.loop_number + (s.address ? '/' + s.address : '') : (s.address || '');
+            const displayLabel = subLabel ? mainLabel + ' ' + subLabel : mainLabel;
             const rot = s.parsed_desc?.rotation || 0;
             const svgHtml = getVectorSvgHtml(s.symbol_type, def.color || '#38BDF8', rot);
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="svg-marker-container"><div class="svg-marker-box" style="border-color: ' + def.color + '44;">' + svgHtml + '</div><span class="pin-label">' + safeLabel + '</span></div>',
-              iconSize: [34, 34],
-              iconAnchor: [17, 17],
+              html: '<div class="svg-marker-container"><div class="svg-marker-box" style="border-color: ' + def.color + 'aa;">' + svgHtml + '</div><span class="pin-label">' + displayLabel + '</span></div>',
+              iconSize: [36, 36],
+              iconAnchor: [18, 18],
             });
 
             const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
+            let tooltipContent = '<b>' + mainLabel + '</b>';
+            if (s.loop_number) tooltipContent += '<br/>Pętla: ' + escapeHtml(s.loop_number);
+            if (s.address) tooltipContent += '<br/>Adres: ' + escapeHtml(s.address);
+            if (s.description && !s.description.startsWith('{')) tooltipContent += '<br/>' + escapeHtml(s.description);
+            marker.bindTooltip(tooltipContent, { direction: 'top', className: 'plan-tooltip' });
+
             marker.on('click', function(e) {
               L.DomEvent.stopPropagation(e);
               send({ type: 'SYMBOL_CLICK', id: s.id });
@@ -1101,12 +1192,37 @@ export default function InteractivePlanScreen() {
               const latlngs = orthoPts.map(function(p) {
                 return [-p.y / Math.pow(2, maxZoom), p.x / Math.pow(2, maxZoom)];
               });
+              const isE30 = c.cable_type && (c.cable_type.includes('E30') || c.cable_type.includes('E90') || c.cable_type.includes('FE180'));
+              const cableColor = isE30 ? '#F97316' : '#38BDF8';
               const poly = L.polyline(latlngs, {
-                color: c.cable_type && c.cable_type.includes('E30') ? '#F97316' : '#38BDF8',
-                weight: 4,
-                opacity: 0.85,
-                dashArray: c.status === 'planned' ? '6, 6' : undefined,
+                color: cableColor,
+                weight: 5,
+                opacity: 0.9,
+                dashArray: c.status === 'planned' ? '8, 8' : undefined,
               }).addTo(map);
+
+              const cableTitle = escapeHtml(c.cable_number || 'Kabel');
+              const cableType = escapeHtml(c.cable_type || '');
+              const lengthText = c.length ? c.length + 'm' : '';
+              const fullLabel = cableTitle + (cableType ? ' • ' + cableType : '') + (lengthText ? ' • ' + lengthText : '');
+
+              poly.bindTooltip('<b>' + cableTitle + '</b><br/>Typ: ' + cableType + (lengthText ? '<br/>Długość: ' + lengthText : '') + (c.status ? '<br/>Status: ' + escapeHtml(c.status) : ''), {
+                sticky: true,
+                className: 'plan-tooltip'
+              });
+
+              // Add text badge at midpoint
+              const midIdx = Math.floor(latlngs.length / 2);
+              const midPoint = latlngs[midIdx];
+              if (midPoint) {
+                const labelIcon = L.divIcon({
+                  className: '',
+                  html: '<span class="cable-badge" style="border-color:' + cableColor + ';">' + fullLabel + '</span>',
+                  iconSize: [120, 20],
+                  iconAnchor: [60, 10],
+                });
+                L.marker(midPoint, { icon: labelIcon, interactive: false }).addTo(map);
+              }
 
               poly.on('click', function(e) {
                 L.DomEvent.stopPropagation(e);

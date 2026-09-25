@@ -22,9 +22,17 @@ import { authSupabase } from '../../src/auth/authClient';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
 
+interface CompanyOption {
+  id: string;
+  name: string;
+  slug?: string;
+}
+
 interface ProjectOption {
   id: string;
   name: string;
+  company_id?: string | null;
+  companies?: { name: string } | null;
 }
 
 interface MaengelDocument {
@@ -61,6 +69,8 @@ export default function MaengelanzeigeScreen() {
     docId?: string;
   }>();
 
+  const [companies, setCompanies] = useState<CompanyOption[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(initialProjectId || '');
   const [documents, setDocuments] = useState<MaengelDocument[]>([]);
@@ -87,6 +97,18 @@ export default function MaengelanzeigeScreen() {
       const headers: Record<string, string> = session?.access_token
         ? { Authorization: `Bearer ${session.access_token}` }
         : {};
+
+      // 0. Load Companies (Firmen)
+      try {
+        const cRes = await fetch(`${API_BASE_URL}/api/companies`, { headers });
+        if (cRes.ok) {
+          const cJson = await cRes.json();
+          const cList = Array.isArray(cJson) ? cJson : (cJson?.data || []);
+          setCompanies(cList);
+        }
+      } catch (cErr) {
+        console.warn('[Maengelanzeige] Companies load error:', cErr);
+      }
 
       // 1. Load Projects
       const pRes = await fetch(`${API_BASE_URL}/api/projects`, { headers });
@@ -277,6 +299,11 @@ export default function MaengelanzeigeScreen() {
     return item.status === statusFilter;
   });
 
+  const visibleProjects = projects.filter((p) => {
+    if (!selectedCompanyId) return true;
+    return p.company_id === selectedCompanyId;
+  });
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <Stack.Screen
@@ -290,11 +317,48 @@ export default function MaengelanzeigeScreen() {
         }}
       />
 
+      {/* 0. Company (Firma) Switcher Bar */}
+      {companies.length > 0 && (
+        <View style={[styles.topSelectorBar, { borderBottomWidth: 0, paddingBottom: 4 }]}>
+          <Text style={styles.selectorLabel}>FIRMA / ZLECENIODAWCA:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollBar}>
+            <TouchableOpacity
+              style={[styles.projChip, !selectedCompanyId && styles.projChipActive]}
+              onPress={() => {
+                setSelectedCompanyId('');
+              }}
+            >
+              <Text style={[styles.projChipText, !selectedCompanyId && styles.projChipTextActive]}>
+                🏢 Wszystkie firmy
+              </Text>
+            </TouchableOpacity>
+            {companies.map((c) => (
+              <TouchableOpacity
+                key={c.id}
+                style={[styles.projChip, selectedCompanyId === c.id && styles.projChipActive]}
+                onPress={() => {
+                  setSelectedCompanyId(c.id);
+                  const matchingProj = projects.find((p) => p.company_id === c.id);
+                  if (matchingProj) {
+                    setSelectedProjectId(matchingProj.id);
+                    setSelectedDocId('');
+                  }
+                }}
+              >
+                <Text style={[styles.projChipText, selectedCompanyId === c.id && styles.projChipTextActive]}>
+                  🏢 {c.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       {/* 1. Project Switcher Bar */}
       <View style={styles.topSelectorBar}>
         <Text style={styles.selectorLabel}>PROJEKT:</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollBar}>
-          {projects.map((p) => (
+          {visibleProjects.map((p) => (
             <TouchableOpacity
               key={p.id}
               style={[styles.projChip, selectedProjectId === p.id && styles.projChipActive]}
@@ -304,7 +368,7 @@ export default function MaengelanzeigeScreen() {
               }}
             >
               <Text style={[styles.projChipText, selectedProjectId === p.id && styles.projChipTextActive]}>
-                🏢 {p.name}
+                📁 {p.name}
               </Text>
             </TouchableOpacity>
           ))}
