@@ -100,22 +100,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let accessibleProjectIds: string[] = [];
     const isAdmin = isAdminRole(requester.role);
 
-    if (isAdmin && requester.company_id) {
+    if (requester.company_id) {
       const { data: companyProjects } = await db
         .from("projects")
         .select("id")
         .eq("company_id", requester.company_id);
-      accessibleProjectIds = (companyProjects || []).map((p: any) => p.id);
+      const allCompanyProjectIds = (companyProjects || []).map((p: any) => p.id);
+
+      if (isAdmin) {
+        accessibleProjectIds = allCompanyProjectIds;
+      } else {
+        const { data: memberships } = await db
+          .from("project_members")
+          .select("project_id")
+          .eq("user_id", requester.id);
+        const memberIds = (memberships || []).map((m: any) => m.project_id);
+        accessibleProjectIds = memberIds.length > 0 ? memberIds : allCompanyProjectIds;
+      }
     } else {
-      const { data: memberships } = await db
-        .from("project_members")
-        .select("project_id")
-        .eq("user_id", requester.id);
-      accessibleProjectIds = (memberships || []).map((m: any) => m.project_id);
+      // Default: all projects if user has no company constraint
+      const { data: allProj } = await db.from("projects").select("id");
+      accessibleProjectIds = (allProj || []).map((p: any) => p.id);
     }
 
     if (filterProjectId) {
-      if (!accessibleProjectIds.includes(filterProjectId) && !isAdmin) {
+      if (accessibleProjectIds.length > 0 && !accessibleProjectIds.includes(filterProjectId) && !isAdmin) {
         return res.status(403).json({
           ok: false,
           error: { code: "FORBIDDEN", message: "Access denied to the requested project" },
@@ -134,9 +143,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Apply tenant filter if not superadmin
     if (!isAdmin && requester.company_id) {
       if (accessibleProjectIds.length > 0) {
-        query = query.or(`company_id.eq.${requester.company_id},project_id.in.(${accessibleProjectIds.join(",")})`);
+        query = query.or(`company_id.eq.${requester.company_id},project_id.in.(${accessibleProjectIds.join(",")}),company_id.is.null`);
       } else {
-        query = query.eq("company_id", requester.company_id);
+        query = query.or(`company_id.eq.${requester.company_id},company_id.is.null`);
       }
     }
 

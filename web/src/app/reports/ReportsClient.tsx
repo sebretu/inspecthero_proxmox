@@ -19,6 +19,9 @@ import QrLabelsPdfZebra from './QrLabelsPdfZebra';
 import { ChargersPdf } from "./ChargersPdf";
 import { BrotherProvider } from '@/lib/brotherProvider';
 import { generateQrBase64, generateDataMatrixBase64 } from "@/lib/qrUtils";
+import FragenPdf from "./FragenPdf";
+import PlanElementsPdf, { ExportPlanData, extractAndSortAufkleberItems } from "./PlanElementsPdf";
+import { getPiktoDirection } from "@/lib/bmaSymbolsData";
 
 
 // No PDFViewer needed as we download directly
@@ -55,7 +58,7 @@ type Floor = {
 
 type TaskStatus = "OPEN" | "IN_PROGRESS" | "DONE_WAITING_APPROVAL" | "APPROVED" | "REJECTED" | "CANCELLED";
 type PhotoMode = "BEFORE" | "AFTER" | "BOTH";
-type RepoTab = "BERICHTE" | "REVISION" | "FEHLER" | "KABLE" | "TROMMLE" | "QRCODE" | "LADEGERÄTE";
+type RepoTab = "BERICHTE" | "REVISION" | "FEHLER" | "KABLE" | "TROMMLE" | "QRCODE" | "LADEGERÄTE" | "FRAGEN" | "PLAN_ELEMENTS";
 
 // Revision types matching what we saw in the admin client
 type RevisionPhoto = {
@@ -105,7 +108,12 @@ const ALL_STATUSES: TaskStatus[] = [
 ];
 
 // Helper to convert URL to Base64 with strict validation AND re-encoding
-const urlToBase64 = async (url: string, token?: string | null): Promise<string | null> => {
+const urlToBase64 = async (
+    url: string,
+    token?: string | null,
+    maxDim: number = 1200,
+    quality: number = 0.8
+): Promise<string | null> => {
     try {
         console.log(`[Reports] Fetching image: ${url}`);
         const headers: RequestInit = {};
@@ -145,16 +153,20 @@ const urlToBase64 = async (url: string, token?: string | null): Promise<string |
 
         if (!rawBase64) return null;
 
-        // 2. Load into Image & Re-encode via Canvas to JPEG
+        // If high resolution is requested (e.g. plan drawings >= 4000px), return raw high-res directly
+        if (maxDim >= 4000) {
+            return rawBase64;
+        }
+
+        // 2. Load into Image & Re-encode via Canvas to JPEG for regular task photos
         return new Promise((resolve) => {
             const img = new window.Image();
             img.onload = () => {
                 try {
-                    const MAX_PHOTO_DIM = 1024; // Increased from 800 for even better readability
                     let w = img.width;
                     let h = img.height;
-                    if (w > MAX_PHOTO_DIM || h > MAX_PHOTO_DIM) {
-                        const ratio = Math.min(MAX_PHOTO_DIM / w, MAX_PHOTO_DIM / h);
+                    if (w > maxDim || h > maxDim) {
+                        const ratio = Math.min(maxDim / w, maxDim / h);
                         w = Math.round(w * ratio);
                         h = Math.round(h * ratio);
                     }
@@ -171,17 +183,17 @@ const urlToBase64 = async (url: string, token?: string | null): Promise<string |
                     ctx.fillStyle = "#FFFFFF";
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     ctx.drawImage(img, 0, 0, w, h);
-                    const cleanBase64 = canvas.toDataURL("image/jpeg", 0.7); // Increased from 0.4 for better quality
-                    console.log(`[Reports] Re-encoded ${url} to JPEG (${w}x${h}) @ 0.7`);
+                    const cleanBase64 = canvas.toDataURL("image/jpeg", quality);
+                    console.log(`[Reports] Re-encoded ${url} to JPEG (${w}x${h}) @ ${quality}`);
                     resolve(cleanBase64);
                 } catch (err) {
                     console.error(`[Reports] Canvas re-encoding failed for ${url}`, err);
-                    resolve(null);
+                    resolve(rawBase64);
                 }
             };
             img.onerror = (err) => {
                 console.error(`[Reports] Browser failed to decode image for ${url}`, err);
-                resolve(null);
+                resolve(rawBase64);
             };
             img.src = rawBase64;
         });
@@ -190,7 +202,7 @@ const urlToBase64 = async (url: string, token?: string | null): Promise<string |
         console.error(`[Reports] Error processing ${url}`, e);
         return null;
     }
-}
+};
 
 export default function ReportsClient() {
     const { t, language } = useLanguage();
@@ -221,10 +233,14 @@ export default function ReportsClient() {
     const [activeTab, setActiveTab] = useState<RepoTab>("BERICHTE");
     const [revisions, setRevisions] = useState<Revision[]>([]);
     const [fehlerList, setFehlerList] = useState<Fehler[]>([]);
+    const [questionsList, setQuestionsList] = useState<any[]>([]);
+    const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set());
     const [chargersList, setChargersList] = useState<any[]>([]);
     const [selectedChargerIds, setSelectedChargerIds] = useState<Set<string>>(new Set());
     const [cableIncludePhotos, setCableIncludePhotos] = useState(true);
+    const [cableExportType, setCableExportType] = useState<"standard" | "by_category">("standard");
     const [cableIncludeCompanyInfo, setCableIncludeCompanyInfo] = useState(true);
+    const [chargerIncludePin, setChargerIncludePin] = useState(true);
     const [qrSelectedCables, setQrSelectedCables] = useState<Set<string>>(new Set());
     const [qrSelectedTrommels, setQrSelectedTrommels] = useState<Set<string>>(new Set());
     const [qrCablesList, setQrCablesList] = useState<any[]>([]);
@@ -236,6 +252,85 @@ export default function ReportsClient() {
     const [availableTasks, setAvailableTasks] = useState<any[]>([]);
     const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
     const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+
+    // Plan Elements export options
+    const [peOptMeasurements, setPeOptMeasurements] = useState(true);
+    const [peOptKlappen, setPeOptKlappen] = useState(true);
+    const [peOptAbdeckung, setPeOptAbdeckung] = useState(true);
+    const [peOptAnderungen, setPeOptAnderungen] = useState(true);
+    const [peOptNotlicht, setPeOptNotlicht] = useState(true);
+    const [peOptBma, setPeOptBma] = useState(true);
+    const [peOptLighting, setPeOptLighting] = useState(true);
+    const [peOptHeating, setPeOptHeating] = useState(true);
+    const [peOptKabelbahn, setPeOptKabelbahn] = useState(true);
+    const [peOptKabelauslass, setPeOptKabelauslass] = useState(true);
+    const [peOptCables, setPeOptCables] = useState(true);
+    const [peOptFreeLines, setPeOptFreeLines] = useState(true);
+    const [peOptKabelzugliste, setPeOptKabelzugliste] = useState(true);
+    const [peSchemaBackground, setPeSchemaBackground] = useState<"grundriss" | "white">("grundriss");
+    const [peOptPhotoPins, setPeOptPhotoPins] = useState(true);
+    const [peOptMontageDoku, setPeOptMontageDoku] = useState(true);
+    const [peOptDamage, setPeOptDamage] = useState(true);
+    const [peOptPlanOverview, setPeOptPlanOverview] = useState(true);
+    const [peOptLampTypes, setPeOptLampTypes] = useState(true);
+    const [peReservePerKreis, setPeReservePerKreis] = useState<number>(0);
+    const [peKabelhinweisText, setPeKabelhinweisText] = useState<string>("Hinweise zur Kabelverlegung: Bitte nur zertifizierte E30/E90 Funktionserhalt-Kabel verwenden.");
+    const [savedHinweisTemplates, setSavedHinweisTemplates] = useState<string[]>([]);
+    const [peElementsInfo, setPeElementsInfo] = useState<Record<string, { measurements: number; klappen: number; bma: number; pins: number }>>({});
+    const [peIsLoadingInfo, setPeIsLoadingInfo] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const savedText = localStorage.getItem('pe_kabelhinweis_text');
+            if (savedText != null) {
+                setPeKabelhinweisText(savedText);
+            }
+
+            try {
+                const rawTemplates = localStorage.getItem('pe_kabelhinweis_templates');
+                if (rawTemplates) {
+                    const parsed = JSON.parse(rawTemplates);
+                    if (Array.isArray(parsed)) {
+                        setSavedHinweisTemplates(parsed);
+                    }
+                } else {
+                    const defaults = [
+                        "Hinweise zur Kabelverlegung: Bitte nur zertifizierte E30/E90 Funktionserhalt-Kabel verwenden.",
+                        "Hinweis: Alle Kabelzüge nach DIN 4102-12 (E30-E90) verlegen und protokollieren.",
+                    ];
+                    setSavedHinweisTemplates(defaults);
+                    localStorage.setItem('pe_kabelhinweis_templates', JSON.stringify(defaults));
+                }
+            } catch (e) {}
+        }
+    }, []);
+
+    const handleHinweisTextChange = (val: string) => {
+        setPeKabelhinweisText(val);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('pe_kabelhinweis_text', val);
+        }
+    };
+
+    const handleSaveHinweisTemplate = () => {
+        const text = peKabelhinweisText.trim();
+        if (!text) return;
+        if (savedHinweisTemplates.includes(text)) return;
+        const next = [text, ...savedHinweisTemplates];
+        setSavedHinweisTemplates(next);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('pe_kabelhinweis_templates', JSON.stringify(next));
+            localStorage.setItem('pe_kabelhinweis_text', text);
+        }
+    };
+
+    const handleDeleteHinweisTemplate = (templateToDelete: string) => {
+        const next = savedHinweisTemplates.filter(t => t !== templateToDelete);
+        setSavedHinweisTemplates(next);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('pe_kabelhinweis_templates', JSON.stringify(next));
+        }
+    };
 
     const selectedProject = projects.find(p => p.id === selectedProjectId);
     const projectNameWithCompany = selectedProject
@@ -475,8 +570,11 @@ export default function ReportsClient() {
         } else if (activeTab === "LADEGERÄTE") {
             const planIdsWithChargers = new Set(chargersList.map(c => c.plan_id).filter(Boolean) as string[]);
             setSelectedPlanIds(planIdsWithChargers);
+        } else if (activeTab === "FRAGEN") {
+            const planIdsWithQuestions = new Set(questionsList.map(q => q.plan_id).filter(Boolean) as string[]);
+            setSelectedPlanIds(planIdsWithQuestions);
         }
-    }, [selectedProjectId, selectedStatuses, selectedUserIds, dateFrom, dateTo, activeTab, revisions, fehlerList, plans, selectedTaskIds, availableTasks, taskSearchQuery]);
+    }, [selectedProjectId, selectedStatuses, selectedUserIds, dateFrom, dateTo, activeTab, revisions, fehlerList, plans, selectedTaskIds, availableTasks, taskSearchQuery, questionsList]);
 
     // Fetch available tasks for the list view
     useEffect(() => {
@@ -535,94 +633,759 @@ export default function ReportsClient() {
     const enrichPlansWithImages = async (plans: Plan[], selectedPlanIds: Set<string>, token: string | null) => {
         return Promise.all(plans.map(async (plan) => {
             if (!selectedPlanIds.has(plan.id)) return plan;
-            console.log(`[Reports] Preparing plan image for ${plan.id.slice(0, 8)}...`);
+            console.log(`[Reports] Preparing high-res plan canvas for ${plan.id.slice(0, 8)}...`);
 
             let b64: string | null = null;
-            if (plan.image_path) {
-                b64 = await urlToBase64(plan.image_path, token);
+            let imgW: number = plan.image_width || 3000;
+            let imgH: number = plan.image_height || 2000;
+            let gridW: number = imgW;
+            let gridH: number = imgH;
+
+            // 1. Fetch metadata to get true image dimensions and tile grid dimensions
+            try {
+                const metaUrl = getApiUrl(`/api/tiles/${plan.id}/meta${token ? `?token=${encodeURIComponent(token)}` : ''}`);
+                const metaRes = await fetch(metaUrl, {
+                    headers: token ? { "Authorization": `Bearer ${token}` } : {}
+                });
+                if (metaRes.ok) {
+                    const meta = await metaRes.json();
+                    const tSize = meta.tileSize || 256;
+                    gridW = (meta.gridW || 1) * tSize;
+                    gridH = (meta.gridH || 1) * tSize;
+                    if (meta.imageWidth) imgW = meta.imageWidth;
+                    if (meta.imageHeight) imgH = meta.imageHeight;
+                }
+            } catch (e) {
+                console.warn(`[Reports] Meta fetch failed for ${plan.id}`, e);
             }
 
-            if (!b64) {
-                try {
-                    console.log(`[Reports] Fallback: Stitching high-res for ${plan.id.slice(0, 8)}...`);
-                    const metaRes = await fetch(getApiUrl(`/api/tiles/${plan.id}/meta`), {
-                        headers: token ? { "Authorization": `Bearer ${token}` } : {}
-                    });
-                    if (metaRes.ok) {
-                        const meta = await metaRes.json();
-                        const { minZoom, maxZoom, limits, tileSize = 256 } = meta;
-                        let bestZoom = minZoom;
-                        for (let z = minZoom; z <= maxZoom; z++) {
-                            const lim = limits[z];
-                            if (!lim) continue;
-                            if ((lim.maxX + 1) * tileSize >= 4000) {
-                                bestZoom = z;
-                                break;
+            // 2. Fetch rendered plan image (from /api/plans/render with 200 DPI, or plan.image_path)
+            try {
+                const renderUrl = getApiUrl(`/api/plans/render?plan_id=${plan.id}&dpi=200${token ? `&token=${encodeURIComponent(token)}` : ''}`);
+                b64 = await urlToBase64(renderUrl, token, 6144, 0.95);
+            } catch (e) {}
+
+            if (!b64 && plan.image_path) {
+                b64 = await urlToBase64(plan.image_path, token, 6144, 0.95);
+            }
+
+            return {
+                ...plan,
+                imageBase64: b64 || undefined,
+                image_width: imgW,
+                image_height: imgH,
+                grid_width: gridW,
+                grid_height: gridH,
+            };
+        }));
+    };
+
+    const stitchShapesOnPhoto = async (photoBase64: string, shapes: any[]): Promise<string> => {
+        return new Promise((resolve) => {
+            const img = new window.Image();
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                canvas.width = img.naturalWidth || img.width;
+                canvas.height = img.naturalHeight || img.height;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) {
+                    resolve(photoBase64);
+                    return;
+                }
+
+                ctx.drawImage(img, 0, 0);
+
+                shapes.forEach((shape) => {
+                    const color = shape.color || "#ef4444";
+                    const strokeWidth = Number(shape.strokeWidth) || 2;
+                    ctx.save();
+
+                    if (shape.type === "pen" || shape.type === "line") {
+                        const pts = shape.points || [];
+                        if (pts.length >= 4) {
+                            ctx.beginPath();
+                            ctx.moveTo(pts[0], pts[1]);
+                            for (let i = 2; i < pts.length; i += 2) {
+                                ctx.lineTo(pts[i], pts[i + 1]);
                             }
-                            bestZoom = z;
+                            ctx.strokeStyle = color;
+                            ctx.lineWidth = strokeWidth;
+                            ctx.lineCap = "round";
+                            ctx.lineJoin = "round";
+                            ctx.stroke();
                         }
-                        const lim = limits[bestZoom];
-                        if (lim && (lim.maxX + 1) * (lim.maxY + 1) <= 1000) {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = (lim.maxX + 1) * tileSize;
-                            canvas.height = (lim.maxY + 1) * tileSize;
-                            const ctx = canvas.getContext('2d');
-                            if (ctx) {
-                                ctx.fillStyle = "#FFFFFF";
-                                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                                const tilePromises = [];
-                                for (let x = 0; x <= lim.maxX; x++) {
-                                    for (let y = 0; y <= lim.maxY; y++) {
-                                        const tUrl = getApiUrl(`/api/tiles/${plan.id}/${bestZoom}/${x}/${y}.png`);
-                                        tilePromises.push((async () => {
-                                            const tB64 = await urlToBase64(tUrl, token);
-                                            if (tB64) {
-                                                const img = new window.Image();
-                                                await new Promise<void>((resolve) => {
-                                                    img.onload = () => resolve();
-                                                    img.onerror = () => resolve();
-                                                    img.src = tB64;
-                                                });
-                                                ctx.drawImage(img, x * tileSize, y * tileSize);
-                                            }
-                                        })());
+                    } else if (shape.type === "arrow") {
+                        const pts = shape.points || [];
+                        if (pts.length >= 4) {
+                            const fromX = pts[0];
+                            const fromY = pts[1];
+                            const toX = pts[2];
+                            const toY = pts[3];
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(fromX, fromY);
+                            ctx.lineTo(toX, toY);
+                            ctx.strokeStyle = color;
+                            ctx.lineWidth = strokeWidth;
+                            ctx.lineCap = "round";
+                            ctx.lineJoin = "round";
+                            ctx.stroke();
+
+                            const angle = Math.atan2(toY - fromY, toX - fromX);
+                            const headLength = 15;
+                            ctx.beginPath();
+                            ctx.moveTo(toX, toY);
+                            ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
+                            ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+                            ctx.closePath();
+                            ctx.fillStyle = color;
+                            ctx.fill();
+                        }
+                    } else if (shape.type === "double-arrow") {
+                        const pts = shape.points || [];
+                        if (pts.length >= 4) {
+                            const fromX = pts[0];
+                            const fromY = pts[1];
+                            const toX = pts[2];
+                            const toY = pts[3];
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(fromX, fromY);
+                            ctx.lineTo(toX, toY);
+                            ctx.strokeStyle = color;
+                            ctx.lineWidth = strokeWidth;
+                            ctx.lineCap = "round";
+                            ctx.lineJoin = "round";
+                            ctx.stroke();
+
+                            const angleEnd = Math.atan2(toY - fromY, toX - fromX);
+                            const headLength = 15;
+                            ctx.beginPath();
+                            ctx.moveTo(toX, toY);
+                            ctx.lineTo(toX - headLength * Math.cos(angleEnd - Math.PI / 6), toY - headLength * Math.sin(angleEnd - Math.PI / 6));
+                            ctx.lineTo(toX - headLength * Math.cos(angleEnd + Math.PI / 6), toY - headLength * Math.sin(angleEnd + Math.PI / 6));
+                            ctx.closePath();
+                            ctx.fillStyle = color;
+                            ctx.fill();
+
+                            const angleStart = Math.atan2(fromY - toY, fromX - toX);
+                            ctx.beginPath();
+                            ctx.moveTo(fromX, fromY);
+                            ctx.lineTo(fromX - headLength * Math.cos(angleStart - Math.PI / 6), fromY - headLength * Math.sin(angleStart - Math.PI / 6));
+                            ctx.lineTo(fromX - headLength * Math.cos(angleStart + Math.PI / 6), fromY - headLength * Math.sin(angleStart + Math.PI / 6));
+                            ctx.closePath();
+                            ctx.fillStyle = color;
+                            ctx.fill();
+
+                            if (shape.text) {
+                                const midX = (fromX + toX) / 2;
+                                const midY = (fromY + toY) / 2;
+                                ctx.font = "20px Inter, sans-serif";
+                                ctx.fillStyle = "#ffffff";
+                                ctx.textAlign = "center";
+                                ctx.textBaseline = "bottom";
+                                ctx.fillText(shape.text, midX, midY - 10);
+                            }
+                        }
+                    } else if (shape.type === "rect") {
+                        const x = shape.x ?? 0;
+                        const y = shape.y ?? 0;
+                        const w = shape.width ?? 0;
+                        const h = shape.height ?? 0;
+                        ctx.beginPath();
+                        ctx.rect(x, y, w, h);
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = strokeWidth;
+                        ctx.stroke();
+                    } else if (shape.type === "circle") {
+                        const x = shape.x ?? 0;
+                        const y = shape.y ?? 0;
+                        const r = shape.radius ?? 0;
+                        ctx.beginPath();
+                        ctx.arc(x, y, r, 0, 2 * Math.PI);
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = strokeWidth;
+                        ctx.stroke();
+                    } else if (shape.type === "text") {
+                        const x = shape.x ?? 0;
+                        const y = shape.y ?? 0;
+                        ctx.font = "20px Inter, sans-serif";
+                        ctx.fillStyle = color;
+                        ctx.fillText(shape.text || "", x, y + 16);
+                    } else if (shape.type === "marker") {
+                        const x = shape.x ?? 0;
+                        const y = shape.y ?? 0;
+                        ctx.shadowColor = "rgba(0,0,0,0.5)";
+                        ctx.shadowBlur = 5;
+                        ctx.beginPath();
+                        ctx.arc(x, y, 15, 0, 2 * Math.PI);
+                        ctx.fillStyle = color;
+                        ctx.fill();
+
+                        ctx.shadowBlur = 0;
+                        ctx.strokeStyle = "white";
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+
+                        ctx.font = "bold 14px Inter, sans-serif";
+                        ctx.fillStyle = "white";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText(shape.text || "!", x, y);
+                    } else if (shape.type === "measurement") {
+                        const pts = shape.points || [0, 0, 0, 0];
+                        ctx.beginPath();
+                        ctx.moveTo(pts[0], pts[1]);
+                        ctx.lineTo(pts[2], pts[3]);
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = strokeWidth;
+                        ctx.setLineDash([5, 5]);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+
+                        const dx = pts[2] - pts[0];
+                        const dy = pts[3] - pts[1];
+                        const dist = Math.sqrt(dx * dx + dy * dy).toFixed(1);
+                        ctx.font = "14px Inter, sans-serif";
+                        ctx.fillStyle = color;
+                        ctx.textAlign = "center";
+                        ctx.fillText(`${dist} px`, (pts[0] + pts[2]) / 2, (pts[1] + pts[3]) / 2 - 5);
+                    }
+                    ctx.restore();
+                });
+
+                resolve(canvas.toDataURL("image/jpeg", 0.75));
+            };
+            img.onerror = () => {
+                resolve(photoBase64);
+            };
+            img.src = photoBase64;
+        });
+    };
+
+    const generateAndDownloadPlanElementsReport = async (mode: 'all' | 'plan_only' | 'kabelzugliste_only' = 'all') => {
+        if (!selectedProjectId || selectedPlanIds.size === 0) {
+            alert(t("reports", "noElementsSelected", "Wybierz przynajmniej jeden plan."));
+            return;
+        }
+        if (!peOptMeasurements && !peOptKlappen && !peOptAbdeckung && !peOptAnderungen && !peOptBma && !peOptNotlicht && !peOptLighting && !peOptHeating && !peOptKabelbahn && !peOptKabelauslass && !peOptCables && !peOptPhotoPins && !peOptMontageDoku && !peOptDamage) {
+            alert(t("reports", "noElementsSelected", "Wybierz przynajmniej jeden element do eksportu."));
+            return;
+        }
+
+        setIsGenerating(true);
+        setStatusMessage(t("reports", "loadingData", "Pobieranie danych..."));
+
+        try {
+            const token = await import("@/lib/apiClient").then(m => m.getToken());
+            const planIdsArr = Array.from(selectedPlanIds);
+
+            // Enrich ONLY selected plans with base64 images
+            const targetPlans = plans.filter(p => selectedPlanIds.has(p.id));
+            const enrichedPlans = await enrichPlansWithImages(targetPlans, selectedPlanIds, token);
+
+            const buildingsMap = buildings.reduce((acc, b) => ({ ...acc, [b.id]: b }), {} as Record<string, Building>);
+            const floorsMap = floors.reduce((acc, f) => ({ ...acc, [f.id]: f }), {} as Record<string, Floor>);
+
+            setStatusMessage(t("reports", "fetchingPhotos", "Pobieranie danych..."));
+
+            // Build ExportPlanData for each plan
+            const plansData: ExportPlanData[] = await Promise.all(
+                enrichedPlans.map(async (plan) => {
+                    const floor = plan.floor_id ? floorsMap[plan.floor_id] : undefined;
+                    const building = floor ? buildingsMap[floor.building_id] : undefined;
+
+                    // Fetch scale & measurements
+                    let measurements: ExportPlanData["measurements"] = [];
+                    if (peOptMeasurements) {
+                        try {
+                            let pixelsPerMeter: number | null = null;
+                            try {
+                                const scaleRes = await fetch(`/api/plans/${plan.id}/scale`, {
+                                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                                });
+                                if (scaleRes.ok) {
+                                    const sJson = await scaleRes.json();
+                                    const ppm = sJson.scale?.pixels_per_meter ?? sJson.scale?.pixelsPerMeter;
+                                    if (ppm) {
+                                        pixelsPerMeter = Number(ppm);
                                     }
                                 }
-                                await Promise.all(tilePromises);
+                            } catch (e) {}
 
-                                const MAX_PLAN_DIM = 3072;
-                                let logicalW = plan.image_width ? plan.image_width / Math.pow(2, (meta.maxZoom - bestZoom)) : canvas.width;
-                                let logicalH = plan.image_height ? plan.image_height / Math.pow(2, (meta.maxZoom - bestZoom)) : canvas.height;
-
-                                let finalW = logicalW;
-                                let finalH = logicalH;
-                                if (finalW > MAX_PLAN_DIM || finalH > MAX_PLAN_DIM) {
-                                    const ratio = Math.min(MAX_PLAN_DIM / finalW, MAX_PLAN_DIM / finalH);
-                                    finalW = Math.round(finalW * ratio);
-                                    finalH = Math.round(finalH * ratio);
+                            // Fetch exact tile grid dimensions at maxZoom (where Leaflet CRS.latLngToPoint points were saved)
+                            let maxZoomPxW = (plan as any).worldPxW || plan.image_width || 3000;
+                            let maxZoomPxH = (plan as any).worldPxH || plan.image_height || 2000;
+                            try {
+                                const metaRes = await fetch(getApiUrl(`/api/tiles/${plan.id}/meta`), {
+                                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                                });
+                                if (metaRes.ok) {
+                                    const mData = await metaRes.json();
+                                    const tSize = mData.tileSize || 256;
+                                    maxZoomPxW = (mData.gridW || 1) * tSize;
+                                    maxZoomPxH = (mData.gridH || 1) * tSize;
                                 }
+                            } catch (e) {}
 
-                                const finalCanvas = document.createElement('canvas');
-                                finalCanvas.width = finalW;
-                                finalCanvas.height = finalH;
-                                const ctx2 = finalCanvas.getContext('2d');
-                                if (ctx2) {
-                                    ctx2.fillStyle = "#FFFFFF";
-                                    ctx2.fillRect(0, 0, finalW, finalH);
-                                    ctx2.drawImage(canvas, 0, 0, logicalW, logicalH, 0, 0, finalW, finalH);
-                                    b64 = finalCanvas.toDataURL("image/jpeg", 0.7);
-                                } else {
-                                    b64 = canvas.toDataURL("image/jpeg", 0.7);
+                            const res = await fetch(`/api/plans/${plan.id}/measurements`, {
+                                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            });
+                            if (res.ok) {
+                                const json = await res.json();
+                                measurements = (json.measurements || []).map((m: any) => {
+                                    const pts = m.points || [];
+                                    const segments: Array<{ distMeters?: number | null; distPx?: number }> = [];
+                                    let totalPx = 0;
+                                    for (let i = 1; i < pts.length; i++) {
+                                        const x1 = Number(pts[i - 1].x ?? (pts[i - 1].x_norm != null ? pts[i - 1].x_norm * maxZoomPxW : 0));
+                                        const y1 = Number(pts[i - 1].y ?? (pts[i - 1].y_norm != null ? pts[i - 1].y_norm * maxZoomPxH : 0));
+                                        const x2 = Number(pts[i].x ?? (pts[i].x_norm != null ? pts[i].x_norm * maxZoomPxW : 0));
+                                        const y2 = Number(pts[i].y ?? (pts[i].y_norm != null ? pts[i].y_norm * maxZoomPxH : 0));
+                                        const dx = x2 - x1;
+                                        const dy = y2 - y1;
+                                        const segPx = Math.sqrt(dx * dx + dy * dy);
+                                        totalPx += segPx;
+                                        const segM = pixelsPerMeter && pixelsPerMeter > 0 && segPx > 0 ? segPx / pixelsPerMeter : null;
+                                        segments.push({ distMeters: segM, distPx: segPx });
+                                    }
+                                    const distM = pixelsPerMeter && pixelsPerMeter > 0 && totalPx > 0
+                                        ? totalPx / pixelsPerMeter
+                                        : (m.total_distance_meters || m.distance_meters || null);
+
+                                    const normPts = pts.map((p: any) => {
+                                        let xn = p.x_norm != null ? Number(p.x_norm) : (p.x != null && maxZoomPxW > 0 ? Number(p.x) / maxZoomPxW : 0);
+                                        let yn = p.y_norm != null ? Number(p.y_norm) : (p.y != null && maxZoomPxH > 0 ? Number(p.y) / maxZoomPxH : 0);
+                                        return {
+                                            x_norm: Math.max(0, Math.min(1, isNaN(xn) ? 0 : xn)),
+                                            y_norm: Math.max(0, Math.min(1, isNaN(yn) ? 0 : yn)),
+                                        };
+                                    });
+
+                                    return {
+                                        id: m.id,
+                                        points: normPts,
+                                        distanceMeters: distM,
+                                        totalDistanceMeters: distM,
+                                        segments,
+                                        label: m.label,
+                                    };
+                                });
+                            }
+                        } catch (e) { /* ignore */ }
+                    }
+
+                    // Fetch revisionsklappen
+                    let klappen: ExportPlanData["klappen"] = [];
+                    if (peOptKlappen) {
+                        try {
+                            const res = await fetch(`/api/plans/${plan.id}/revisionsklappen`, {
+                                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            });
+                            if (res.ok) {
+                                const json = await res.json();
+                                klappen = json.klappen || [];
+                            }
+                        } catch (e) { /* ignore */ }
+                    }
+
+                    // Fetch BMA & Lighting & Emergency & Heating & Kabelbahn & Kabelauslass & Abdeckung & Änderungs-Wolke symbols
+                    let bmaSymbols: ExportPlanData["bmaSymbols"] = [];
+                    if (peOptBma || peOptNotlicht || peOptLighting || peOptHeating || peOptKabelbahn || peOptKabelauslass || peOptAbdeckung || peOptAnderungen) {
+                        try {
+                            const res = await fetch(`/api/plans/${plan.id}/bma-symbols`, {
+                                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            });
+                            if (res.ok) {
+                                const json = await res.json();
+                                bmaSymbols = json.symbols || [];
+                            }
+                        } catch (e) { /* ignore */ }
+                    }
+
+                    // Fetch photo pins, montage pins & damage pins
+                    let photoPins: ExportPlanData["photoPins"] = [];
+                    let montagePins: ExportPlanData["montagePins"] = [];
+                    let damagePins: ExportPlanData["damagePins"] = [];
+                    if (peOptPhotoPins || peOptMontageDoku || peOptDamage) {
+                        try {
+                            const res = await fetch(`/api/plans/${plan.id}/photos`, {
+                                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            });
+                            if (res.ok) {
+                                const json = await res.json();
+                                const pins = Array.isArray(json.data) ? json.data : Array.isArray(json.pins) ? json.pins : [];
+                                const enrichedAll = await Promise.all(pins.map(async (p: any) => {
+                                    const photoUrl = p.image_url || p.photo_url || null;
+                                    let photoBase64: string | null = null;
+                                    if (photoUrl) {
+                                        photoBase64 = await urlToBase64(photoUrl, token);
+                                    }
+                                    return {
+                                        id: p.id,
+                                        x_norm: p.x_norm,
+                                        y_norm: p.y_norm,
+                                        description: p.description,
+                                        photo_url: photoUrl,
+                                        photoBase64,
+                                        created_at: p.created_at,
+                                        user_name: p.author_name || p.profiles?.full_name || undefined,
+                                        pin_type: p.pin_type || "photo",
+                                    };
+                                }));
+
+                                if (peOptPhotoPins) {
+                                    photoPins = enrichedAll.filter(p => (p.pin_type || "photo") === "photo");
+                                }
+                                if (peOptMontageDoku) {
+                                    montagePins = enrichedAll.filter(p => p.pin_type === "montage");
+                                }
+                                if (peOptDamage) {
+                                    damagePins = enrichedAll.filter(p => p.pin_type === "damage");
                                 }
                             }
-                        }
+                        } catch (e) { /* ignore */ }
                     }
-                } catch (e) {
-                    console.warn(`[Reports] Stitching failed for ${plan.id}`, e);
+
+                    // Fetch lamp types & photos
+                    let lampTypes: ExportPlanData["lampTypes"] = undefined;
+                    if (peOptLampTypes || peOptNotlicht || peOptHeating) {
+                        try {
+                            const res = await fetch(`/api/plans/${plan.id}/lamp-types`, {
+                                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            });
+                            if (res.ok) {
+                                const json = await res.json();
+                                lampTypes = json.lampTypes || undefined;
+                            }
+                        } catch (e) { /* ignore */ }
+                    }
+
+                    // Fetch cable connections & free lines
+                    let cableConnections: any[] = [];
+                    if (true) {
+                        try {
+                            const res = await fetch(`/api/plans/${plan.id}/cable-connections?projectId=${selectedProjectId || ''}`, {
+                                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            });
+                            if (res.ok) {
+                                const json = await res.json();
+                                cableConnections = json.connections || [];
+                            }
+                        } catch (e) { /* ignore */ }
+                    }
+
+                    return {
+                        planId: plan.id,
+                        planName: (plan as any).name || (plan as any).plan_name || `Plan v${plan.version}`,
+                        buildingName: building?.name,
+                        floorName: floor?.name,
+                        imageBase64: (plan as any).imageBase64 || null,
+                        imageWidth: plan.image_width,
+                        imageHeight: plan.image_height,
+                        gridWidth: (plan as any).grid_width,
+                        gridHeight: (plan as any).grid_height,
+                        measurements,
+                        klappen,
+                        bmaSymbols,
+                        photoPins,
+                        montagePins,
+                        damagePins,
+                        lampTypes,
+                        cableConnections,
+                    };
+                })
+            );
+
+            setStatusMessage(t("reports", "generating", "Generowanie PDF..."));
+
+            const blob = await pdf(
+                <PlanElementsPdf
+                    projectName={projectNameWithCompany}
+                    plansData={plansData}
+                    options={{
+                        includeMeasurements: mode === 'kabelzugliste_only' ? false : peOptMeasurements,
+                        includeKlappen: mode === 'kabelzugliste_only' ? false : peOptKlappen,
+                        includeAbdeckung: mode === 'kabelzugliste_only' ? false : peOptAbdeckung,
+                        includeAnderungen: mode === 'kabelzugliste_only' ? false : peOptAnderungen,
+                        includeNotlicht: peOptNotlicht,
+                        includeBma: peOptBma,
+                        includeLighting: peOptLighting,
+                        includeHeating: peOptHeating,
+                        includeKabelbahn: peOptKabelbahn,
+                        includeKabelauslass: peOptKabelauslass,
+                        includeCables: peOptCables,
+                        includeFreeLines: peOptFreeLines,
+                        includeKabelzugliste: mode === 'plan_only' ? false : peOptKabelzugliste,
+                        schemaBackground: peSchemaBackground,
+                        includePhotoPins: mode === 'kabelzugliste_only' ? false : peOptPhotoPins,
+                        includeMontageDoku: mode === 'kabelzugliste_only' ? false : peOptMontageDoku,
+                        includeDamage: mode === 'kabelzugliste_only' ? false : peOptDamage,
+                        includePlanOverview: mode === 'kabelzugliste_only' ? false : peOptPlanOverview,
+                        reservePerKreis: peReservePerKreis,
+                        includeLampTypes: mode === 'kabelzugliste_only' ? false : peOptLampTypes,
+                        kabelhinweisText: peKabelhinweisText,
+                        onlyKabelzugliste: mode === 'kabelzugliste_only',
+                    }}
+                    translations={{
+                        title: t("reports", "exportPlanElementsTitle", "Plan-Elemente"),
+                        project: t("reports", "project", "Projekt"),
+                        plan: t("reports", "plan", "Plan"),
+                        generatedOn: t("reports", "generatedOn", "Erstellt am"),
+                        page: t("reports", "page", "Seite"),
+                        of: t("reports", "of", "von"),
+                        measurementsTitle: t("reports", "optMeasurements", "Messungen"),
+                        klappenTitle: t("reports", "optKlappen", "Revisionsklappen"),
+                        bmaTitle: t("reports", "optBma", "BMA-Symbole"),
+                        dMelder: t("planBma", "dMelder", "D-Melder"),
+                        zwdMelder: t("planBma", "zwdMelder", "ZWD-Melder"),
+                        disSignalgeber: t("planBma", "disSignalgeber", "D-Melder mit Sirene"),
+                        sirene: t("planBma", "sirene", "Sirene (Signalgeber)"),
+                        notlichtLampe: t("planBma", "notlichtLampe", "Notbeleuchtung Lampe"),
+                        notlichtPikto: t("planBma", "notlichtPikto", "Notbeleuchtung Pikto"),
+                        photoPinsTitle: t("reports", "optPhotoPins", "Foto-Pins"),
+                        montageDokuTitle: t("reports", "optMontageDoku", "Montage-Doku"),
+                        totalLength: t("bmaAutomation", "totalLength", "Gesamtlänge"),
+                        dimensions: t("planKlappen", "dimensions", "Maße"),
+                        loopAddress: t("planBma", "loop", "Loop / Adresse"),
+                        label: t("planBma", "label", "Bezeichnung"),
+                        description: t("planKlappen", "description", "Beschreibung"),
+                        date: t("common", "date", "Datum"),
+                        author: t("reports", "generatedOn", "Erstellt von"),
+                        noData: "—",
+                        planOverview: t("reports", "optPlanOverview", "Planübersicht"),
+                    }}
+                />
+            ).toBlob();
+
+            const safeCustomName = customFileName.trim().replace(/[^a-zA-Z0-9\s._-]+/g, "").replace(/\s+/g, "_");
+            const defaultPrefix = mode === 'kabelzugliste_only' ? 'kabelzugliste' : mode === 'plan_only' ? 'grafischer_plan' : 'plan-elemente';
+            const prefix = safeCustomName || defaultPrefix;
+            const filename = `${prefix}_${new Date().toISOString().slice(0, 10)}_${Date.now()}.pdf`;
+            downloadBlob(blob, filename);
+
+        } catch (e) {
+            console.error("Error generating plan elements report", e);
+            alert(t("common", "error", "Fehler") + ": " + (e as Error).message);
+        } finally {
+            setIsGenerating(false);
+            setStatusMessage("");
+        }
+    };
+
+    const generateAndDownloadAufkleberCsv = async () => {
+        if (!selectedProjectId || selectedPlanIds.size === 0) {
+            alert(t("reports", "noElementsSelected", "Wybierz przynajmniej jeden plan."));
+            return;
+        }
+
+        setIsGenerating(true);
+        setStatusMessage(t("reports", "loadingData", "Pobieranie danych..."));
+        try {
+            const token = await import("@/lib/apiClient").then(m => m.getToken());
+            const targetPlans = plans.filter(p => selectedPlanIds.has(p.id));
+
+            const buildingsMap = buildings.reduce((acc, b) => ({ ...acc, [b.id]: b }), {} as Record<string, Building>);
+            const floorsMap = floors.reduce((acc, f) => ({ ...acc, [f.id]: f }), {} as Record<string, Floor>);
+
+            const plansData: ExportPlanData[] = await Promise.all(
+                targetPlans.map(async (plan) => {
+                    const floor = plan.floor_id ? floorsMap[plan.floor_id] : undefined;
+                    const building = floor ? buildingsMap[floor.building_id] : undefined;
+                    let bmaSymbols: any[] = [];
+                    try {
+                        const res = await fetch(`/api/plans/${plan.id}/bma-symbols`, {
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                        });
+                        if (res.ok) {
+                            const json = await res.json();
+                            bmaSymbols = json.symbols || [];
+                        }
+                    } catch (e) {}
+
+                    let lampTypes: ExportPlanData["lampTypes"] = undefined;
+                    try {
+                        const res = await fetch(`/api/plans/${plan.id}/lamp-types`, {
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                        });
+                        if (res.ok) {
+                            const json = await res.json();
+                            lampTypes = json.lampTypes || undefined;
+                        }
+                    } catch (e) {}
+
+                    return {
+                        planId: plan.id,
+                        planName: (plan as any).name || (plan as any).plan_name || `Plan v${plan.version}`,
+                        buildingName: building?.name,
+                        floorName: floor?.name,
+                        measurements: [],
+                        klappen: [],
+                        bmaSymbols,
+                        photoPins: [],
+                        lampTypes,
+                    };
+                })
+            );
+
+            const aufkleberItems = extractAndSortAufkleberItems(plansData, peReservePerKreis).filter(r => {
+                const st = r.symbol_type;
+                const isHeating = st === 'warmepumpe_aussen' || st === 'warmepumpe_innen' || st === 'infrarotheizung' || st === 'geraet_box' || st === 'temperaturfuehler';
+                return !isHeating;
+            });
+
+            if (aufkleberItems.length === 0) {
+                alert("Nie znaleziono żadnych symboli oświetlenia awaryjnego (Notlicht / Pikto) na wybranych planach.");
+                return;
+            }
+
+            // Build CSV with UTF-8 BOM
+            const headers = ["Aufkleber-Text (Nr)", "Stromkreis (Kreis)", "Leuchten-Nr", "Typ / Wariant", "Model oprawy", "Pfeilrichtung", "Plan", "Gebäude", "Geschoss"];
+            const csvRows = aufkleberItems.map(r => [
+                r.label,
+                r.rawLoop,
+                r.rawAddress,
+                r.variantName ? `${r.variantName} (${r.typeName})` : r.typeName,
+                r.variantModel || "",
+                r.direction || "",
+                r.planName,
+                r.buildingName || "",
+                r.floorName || ""
+            ]);
+
+            const csvContent = "\uFEFF" + [
+                headers.join(";"),
+                ...csvRows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(";"))
+            ].join("\n");
+
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            const safeCustomName = customFileName.trim().replace(/[^a-zA-Z0-9\s._-]+/g, "").replace(/\s+/g, "_");
+            const prefix = safeCustomName || "aufkleber_notlicht";
+            link.setAttribute("href", url);
+            link.setAttribute("download", `${prefix}_${new Date().toISOString().slice(0, 10)}_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } catch (err) {
+            console.error("Error generating Aufkleber CSV", err);
+            alert("Błąd generowania pliku listy naklejek: " + (err as Error).message);
+        } finally {
+            setIsGenerating(false);
+            setStatusMessage("");
+        }
+    };
+
+    const generateAndDownloadFragenReport = async () => {
+        setIsGenerating(true);
+        setStatusMessage(t("reports", "loadingData", "Pobieranie danych..."));
+        try {
+            const filtered = questionsList.filter(q =>
+                selectedQuestionIds.has(q.id) &&
+                (selectedPlanIds.size === 0 || selectedPlanIds.has(q.plan_id || ""))
+            );
+
+            if (filtered.length === 0) {
+                alert(t("reports", "noQuestionsFound", "Nie znaleziono pytań."));
+                return;
+            }
+
+            setStatusMessage(t("reports", "fetchingPhotos", "Pobieranie zdjęć..."));
+            const token = await import("@/lib/apiClient").then(m => m.getToken());
+
+            // Retrieve photos in batch
+            const taskIds = filtered.map(q => q.id);
+            let allPhotos: any[] = [];
+            if (taskIds.length > 0) {
+                const chunkSize = 50;
+                for (let i = 0; i < taskIds.length; i += chunkSize) {
+                    const chunk = taskIds.slice(i, i + chunkSize);
+                    const params = chunk.map(id => `taskIds=${encodeURIComponent(id)}`).join("&") + "&limit=10";
+                    const res = await apiGet<any>(`/api/task-photos/batch?${params}`);
+                    const data = Array.isArray(res) ? res : (res?.data || []);
+                    allPhotos = [...allPhotos, ...data];
                 }
             }
-            return { ...plan, imageBase64: b64 || undefined };
-        }));
+
+            // Fetch aufmass sessions & shapes versions
+            const shapesMap: Record<string, any[]> = {};
+            try {
+                const sessions = await apiGet<any[]>(`/api/aufmass/sessions?projectId=${selectedProjectId}`);
+                if (sessions && Array.isArray(sessions)) {
+                    const relevantSessions = sessions.filter(s => s.photo_id && taskIds.includes(s.task_id));
+                    await Promise.all(relevantSessions.map(async (sess) => {
+                        try {
+                            const res = await apiGet<any>(`/api/aufmass/versions?sessionId=${sess.id}&photoId=${sess.photo_id}`);
+                            const versions = res.data || res;
+                            if (versions && versions.length > 0) {
+                                shapesMap[sess.photo_id] = versions[0].data || [];
+                            }
+                        } catch (e) {
+                            console.error("Failed to load aufmass shapes for session", sess.id, e);
+                        }
+                    }));
+                }
+            } catch (e) {
+                console.error("Failed to load aufmass sessions for questions PDF:", e);
+            }
+
+            const enrichedQuestions = await Promise.all(filtered.map(async (q) => {
+                const qPhotos = allPhotos.filter(p => p.task_id === q.id);
+                const photosWithB64 = await Promise.all(qPhotos.map(async (p) => {
+                    let b64 = await urlToBase64(p.url, token);
+                    if (b64 && shapesMap[p.id]) {
+                        try {
+                            b64 = await stitchShapesOnPhoto(b64, shapesMap[p.id]);
+                        } catch (e) {
+                            console.error("Failed to stitch shapes for photo", p.id, e);
+                        }
+                    }
+                    return { ...p, b64 };
+                }));
+                return { ...q, task_photos: photosWithB64 };
+            }));
+
+            // Enrich Plans
+            const enrichedPlans = await enrichPlansWithImages(plans, selectedPlanIds, token);
+
+            const plansMap = enrichedPlans.reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, Plan>);
+            const buildingsMap = buildings.reduce((acc, b) => ({ ...acc, [b.id]: b }), {} as Record<string, Building>);
+            const floorsMap = floors.reduce((acc, f) => ({ ...acc, [f.id]: f }), {} as Record<string, Floor>);
+
+            setStatusMessage(t("reports", "generating", "Generowanie PDF..."));
+            const blob = await pdf(
+                <FragenPdf
+                    projectName={projectNameWithCompany}
+                    questions={enrichedQuestions}
+                    plansMap={plansMap}
+                    buildingsMap={buildingsMap}
+                    floorsMap={floorsMap}
+                    translations={{
+                        title: t("reports", "questionsTab", "Pytania"),
+                        project: t("reports", "project", "Projekt"),
+                        generatedOn: t("reports", "generatedOn", "Wygenerowano"),
+                        page: t("reports", "page", "Strona"),
+                        of: t("reports", "of", "z"),
+                        priority: t("fehler", "labelPriority", "Priorytet"),
+                        assignee: t("fehler", "labelAssignee", "Przypisany"),
+                    }}
+                />
+            ).toBlob();
+
+            const safeCustomName = customFileName.trim().replace(/[^a-zA-Z0-9\s._-]+/g, "").replace(/\s+/g, "_");
+            const prefix = safeCustomName || "fragen";
+            const filename = `${prefix}_${new Date().toISOString().slice(0, 10)}_${Date.now()}.pdf`;
+            downloadBlob(blob, filename);
+
+        } catch (e) {
+            console.error("Error generating questions report", e);
+            alert(t("common", "error", "Błąd") + ": " + (e as Error).message);
+        } finally {
+            setIsGenerating(false);
+            setStatusMessage("");
+        }
     };
 
     const generateAndDownloadRevisionReport = async () => {
@@ -765,9 +1528,10 @@ export default function ReportsClient() {
             // Fetch token first — must be before any urlToBase64 calls
             const token = await import("@/lib/apiClient").then(m => m.getToken());
 
-            const [cables, trommels] = await Promise.all([
+            const [cables, trommels, categories] = await Promise.all([
                 apiGet<any[]>(`/api/cables?projectId=${selectedProjectId}&limit=1000`),
-                apiGet<any[]>(`/api/trommels?projectId=${selectedProjectId}&limit=1000`)
+                apiGet<any[]>(`/api/trommels?projectId=${selectedProjectId}&limit=1000`),
+                apiGet<any[]>(`/api/cable-categories?projectId=${selectedProjectId}`).catch(() => [] as any[])
             ]);
 
             if (!cables || cables.length === 0) {
@@ -787,7 +1551,7 @@ export default function ReportsClient() {
                 const qrText = `${window.location.origin}/cables?scan_type=trommel&scan_id=${tr.id}&name=${encodeURIComponent(tr.name)}`;
                 const qrBase64 = await generateQrBase64(qrText);
                 let photoBase64: string | null = null;
-                if (cableIncludePhotos && tr.photo_url) {
+                if (cableExportType === "standard" && cableIncludePhotos && tr.photo_url) {
                     photoBase64 = await urlToBase64(tr.photo_url, token);
                 }
                 return {
@@ -800,8 +1564,11 @@ export default function ReportsClient() {
                 };
             }));
 
-            setStatusMessage(t("reports", "fetchingPlans", "Pobieranie planów..."));
-            const enrichedPlans = await enrichPlansWithImages(plans, selectedPlanIds, token);
+            let enrichedPlans: Plan[] = [];
+            if (cableExportType === "standard") {
+                setStatusMessage(t("reports", "fetchingPlans", "Pobieranie planów..."));
+                enrichedPlans = await enrichPlansWithImages(plans, selectedPlanIds, token);
+            }
 
             const plansMap = enrichedPlans.reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, Plan>);
             const buildingsMap = buildings.reduce((acc, b) => ({ ...acc, [b.id]: b }), {} as Record<string, Building>);
@@ -816,6 +1583,8 @@ export default function ReportsClient() {
                     plansMap={plansMap}
                     buildingsMap={buildingsMap}
                     floorsMap={floorsMap}
+                    exportType={cableExportType}
+                    categories={categories}
                     translations={{
                         project: t("reports", "project", "Projekt"),
                         generatedOn: t("reports", "generatedOn", "Wygenerowano"),
@@ -843,12 +1612,17 @@ export default function ReportsClient() {
                         status_in_progress: t("cables_pdf", "status_in_progress", "W trakcie"),
                         status_done: t("cables_pdf", "status_done", "Wykonany"),
                         status_pending_approval: t("cables_pdf", "status_pending_approval", "Do zatwierdzenia"),
+                        byCategory: t("cables_pdf", "byCategory", "Podział na kategorie"),
+                        category: t("cables_pdf", "category", "Kategoria"),
+                        noCategory: t("cables_pdf", "noCategory", "Bez kategorii"),
+                        unknownCategory: t("cables_pdf", "unknownCategory", "Nieznana kategoria"),
                     }}
                 />
             ).toBlob();
 
             const safeCustomName = customFileName.trim().replace(/[^a-zA-Z0-9\s._-]+/g, "").replace(/\s+/g, "_");
-            const prefix = safeCustomName || "kable";
+            const defaultPrefix = cableExportType === "by_category" ? "kable_kategorie" : "kable";
+            const prefix = safeCustomName || defaultPrefix;
             const filename = `${prefix}_${new Date().toISOString().slice(0, 10)}_${Date.now()}.pdf`;
             downloadBlob(blob, filename);
 
@@ -903,6 +1677,7 @@ export default function ReportsClient() {
                         trommelReportTitle: t("cables_pdf", "trommelList", "Raport Bębnów"),
                         totalTrommels: t("cables_pdf", "totalTrommels", "Łączna liczba bębnów"),
                         usedLabel: t("cables_pdf", "usedLabel", "Zużyto"),
+                        owner: t("footer", "owner", "Owner: Marcin Slapinski"),
                     }}
                 />
             ).toBlob();
@@ -971,11 +1746,13 @@ export default function ReportsClient() {
                     chargers={chargersWithBase64}
                     plansMap={plansMap}
                     projectName={projectNameWithCompany}
+                    includePin={chargerIncludePin}
                     translations={{
                         project: t("reports", "project", "Projekt"),
                         generatedOn: t("reports", "generatedOn", "Wygenerowano"),
                         missingMap: t("reports", "missingMap", "Brak podglądu mapy"),
                         missingPhoto: t("reports", "missingPhoto", "Brak zdjęcia"),
+                        owner: t("footer", "owner", "Owner: Marcin Slapinski"),
                     }}
                 />
             ).toBlob();
@@ -988,6 +1765,77 @@ export default function ReportsClient() {
         } catch (e) {
             console.error("Error generating chargers report", e);
             alert(t("common", "error", "Błąd") + ": " + (e as Error).message);
+        } finally {
+            setIsGenerating(false);
+            setStatusMessage("");
+        }
+    };
+
+    const generateAndDownloadChargersExcel = async () => {
+        setIsGenerating(true);
+        setStatusMessage(t("reports", "loadingData", "Pobieranie danych..."));
+        try {
+            const selectedChargers = chargersList.filter(c => selectedChargerIds.has(c.id));
+            if (selectedChargers.length === 0) {
+                alert("Nie wybrano żadnej ładowarki.");
+                return;
+            }
+
+            // Group chargers by plan_id, sort each group chronologically, and assign numbers
+            const chargersByPlan = new Map<string, any[]>();
+            chargersList.forEach(c => {
+                if (!c.plan_id) return;
+                if (!chargersByPlan.has(c.plan_id)) {
+                    chargersByPlan.set(c.plan_id, []);
+                }
+                chargersByPlan.get(c.plan_id)!.push(c);
+            });
+
+            const chargerNumbers = new Map<string, number>();
+            chargersByPlan.forEach((list, planId) => {
+                const sorted = [...list].sort(
+                    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+                sorted.forEach((c, idx) => {
+                    chargerNumbers.set(c.id, idx + 1);
+                });
+            });
+
+            // Create CSV content with UTF-8 BOM
+            const headers = ["Marker", "MAC"];
+            if (chargerIncludePin) {
+                headers.push("PIN");
+            }
+
+            const rows = selectedChargers.map(c => {
+                const row = [
+                    chargerNumbers.get(c.id) || "",
+                    c.mac || ""
+                ];
+                if (chargerIncludePin) {
+                    row.push(c.pin || "");
+                }
+                return row;
+            });
+
+            const csvContent = "\uFEFF" + [
+                headers.join(";"),
+                ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(";"))
+            ].join("\n");
+
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            const safeCustomName = customFileName.trim().replace(/[^a-zA-Z0-9\s._-]+/g, "").replace(/\s+/g, "_");
+            const prefix = safeCustomName || "ladegerate";
+            link.setAttribute("href", url);
+            link.setAttribute("download", `${prefix}_${new Date().toISOString().slice(0, 10)}_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error(err);
+            alert("Błąd generowania pliku Excel");
         } finally {
             setIsGenerating(false);
             setStatusMessage("");
@@ -1019,6 +1867,18 @@ export default function ReportsClient() {
                 setSelectedPlanIds(new Set(data.map((c: any) => c.plan_id).filter(Boolean)));
             })
             .catch(() => {});
+    }, [activeTab, selectedProjectId]);
+
+    useEffect(() => {
+        if (activeTab !== "FRAGEN" || !selectedProjectId) return;
+        apiGet<any[]>(`/api/tasks?projectId=${selectedProjectId}&is_question=true&limit=1000`)
+            .then((res) => {
+                const data = Array.isArray(res) ? res : ((res as any).data || []);
+                setQuestionsList(data);
+                setSelectedQuestionIds(new Set(data.map((q: any) => q.id)));
+                setSelectedPlanIds(new Set(data.map((q: any) => q.plan_id).filter(Boolean)));
+            })
+            .catch((err) => console.error("Failed to load questions for reports", err));
     }, [activeTab, selectedProjectId]);
 
     const generateAndDownloadQrLabelsReport = async () => {
@@ -1405,6 +2265,8 @@ export default function ReportsClient() {
                             { id: "TROMMLE", label: t("reports", "trommelsTab", "Trommle"), icon: "📦" },
                             { id: "QRCODE", label: t("reports", "qrTab", "QR-Codes"), icon: "📱" },
                             { id: "LADEGERÄTE", label: "Ładowarki", icon: "🔌" },
+                            { id: "FRAGEN", label: t("reports", "questionsTab", "Pytania"), icon: "❓" },
+                            { id: "PLAN_ELEMENTS", label: t("reports", "planElementsTab", "Plan-Elemente"), icon: "🗺️" },
                         ].map((tab) => (
                             <button
                                 key={tab.id}
@@ -1555,6 +2417,34 @@ export default function ReportsClient() {
                                     </>
                                 )}
 
+                                {activeTab === "KABLE" && (
+                                    <div className="space-y-4 p-6 bg-blue-500/5 rounded-xl border border-blue-500/20">
+                                        <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-2">⚙️ {t("reports", "cableReportOptions", "OPCJE RAPORTU KABLI")}</h3>
+                                        <div className="space-y-3">
+                                            <label className="flex items-center gap-3 cursor-pointer group">
+                                                <input 
+                                                    type="radio" 
+                                                    name="cableExportType" 
+                                                    checked={cableExportType === "standard"} 
+                                                    onChange={() => setCableExportType("standard")} 
+                                                    className="w-5 h-5 text-blue-500 accent-blue-500 cursor-pointer" 
+                                                />
+                                                <span className="text-[10px] font-bold text-slate-400 group-hover:text-white transition-colors uppercase">{t("reports", "cableExportStandard", "Plany i kable (Standard)")}</span>
+                                            </label>
+                                            <label className="flex items-center gap-3 cursor-pointer group">
+                                                <input 
+                                                    type="radio" 
+                                                    name="cableExportType" 
+                                                    checked={cableExportType === "by_category"} 
+                                                    onChange={() => setCableExportType("by_category")} 
+                                                    className="w-5 h-5 text-blue-500 accent-blue-500 cursor-pointer" 
+                                                />
+                                                <span className="text-[10px] font-bold text-slate-400 group-hover:text-white transition-colors uppercase">{t("reports", "cableExportByCategory", "Lista według kategorii (bez planów)")}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {activeTab === "TROMMLE" && (
                                     <div className="space-y-4 p-6 bg-amber-500/5 rounded-xl border border-amber-500/20">
                                         <h3 className="text-[10px] font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">⚙️ {t("reports", "trommelReportOptions", "OPCJE BĘBNÓW")}</h3>
@@ -1570,38 +2460,386 @@ export default function ReportsClient() {
                                         </div>
                                     </div>
                                 )}
+                                {activeTab === "LADEGERÄTE" && (
+                                    <div className="space-y-4 p-6 bg-blue-500/5 rounded-xl border border-blue-500/20">
+                                        <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-2">⚙️ {t("reports", "chargerReportOptions", "OPCJE ŁADOWAREK")}</h3>
+                                        <div className="space-y-3">
+                                            <label className="flex items-center gap-3 cursor-pointer group">
+                                                <input type="checkbox" checked={chargerIncludePin} onChange={e => setChargerIncludePin(e.target.checked)} className="w-5 h-5 rounded-lg border-2 border-slate-700 bg-black/40 checked:bg-blue-500 checked:border-blue-400 transition-all appearance-none" />
+                                                <span className="text-[10px] font-bold text-slate-400 group-hover:text-white transition-colors uppercase">{t("reports", "includeChargerPin", "DOŁĄCZ PIN DO RAPORTU")}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
+                                {activeTab === "PLAN_ELEMENTS" && (
+                                    <div className="space-y-5 p-6 bg-sky-500/5 rounded-xl border border-sky-500/20">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-[10px] font-black text-sky-400 uppercase tracking-widest flex items-center gap-2">⚙️ {t("reports", "selectExportComponents", "ELEMENTY DO EKSPORTU")}</h3>
+                                        </div>
+
+                                          {/* Quick Preset Buttons */}
+                                        <div className="grid grid-cols-4 gap-1.5 pb-2 border-b border-ui-border/40">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setPeOptNotlicht(true);
+                                                    setPeOptBma(false);
+                                                    setPeOptLighting(false);
+                                                    setPeOptHeating(false);
+                                                    setPeOptKabelbahn(false);
+                                                    setPeOptKabelauslass(false);
+                                                    setPeOptKlappen(false);
+                                                    setPeOptMeasurements(false);
+                                                    setPeOptPhotoPins(false);
+                                                    setPeOptMontageDoku(false);
+                                                    setPeOptCables(false);
+                                                    setPeOptPlanOverview(true);
+                                                    setPeOptLampTypes(true);
+                                                }}
+                                                className="px-2 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 rounded-lg text-[9px] font-black uppercase tracking-wider text-emerald-400 transition-all text-center"
+                                            >
+                                                🚨 Notlicht
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setPeOptHeating(true);
+                                                    setPeOptNotlicht(false);
+                                                    setPeOptBma(false);
+                                                    setPeOptLighting(false);
+                                                    setPeOptKabelbahn(false);
+                                                    setPeOptKabelauslass(false);
+                                                    setPeOptKlappen(false);
+                                                    setPeOptMeasurements(false);
+                                                    setPeOptPhotoPins(false);
+                                                    setPeOptMontageDoku(false);
+                                                    setPeOptCables(false);
+                                                    setPeOptPlanOverview(true);
+                                                    setPeOptLampTypes(true);
+                                                }}
+                                                className="px-2 py-2 bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 rounded-lg text-[9px] font-black uppercase tracking-wider text-sky-400 transition-all text-center"
+                                            >
+                                                ❄️ Heizung
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setPeOptNotlicht(true);
+                                                    setPeOptBma(true);
+                                                    setPeOptLighting(true);
+                                                    setPeOptHeating(true);
+                                                    setPeOptKabelbahn(true);
+                                                    setPeOptKabelauslass(true);
+                                                    setPeOptCables(true);
+                                                    setPeOptKlappen(true);
+                                                    setPeOptMeasurements(true);
+                                                    setPeOptPhotoPins(true);
+                                                    setPeOptMontageDoku(true);
+                                                    setPeOptPlanOverview(true);
+                                                    setPeOptLampTypes(true);
+                                                    setPeOptKabelzugliste(true);
+                                                }}
+                                                className="px-2 py-2 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/40 rounded-lg text-[9px] font-black uppercase tracking-wider text-blue-400 transition-all text-center"
+                                            >
+                                                ✨ {t("reports", "presetAll", "Wszystko")}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setPeOptNotlicht(false);
+                                                    setPeOptBma(false);
+                                                    setPeOptLighting(false);
+                                                    setPeOptHeating(false);
+                                                    setPeOptKabelbahn(false);
+                                                    setPeOptKabelauslass(false);
+                                                    setPeOptCables(false);
+                                                    setPeOptKlappen(false);
+                                                    setPeOptMeasurements(false);
+                                                    setPeOptPhotoPins(false);
+                                                    setPeOptMontageDoku(false);
+                                                    setPeOptPlanOverview(true);
+                                                    setPeOptLampTypes(false);
+                                                    setPeOptKabelzugliste(false);
+                                                }}
+                                                className="px-2 py-2 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 rounded-lg text-[9px] font-black uppercase tracking-wider text-rose-400 transition-all text-center"
+                                            >
+                                                🧹 {t("reports", "presetNone", "Żadne")}
+                                            </button>
+                                        </div>
+
+                                        <div className="space-y-2.5">
+                                            {([
+                                                { key: "bma", label: t("reports", "optBmaOnly", "Brandmeldeanlage (BMA / DIS)"), val: peOptBma, set: setPeOptBma, color: "red", icon: "🔴" },
+                                                { key: "notlicht", label: t("reports", "optNotlicht", "Notbeleuchtung & Pikto"), val: peOptNotlicht, set: setPeOptNotlicht, color: "emerald", icon: "🟢" },
+                                                { key: "lighting", label: t("reports", "optLighting", "Allgemeinbeleuchtung (Lampen & LED)"), val: peOptLighting, set: setPeOptLighting, color: "amber", icon: "💡" },
+                                                { key: "heating", label: t("reports", "optHeating", "Heizung & Wärmepumpen / Geräte"), val: peOptHeating, set: setPeOptHeating, color: "sky", icon: "❄️" },
+                                                { key: "cables", label: t("reports", "optCables", "Kabel & Verbindungen / Schemas (Kabelzugliste)"), val: peOptCables, set: setPeOptCables, color: "blue", icon: "🔌" },
+                                                { key: "kabelbahn", label: t("reports", "optKabelbahn", "Kabelbahn (Trasy kablowe / Drabinki)"), val: peOptKabelbahn, set: setPeOptKabelbahn, color: "emerald", icon: "🪜" },
+                                                { key: "kabelauslass", label: t("reports", "optKabelauslass", "Kabelauslass (Wypusty kablowe)"), val: peOptKabelauslass, set: setPeOptKabelauslass, color: "slate", icon: "⚡" },
+                                                { key: "abdeckung", label: t("planBma", "abdeckungBox", "Abdeckung"), val: peOptAbdeckung, set: setPeOptAbdeckung, color: "slate", icon: "⬜" },
+                                                { key: "anderungen", label: t("planBma", "revisionCloud", "Änderungs-Wolke"), val: peOptAnderungen, set: setPeOptAnderungen, color: "amber", icon: "☁️" },
+                                                { key: "klappen", label: t("reports", "optKlappen", "Revisionsklappen"), val: peOptKlappen, set: setPeOptKlappen, color: "amber", icon: "🔲" },
+                                                { key: "measurements", label: t("reports", "optMeasurements", "Messungen (Pomiary)"), val: peOptMeasurements, set: setPeOptMeasurements, color: "blue", icon: "📏" },
+                                                { key: "photos", label: t("reports", "optPhotoPins", "Foto-Pins (Zdjęcia / Lampy)"), val: peOptPhotoPins, set: setPeOptPhotoPins, color: "blue", icon: "📷" },
+                                                { key: "montageDoku", label: t("reports", "optMontageDoku", "Montage-Doku (Montagedokumentation & Fotos)"), val: peOptMontageDoku, set: setPeOptMontageDoku, color: "purple", icon: "🛠️" },
+                                                { key: "damage", label: t("reports", "optDamage", "Beschädigung (Schadensdokumentation & Fotos)"), val: peOptDamage, set: setPeOptDamage, color: "red", icon: "⚠️" },
+                                                { key: "lampTypes", label: t("reports", "optLampTypes", "Leuchtentypen & Fotos (Typy opraw)"), val: peOptLampTypes, set: setPeOptLampTypes, color: "emerald", icon: "📷" },
+                                                { key: "overview", label: t("reports", "optPlanOverview", "Planübersicht (Przegląd planu)"), val: peOptPlanOverview, set: setPeOptPlanOverview, color: "purple", icon: "🗺️" },
+                                            ] as const).map((opt) => (
+                                                <label key={opt.key} className="flex items-center gap-3 cursor-pointer group hover:bg-white/5 p-1.5 rounded-lg transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={opt.val}
+                                                        onChange={e => {
+                                                            opt.set(e.target.checked);
+                                                            if (opt.key === "cables") setPeOptKabelzugliste(e.target.checked);
+                                                        }}
+                                                        className="w-5 h-5 rounded-lg border-2 border-slate-700 bg-black/40 checked:bg-sky-500 checked:border-sky-400 transition-all appearance-none cursor-pointer"
+                                                    />
+                                                    <span className="text-[10px] font-bold text-slate-300 group-hover:text-white transition-colors uppercase flex items-center gap-1.5">
+                                                        <span>{opt.icon}</span>
+                                                        <span>{opt.label}</span>
+                                                    </span>
+                                                </label>
+                                            ))}
+                                        </div>
+
+                                        {peOptNotlicht && (
+                                            <div className="mt-5 pt-4 border-t border-ui-border/60">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                                        <span>🏷️</span>
+                                                        <span>{t("reports", "reservePerKreisTitle", "Rezerwa naklejek na obwód")}</span>
+                                                    </span>
+                                                    <span className="text-[10px] font-black text-amber-300 bg-amber-950/70 border border-amber-500/40 px-2 py-0.5 rounded">
+                                                        +{peReservePerKreis} / Kreis
+                                                    </span>
+                                                </div>
+                                                <p className="text-[9px] text-ui-muted mb-3 leading-relaxed">
+                                                    {t("reports", "reservePerKreisDesc", "Dodaje dodatkowe wolne numery na końcu każdego obwodu (np. 6/9, 6/10) jako zapas na wypadek montażu dodatkowych opraw.")}
+                                                </p>
+                                                <div className="grid grid-cols-5 gap-1.5">
+                                                    {[0, 1, 2, 3, 5].map((amt) => (
+                                                        <button
+                                                            key={amt}
+                                                            type="button"
+                                                            onClick={() => setPeReservePerKreis(amt)}
+                                                            className={`py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${
+                                                                peReservePerKreis === amt
+                                                                    ? "bg-amber-500 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.4)] scale-105"
+                                                                    : "bg-ui-card hover:bg-white/10 text-ui-muted hover:text-ui-text border border-ui-border"
+                                                            }`}
+                                                        >
+                                                            {amt === 0 ? "0 (Brak)" : `+${amt}`}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="mt-5 pt-4 border-t border-ui-border/60">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
+                                                    <span>💡</span>
+                                                    <span>{t("reports", "kabelhinweisTitle", "Hinweise (Kabelzugliste)")}</span>
+                                                </span>
+                                                {peKabelhinweisText.trim() && !savedHinweisTemplates.includes(peKabelhinweisText.trim()) && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleSaveHinweisTemplate}
+                                                        className="text-[9px] font-black uppercase text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-2 py-0.5 rounded hover:bg-emerald-900/80 transition-all flex items-center gap-1 cursor-pointer"
+                                                    >
+                                                        <span>💾</span>
+                                                        <span>Zapisz szablon</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <p className="text-[9px] text-ui-muted mb-2 leading-relaxed">
+                                                {t("reports", "kabelhinweisDesc", "Wpisany tekst zapisuje się automatycznie. Wybierz z szablonów poniżej lub wpisz własny.")}
+                                            </p>
+                                            <textarea
+                                                value={peKabelhinweisText}
+                                                onChange={(e) => handleHinweisTextChange(e.target.value)}
+                                                placeholder="np. Bitte nur zertifizierte E30/E90 Funktionserhalt-Kabel verwenden..."
+                                                rows={2}
+                                                className="w-full bg-black/40 border border-ui-border rounded-xl p-3 text-xs font-bold text-ui-text outline-none focus:border-sky-500/50 transition-all resize-none mb-2"
+                                            />
+
+                                            {/* Saved Hinweis Templates */}
+                                            {savedHinweisTemplates.length > 0 && (
+                                                <div className="flex flex-col gap-1.5 mt-2">
+                                                    <span className="text-[8px] font-black text-ui-muted uppercase tracking-wider">Zapisane szablony:</span>
+                                                    <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1 custom-scrollbar">
+                                                        {savedHinweisTemplates.map((tmpl, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className={`group flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[9px] font-bold cursor-pointer transition-all ${
+                                                                    peKabelhinweisText.trim() === tmpl.trim()
+                                                                        ? "bg-sky-500/20 border-sky-400 text-sky-200 shadow-[0_0_10px_rgba(56,189,248,0.2)]"
+                                                                        : "bg-black/30 border-ui-border text-ui-muted hover:border-ui-muted hover:text-ui-text"
+                                                                }`}
+                                                                onClick={() => handleHinweisTextChange(tmpl)}
+                                                            >
+                                                                <span className="truncate max-w-[220px]">{tmpl}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDeleteHinweisTemplate(tmpl);
+                                                                    }}
+                                                                    className="text-red-400 opacity-60 hover:opacity-100 hover:text-red-300 ml-1 font-black"
+                                                                    title="Usuń szablon"
+                                                                >
+                                                                    ✕
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            <div className="pt-8 border-t border-ui-border/50">
-                                <button
-                                    onClick={() => {
-                                        if (activeTab === "BERICHTE") generateAndDownloadReport();
-                                        else if (activeTab === "REVISION") generateAndDownloadRevisionReport();
-                                        else if (activeTab === "FEHLER") generateAndDownloadFehlerReport();
-                                        else if (activeTab === "KABLE") generateAndDownloadCablesReport();
-                                        else if (activeTab === "TROMMLE") generateAndDownloadTrommelsReport();
-                                        else if (activeTab === "QRCODE") generateAndDownloadQrLabelsReport();
-                                        else if (activeTab === "LADEGERÄTE") generateAndDownloadChargersReport();
-                                    }}
-                                    disabled={isGenerating || ((activeTab !== "TROMMLE" && activeTab !== "QRCODE" && activeTab !== "LADEGERÄTE") && selectedPlanIds.size === 0)}
-                                    className={`w-full py-6 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all duration-500 flex items-center justify-center gap-3 ${
-                                        isGenerating 
-                                        ? "bg-ui-card text-ui-muted cursor-not-allowed" 
-                                        : "bg-gradient-to-br from-[var(--ui-accent)] to-blue-600 text-slate-950 shadow-[0_0_40px_var(--ui-glow)] hover:scale-[1.02]"
-                                    }`}
-                                >
-                                    {isGenerating ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-ui-muted border-t-ui-text rounded-full animate-spin"></div>
-                                            {t("reports", "generating", "GENEROWANIE...") || statusMessage}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span>📥</span>
-                                            {qrPrinterType === "brother_csv" ? "POBIERZ CSV" : (t("reports", "downloadPdf", "POBIERZ RAPORT PDF"))}
-                                        </>
-                                    )}
-                                </button>
+                            <div className="pt-8 border-t border-ui-border/50 flex flex-col gap-4">
+                                {activeTab === "PLAN_ELEMENTS" ? (
+                                    <div className="flex flex-col gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => generateAndDownloadPlanElementsReport('plan_only')}
+                                            disabled={isGenerating || selectedPlanIds.size === 0}
+                                            className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] shadow-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                                                isGenerating || selectedPlanIds.size === 0
+                                                ? "bg-ui-card text-ui-muted cursor-not-allowed" 
+                                                : "bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-[0_0_25px_rgba(56,189,248,0.3)] hover:scale-[1.01]"
+                                            }`}
+                                        >
+                                            <span>🗺️</span>
+                                            <span>POBIERZ TYLKO GRAFICZNY PLAN PDF</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => generateAndDownloadPlanElementsReport('kabelzugliste_only')}
+                                            disabled={isGenerating || selectedPlanIds.size === 0}
+                                            className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] shadow-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                                                isGenerating || selectedPlanIds.size === 0
+                                                ? "bg-ui-card text-ui-muted cursor-not-allowed" 
+                                                : "bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-[0_0_25px_rgba(245,158,11,0.3)] hover:scale-[1.01]"
+                                            }`}
+                                        >
+                                            <span>📋</span>
+                                            <span>POBIERZ KABELZÜGLISTE & LEITUNGSVERZEICHNIS (PDF)</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => generateAndDownloadPlanElementsReport('all')}
+                                            disabled={isGenerating || selectedPlanIds.size === 0}
+                                            className={`w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 ${
+                                                isGenerating || selectedPlanIds.size === 0
+                                                ? "bg-ui-card text-ui-muted cursor-not-allowed" 
+                                                : "bg-ui-card hover:bg-white/10 text-ui-text border border-ui-border"
+                                            }`}
+                                        >
+                                            <span>📄</span>
+                                            <span>POBIERZ PEŁNY RAPORT (PLAN + KABELZÜGLISTE)</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={generateAndDownloadAufkleberCsv}
+                                            disabled={isGenerating || selectedPlanIds.size === 0}
+                                            className={`w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-2 ${
+                                                isGenerating || selectedPlanIds.size === 0
+                                                ? "bg-ui-card/50 text-ui-muted cursor-not-allowed border border-ui-border/50" 
+                                                : "bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/40 cursor-pointer"
+                                            }`}
+                                        >
+                                            <span>🏷️</span>
+                                            <span>POBIERZ LISTĘ NAKLEJEK (CSV / EXCEL)</span>
+                                        </button>
+                                    </div>
+                                ) : activeTab === "LADEGERÄTE" ? (
+                                    <div className="flex flex-col sm:flex-row gap-4">
+                                        <button
+                                            onClick={generateAndDownloadChargersReport}
+                                            disabled={isGenerating}
+                                            className={`flex-1 py-6 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all duration-500 flex items-center justify-center gap-3 ${
+                                                isGenerating 
+                                                ? "bg-ui-card text-ui-muted cursor-not-allowed" 
+                                                : "bg-gradient-to-br from-[var(--ui-accent)] to-blue-600 text-slate-950 shadow-[0_0_40px_var(--ui-glow)] hover:scale-[1.02]"
+                                            }`}
+                                        >
+                                            {isGenerating ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-ui-muted border-t-ui-text rounded-full animate-spin"></div>
+                                                    {statusMessage || t("reports", "generating", "GENEROWANIE PDF...")}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span>📥</span>
+                                                    {t("reports", "downloadPdf", "POBIERZ PDF")}
+                                                </>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={generateAndDownloadChargersExcel}
+                                            disabled={isGenerating}
+                                            className={`flex-1 py-6 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all duration-500 flex items-center justify-center gap-3 ${
+                                                isGenerating 
+                                                ? "bg-ui-card text-ui-muted cursor-not-allowed" 
+                                                : "bg-emerald-600 text-white shadow-[0_0_40px_rgba(16,185,129,0.2)] hover:scale-[1.02] border-none cursor-pointer"
+                                            }`}
+                                        >
+                                            {isGenerating ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-ui-muted border-t-ui-text rounded-full animate-spin"></div>
+                                                    {statusMessage || "GENEROWANIE EXCEL..."}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span>📥</span>
+                                                    {t("reports", "downloadExcel", "POBIERZ EXCEL")}
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            if (activeTab === "BERICHTE") generateAndDownloadReport();
+                                            else if (activeTab === "REVISION") generateAndDownloadRevisionReport();
+                                            else if (activeTab === "FEHLER") generateAndDownloadFehlerReport();
+                                            else if (activeTab === "KABLE") generateAndDownloadCablesReport();
+                                            else if (activeTab === "TROMMLE") generateAndDownloadTrommelsReport();
+                                            else if (activeTab === "QRCODE") generateAndDownloadQrLabelsReport();
+                                            else if (activeTab === "FRAGEN") generateAndDownloadFragenReport();
+                                            else if (activeTab === "PLAN_ELEMENTS") generateAndDownloadPlanElementsReport();
+                                        }}
+                                        disabled={
+                                            isGenerating || 
+                                            (((activeTab as any) !== "TROMMLE" && (activeTab as any) !== "QRCODE" && (activeTab as any) !== "FRAGEN" && (activeTab as any) !== "PLAN_ELEMENTS") && selectedPlanIds.size === 0) ||
+                                            (activeTab === "FRAGEN" && selectedQuestionIds.size === 0) ||
+                                            ((activeTab as any) === "PLAN_ELEMENTS" && selectedPlanIds.size === 0)
+                                        }
+                                        className={`w-full py-6 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all duration-500 flex items-center justify-center gap-3 ${
+                                            isGenerating 
+                                            ? "bg-ui-card text-ui-muted cursor-not-allowed" 
+                                            : "bg-gradient-to-br from-[var(--ui-accent)] to-blue-600 text-slate-950 shadow-[0_0_40px_var(--ui-glow)] hover:scale-[1.02]"
+                                        }`}
+                                    >
+                                        {isGenerating ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-ui-muted border-t-ui-text rounded-full animate-spin"></div>
+                                                {t("reports", "generating", "GENEROWANIE...") || statusMessage}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span>📥</span>
+                                                {qrPrinterType === "brother_csv" ? "POBIERZ CSV" : (t("reports", "downloadPdf", "POBIERZ RAPORT PDF"))}
+                                            </>
+                                        )}
+                                    </button>
+                                )}
                                 {statusMessage && !statusMessage.includes("<a ") && (
                                     <p className="text-ui-accent text-[10px] font-bold uppercase mt-4 text-center animate-pulse">{statusMessage}</p>
                                 )}
@@ -1877,6 +3115,92 @@ export default function ReportsClient() {
                                                     ))}
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                ) : activeTab === "FRAGEN" ? (
+                                    <div className="space-y-10">
+                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 border-b border-ui-border/50 pb-10">
+                                            <div>
+                                                <h3 className="text-2xl font-black uppercase tracking-tight text-ui-text">{t("reports", "questionsTab", "Pytania")}</h3>
+                                                <p className="text-ui-muted text-[10px] font-bold uppercase tracking-[0.2em] mt-2">
+                                                    {selectedQuestionIds.size > 0 
+                                                        ? `${selectedQuestionIds.size} ${t("reports", "questionsSelected", "wybranych")}`
+                                                        : t("reports", "noneSelected", "Brak wybranych")}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-4">
+                                            <button 
+                                                onClick={() => setSelectedQuestionIds(new Set(questionsList.map(q => q.id)))}
+                                                className="px-6 py-2 bg-ui-card border border-ui-border rounded-lg text-[10px] font-black uppercase tracking-widest text-ui-muted hover:bg-white/5 transition-all"
+                                            >
+                                                {t("reports", "selectAll", "Zaznacz wszystkie")}
+                                            </button>
+                                            <button 
+                                                onClick={() => setSelectedQuestionIds(new Set())}
+                                                className="px-6 py-2 bg-ui-card border border-ui-border rounded-lg text-[10px] font-black uppercase tracking-widest text-ui-muted hover:bg-white/5 transition-all"
+                                            >
+                                                {t("reports", "deselectAll", "Odznacz wszystkie")}
+                                            </button>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[800px] overflow-y-auto pr-4 custom-scrollbar">
+                                            {questionsList.length === 0 ? (
+                                                <div className="col-span-full py-20 text-center bg-ui-card/40 rounded-xl border border-ui-border border-dashed">
+                                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-ui-muted">{t("reports", "noQuestionsFound", "Nie znaleziono pytań")}</p>
+                                                </div>
+                                            ) : (
+                                                questionsList.map((q) => (
+                                                    <motion.div
+                                                        key={q.id}
+                                                        layout
+                                                        onClick={() => {
+                                                            const next = new Set(selectedQuestionIds);
+                                                            if (next.has(q.id)) next.delete(q.id);
+                                                            else next.add(q.id);
+                                                            setSelectedQuestionIds(next);
+                                                        }}
+                                                        className={`group relative p-6 rounded-xl border transition-all duration-300 cursor-pointer ${
+                                                            selectedQuestionIds.has(q.id)
+                                                                ? "bg-ui-accent/10 border-ui-accent/40 shadow-[0_0_30px_var(--ui-glow)]"
+                                                                : "bg-black/20 border-ui-border hover:border-ui-muted"
+                                                        }`}
+                                                    >
+                                                        <div className="flex gap-5 items-start">
+                                                            <div className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                                                selectedQuestionIds.has(q.id) ? "bg-ui-accent border-ui-accent/50" : "border-ui-border"
+                                                            }`}>
+                                                                {selectedQuestionIds.has(q.id) && <span className="text-slate-950 text-[10px] font-black">✓</span>}
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <div className="flex justify-between items-start mb-2">
+                                                                    <span className="text-[9px] font-black text-ui-accent uppercase tracking-widest bg-ui-accent/10 px-2 py-0.5 rounded-md">
+                                                                        #{getTaskNumericLabel(q.id)}
+                                                                    </span>
+                                                                    <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase ${
+                                                                        q.priority === "CRITICAL" || q.priority === "HIGH" ? "bg-red-500/20 text-red-400" : "bg-ui-card text-ui-muted"
+                                                                    }`}>
+                                                                        {q.priority}
+                                                                    </span>
+                                                                </div>
+                                                                <h4 className="text-sm font-black text-ui-text uppercase tracking-tight group-hover:text-ui-accent transition-colors leading-snug">{q.title}</h4>
+                                                                <p className="text-[10px] text-ui-muted font-bold mt-2 truncate">{q.description || t("common", "noDescription", "No description")}</p>
+                                                                <div className="flex items-center gap-4 mt-4 pt-4 border-t border-ui-border/50">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-xs">👤</span>
+                                                                        <span className="text-[9px] font-black text-ui-muted uppercase">{q.assigneeName || "Unassigned"}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-xs">📍</span>
+                                                                        <span className="text-[9px] font-black text-ui-muted uppercase truncate max-w-[100px]">{floors.find(f => f.id === plans.find(p => p.id === q.plan_id)?.floor_id)?.name || "N/A"}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                ))
+                                            )}
                                         </div>
                                     </div>
                                 ) : (
