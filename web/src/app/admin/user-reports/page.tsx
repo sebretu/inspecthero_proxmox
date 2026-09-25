@@ -89,6 +89,7 @@ export default function UserReportsPage() {
       case 'task_history': return "📝";
       case 'cable_history': return "🔌";
       case 'fehler_history': return "⚠️";
+      case 'stromkreis_history': return "⚡";
       case 'attendance': return "📅";
       case 'comment': return "💬";
       default: return "⚡";
@@ -100,6 +101,7 @@ export default function UserReportsPage() {
       case 'task_history': return "#3b82f6";
       case 'cable_history': return "#10b981";
       case 'fehler_history': return "#ef4444";
+      case 'stromkreis_history': return "#eab308";
       case 'attendance': return "#f59e0b";
       case 'comment': return "#a855f7";
       default: return "#6366f1";

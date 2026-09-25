@@ -86,9 +86,10 @@ const styles = StyleSheet.create({
         gap: 5
     },
     photo: {
-        width: 140,
-        height: 100,
-        objectFit: 'cover',
+        width: 170,
+        height: 130,
+        objectFit: 'contain',
+        backgroundColor: '#f8fafc',
         borderRadius: 2
     }
 });

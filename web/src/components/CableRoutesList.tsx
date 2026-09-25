@@ -25,6 +25,8 @@ export interface Route {
   point_b_x?: number | null;
   point_b_y?: number | null;
   waypoints?: { x: number; y: number }[] | null;
+  point_a_photo?: string | null;
+  point_b_photo?: string | null;
 }
 
 interface Props {
@@ -271,6 +273,8 @@ export function CableRoutesList({ routes, token, isMod, projectId, onUpdated, on
           initialLabelA={editMapRoute.point_a_label}
           initialLabelB={editMapRoute.point_b_label}
           initialWaypoints={Array.isArray(editMapRoute.waypoints) ? editMapRoute.waypoints : []}
+          initialPointAPhoto={editMapRoute.point_a_photo}
+          initialPointBPhoto={editMapRoute.point_b_photo}
           onClose={() => setEditMapRoute(null)}
           onChange={async val => {
             await handleMapEditSave(val, editMapRoute.id);

@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400&family=Space+Grotesk:wght@500;700;800&display=swap");
 @import "tailwindcss";
 @import "./mobile.css";
 
@@ -11,61 +11,344 @@
   --color-ui-card: var(--ui-card);
   --color-ui-border: var(--ui-border);
   --color-ui-nav-bg: var(--ui-nav-bg);
+  --color-electric-yellow: var(--electric-yellow);
 }
 
-/* ========== HIGH-TECH COLOUR THEMES ========== */
-/* ── Variant 1: Deep Space ────────────────────────── */
-[data-theme="deep-space"] {
-  --ui-bg: #0B1120;
-  --ui-text: #F8FAFC;
-  --ui-muted: #94A3B8;
-  --ui-accent: #38BDF8;
-  --ui-glow: rgba(56, 189, 248, 0.3);
-  --ui-card: rgba(30, 41, 59, 0.7);
-  --ui-border: rgba(56, 189, 248, 0.2);
-  --ui-nav-bg: rgba(15, 23, 42, 0.9);
-  --ui-gradient: radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.12) 0%, transparent 50%),
-                 radial-gradient(circle at 100% 100%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
-                 #0B1120;
+/* ========== ET⚡U.DE HIGH-TECH THEMES (Google Material 3 + German Engineering) ========== */
+
+/* ── ET⚡U.DE Core Theme (Default) ────────────────────────── */
+[data-theme="deep-space"],
+[data-theme="et4u"],
+:root {
+  --ui-bg: #101114;
+  --ui-text: #F8F9FA;
+  --ui-muted: #BDC1C6;
+  --ui-accent: #FFD000;
+  --ui-accent-blue: #1A73E8;
+  --ui-glow: rgba(255, 208, 0, 0.28);
+  --ui-card: rgba(27, 29, 33, 0.85);
+  --ui-card-solid: #1B1D21;
+  --ui-border: rgba(255, 208, 0, 0.18);
+  --ui-border-subtle: rgba(255, 255, 255, 0.08);
+  --ui-nav-bg: rgba(16, 17, 20, 0.92);
+  --ui-gradient: radial-gradient(circle at 15% 10%, rgba(255, 208, 0, 0.07) 0%, transparent 45%),
+                 radial-gradient(circle at 85% 90%, rgba(26, 115, 232, 0.08) 0%, transparent 50%),
+                 #101114;
+  --electric-yellow: #FFD000;
+  --electric-yellow-glow: rgba(255, 208, 0, 0.35);
+  --blue-tech: #1A73E8;
+  --blue-tech-glow: rgba(26, 115, 232, 0.30);
+  --radius-card: 32px;
+  --radius-pill: 100px;
 }
 
 [data-theme="graphite-tech"] {
   --ui-bg: #18181B;
   --ui-text: #F4F4F5;
-  --ui-muted: #71717A;
-  --ui-accent: #22D3EE;
-  --ui-glow: rgba(34, 211, 238, 0.2);
-  --ui-card: rgba(39, 39, 42, 0.8);
-  --ui-border: rgba(34, 211, 238, 0.15);
+  --ui-muted: #A1A1AA;
+  --ui-accent: #FFD000;
+  --ui-accent-blue: #22D3EE;
+  --ui-glow: rgba(255, 208, 0, 0.22);
+  --ui-card: rgba(39, 39, 42, 0.85);
+  --ui-card-solid: #27272A;
+  --ui-border: rgba(255, 208, 0, 0.16);
+  --ui-border-subtle: rgba(255, 255, 255, 0.07);
   --ui-nav-bg: rgba(24, 24, 27, 0.95);
-  --ui-gradient: radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.1) 0%, transparent 50%),
+  --ui-gradient: radial-gradient(circle at 50% 0%, rgba(255, 208, 0, 0.08) 0%, transparent 50%),
                  #18181B;
+  --electric-yellow: #FFD000;
+  --electric-yellow-glow: rgba(255, 208, 0, 0.35);
 }
 
 [data-theme="black-silver"] {
   --ui-bg: #000000;
   --ui-text: #FFFFFF;
-  --ui-muted: #A1A1AA;
-  --ui-accent: #E2E8F0;
-  --ui-glow: rgba(226, 232, 240, 0.1);
-  --ui-card: rgba(17, 17, 17, 0.6);
-  --ui-border: rgba(255, 255, 255, 0.1);
-  --ui-nav-bg: rgba(0, 0, 0, 0.9);
-  --ui-gradient: linear-gradient(180deg, #111 0%, #000 100%);
+  --ui-muted: #BDC1C6;
+  --ui-accent: #FFD000;
+  --ui-accent-blue: #38BDF8;
+  --ui-glow: rgba(255, 208, 0, 0.25);
+  --ui-card: rgba(20, 20, 22, 0.80);
+  --ui-card-solid: #141416;
+  --ui-border: rgba(255, 255, 255, 0.12);
+  --ui-border-subtle: rgba(255, 255, 255, 0.06);
+  --ui-nav-bg: rgba(0, 0, 0, 0.92);
+  --ui-gradient: linear-gradient(180deg, #101114 0%, #000000 100%);
+  --electric-yellow: #FFD000;
+  --electric-yellow-glow: rgba(255, 208, 0, 0.35);
 }
 
-[data-theme="inspect"] {
-  --ui-bg: #1C2A3E;
-  --ui-text: #EDF2FA;
-  --ui-muted: #8DAAC8;
-  --ui-accent: #F5A623;
-  --ui-glow: rgba(245, 166, 35, 0.30);
-  --ui-card: rgba(30, 44, 65, 0.80);
-  --ui-border: rgba(245, 166, 35, 0.25);
-  --ui-nav-bg: rgba(15, 22, 38, 0.95);
-  --ui-gradient: radial-gradient(circle at 100% 0%, rgba(245, 166, 35, 0.08) 0%, transparent 40%),
-                 radial-gradient(circle at 0% 100%, rgba(245, 166, 35, 0.05) 0%, transparent 40%),
-                 #1C2A3E;
+[data-theme="inspect"],
+[data-theme="light-clean"] {
+  --ui-bg: #F0F4F9;
+  --ui-text: #202124;
+  --ui-muted: #5F6368;
+  --ui-accent: #1A73E8;
+  --ui-accent-blue: #1A73E8;
+  --ui-glow: rgba(26, 115, 232, 0.25);
+  --ui-card: rgba(255, 255, 255, 0.92);
+  --ui-card-solid: #FFFFFF;
+  --ui-border: rgba(26, 115, 232, 0.18);
+  --ui-border-subtle: rgba(0, 0, 0, 0.08);
+  --ui-nav-bg: rgba(240, 244, 249, 0.95);
+  --ui-gradient: radial-gradient(circle at 100% 0%, rgba(255, 208, 0, 0.06) 0%, transparent 40%),
+                 radial-gradient(circle at 0% 100%, rgba(26, 115, 232, 0.06) 0%, transparent 40%),
+                 #F0F4F9;
+  --electric-yellow: #D97706;
+  --electric-yellow-glow: rgba(217, 119, 6, 0.35);
+}
+
+/* ── 05 TECH CORE // ENGINEERING CONTROL CENTER (CAD/BIM Operating System) ── */
+[data-theme="tech-core"] {
+  --ui-bg: #090B0F;
+  --ui-text: #F4F7FA;
+  --ui-muted: #8E9AA6;
+  --ui-accent: #00C8FF;
+  --ui-accent-blue: #19BFFF;
+  --ui-accent-amber: #FFC400;
+  --ui-success: #19D98A;
+  --ui-warning: #FFB020;
+  --ui-danger: #FF4D5A;
+  --ui-glow: rgba(0, 200, 255, 0.22);
+  --ui-card: #12171D;
+  --ui-card-solid: #161C23;
+  --ui-card-elevated: #1B222A;
+  --ui-border: #27313A;
+  --ui-border-subtle: #1E262F;
+  --ui-border-focus: #00C8FF;
+  --ui-nav-bg: rgba(9, 11, 15, 0.96);
+  --ui-gradient: radial-gradient(circle at 10% 10%, rgba(0, 200, 255, 0.05) 0%, transparent 40%),
+                 radial-gradient(circle at 90% 90%, rgba(255, 196, 0, 0.04) 0%, transparent 40%),
+                 linear-gradient(180deg, #0D1117 0%, #090B0F 100%);
+  --electric-yellow: #FFC400;
+  --electric-yellow-glow: rgba(255, 196, 0, 0.35);
+  --blue-tech: #00C8FF;
+  --blue-tech-glow: rgba(0, 200, 255, 0.30);
+  --radius-card: 14px;
+  --radius-pill: 8px;
+}
+
+html[data-theme="tech-core"] body {
+  background-image: 
+    linear-gradient(to right, rgba(39, 49, 58, 0.18) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(39, 49, 58, 0.18) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: 0 0;
+}
+
+/* TECH CORE: High-Density Control Center Tokens & Rules */
+html[data-theme="tech-core"] .bento-card,
+html[data-theme="tech-core"] .task-card,
+html[data-theme="tech-core"] .upload-card,
+html[data-theme="tech-core"] .home-control-card {
+  background: #12171D !important;
+  border: 1px solid #27313A !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-theme="tech-core"] .bento-card:hover,
+html[data-theme="tech-core"] .task-card:hover,
+html[data-theme="tech-core"] .upload-card:hover,
+html[data-theme="tech-core"] .home-control-card:hover {
+  border-color: #00C8FF !important;
+  box-shadow: 0 8px 24px rgba(0, 200, 255, 0.15) !important;
+}
+
+html[data-theme="tech-core"] input:not([type="checkbox"]):not([type="radio"]),
+html[data-theme="tech-core"] select,
+html[data-theme="tech-core"] textarea {
+  background-color: #12171D !important;
+  border-color: #27313A !important;
+  color: #F4F7FA !important;
+  border-radius: 8px !important;
+}
+
+html[data-theme="tech-core"] select option {
+  background-color: #12171D !important;
+  color: #F4F7FA !important;
+}
+
+html[data-theme="tech-core"] input[type="checkbox"],
+html[data-theme="tech-core"] input[type="radio"] {
+  accent-color: #00C8FF;
+}
+
+html[data-theme="tech-core"] input:not([type="checkbox"]):not([type="radio"]):focus,
+html[data-theme="tech-core"] select:focus,
+html[data-theme="tech-core"] textarea:focus {
+  border-color: #00C8FF !important;
+  box-shadow: 0 0 0 2px rgba(0, 200, 255, 0.25) !important;
+}
+
+/* Functional status colors in tech-core */
+html[data-theme="tech-core"] .status-badge-open {
+  background: rgba(255, 196, 0, 0.12) !important;
+  color: #FFC400 !important;
+  border: 1px solid rgba(255, 196, 0, 0.3) !important;
+}
+
+html[data-theme="tech-core"] .status-badge-progress {
+  background: rgba(0, 200, 255, 0.12) !important;
+  color: #00C8FF !important;
+  border: 1px solid rgba(0, 200, 255, 0.3) !important;
+}
+
+html[data-theme="tech-core"] .status-badge-done {
+  background: rgba(25, 217, 138, 0.12) !important;
+  color: #19D98A !important;
+  border: 1px solid rgba(25, 217, 138, 0.3) !important;
+}
+
+html[data-theme="tech-core"] .status-badge-critical {
+  background: rgba(255, 77, 90, 0.12) !important;
+  color: #FF4D5A !important;
+  border: 1px solid rgba(255, 77, 90, 0.3) !important;
+}
+
+/* TECH CORE: Distinct Hero, Header & Navigation Visuals */
+html[data-theme="tech-core"] header {
+  background: rgba(9, 11, 15, 0.96) !important;
+  border-bottom: 1px solid #27313A !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7) !important;
+}
+
+html[data-theme="tech-core"] .bg-ui-accent {
+  background-color: #00C8FF !important;
+  color: #090B0F !important;
+}
+
+html[data-theme="tech-core"] .text-ui-accent {
+  color: #00C8FF !important;
+}
+
+html[data-theme="tech-core"] .border-ui-accent {
+  border-color: #00C8FF !important;
+}
+
+html[data-theme="tech-core"] h1 span.bg-clip-text {
+  background-image: linear-gradient(to right, #00C8FF 0%, #38BDF8 50%, #FFFFFF 100%) !important;
+}
+
+html[data-theme="tech-core"] a[href="/plans"].bg-gradient-to-r {
+  background-image: linear-gradient(135deg, #00C8FF 0%, #19BFFF 50%, #0099FF 100%) !important;
+  color: #090B0F !important;
+  box-shadow: 0 8px 25px rgba(0, 200, 255, 0.4) !important;
+}
+
+html[data-theme="tech-core"] a[href="/plans"].bg-gradient-to-r svg {
+  stroke: #090B0F !important;
+}
+
+html[data-theme="tech-core"] a[href="/cables"].border-white\/15 {
+  border-color: #27313A !important;
+}
+
+html[data-theme="tech-core"] a[href="/cables"]:hover {
+  border-color: #00C8FF !important;
+  color: #00C8FF !important;
+}
+
+/* Dynamic animated pulse for lightning brand */
+@keyframes electric-pulse-anim {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(255, 208, 0, 0.6)) brightness(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(255, 208, 0, 0.95)) brightness(1.25);
+  }
+}
+
+.animate-electric-pulse {
+  animation: electric-pulse-anim 3s ease-in-out infinite;
+}
+
+/* Anti-Gravity 3D Base Styles */
+.ag-perspective-container {
+  perspective: 1200px;
+}
+
+.ag-3d-card {
+  transform-style: preserve-3d;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+  position: relative;
+  will-change: transform;
+}
+
+.ag-layer-bg,
+.ag-layer-decor,
+.ag-layer-content,
+.ag-layer-badge,
+.ag-layer-icon,
+.ag-layer-btn {
+  transform: none;
+}
+
+.card-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 5;
+}
+
+/* Bento Grid System */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .bento-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .bento-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.bento-card {
+  border-radius: var(--radius-card, 32px);
+  background: var(--ui-card);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--ui-border);
+  padding: 28px;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bento-card:hover {
+  border-color: var(--ui-accent);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 0 25px -5px var(--ui-glow);
+}
+
+/* Accessibility: respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ag-3d-card,
+  .animate-electric-pulse {
+    animation: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* STRICT ISOLATION GUARD: Leaflet internals & PDF print engine MUST NEVER be overridden */
+.leaflet-container {
+  font-family: inherit !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
 }
 
 /* Dynamic animated background for themes */
@@ -78,7 +361,7 @@
 html {
   background: var(--ui-gradient, var(--ui-bg));
   background-attachment: fixed;
-  color: var(--ui-text, #0f172a);
+  color: var(--ui-text, #F8F9FA);
   min-height: 100vh;
 }
 
@@ -155,28 +438,19 @@ html[data-theme="inspect"] {
 }
 
 a {
-  color: var(--accent);
+  color: inherit;
   text-decoration: none;
-  font-weight: 600;
-  border-radius: 8px;
-  padding: 0.1em 0.3em;
-  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  transition: opacity 0.18s ease, color 0.18s ease;
 }
 
 a:hover,
 a:focus {
-  background: linear-gradient(135deg, #2F6BFF 0%, #5A8BFF 100%);
-  color: #fff;
-  box-shadow: var(--shadow-accent);
   outline: none;
 }
 
 a.task-card:hover,
 a.task-card:focus {
-  background: var(--ui-bg);
   color: var(--home-ink);
-  box-shadow: 0 25px 45px -10px rgba(0, 0, 0, 0.15);
-  border-color: var(--ui-bg);
   outline: none;
 }
 
@@ -1098,6 +1372,49 @@ a.task-card:focus {
   box-shadow: 0 25px 45px rgba(13, 24, 51, 0.3);
 }
 
+/* ── Smart Zoom-Adaptive Marker Scaling for Leaflet Plan View ── */
+.map-zoom-low .task-marker--map {
+  transform: scale(0.35);
+  transform-origin: 50% 100%;
+  opacity: 0.85;
+}
+
+.map-zoom-mid .task-marker--map {
+  transform: scale(0.65);
+  transform-origin: 50% 100%;
+  opacity: 0.95;
+}
+
+.map-zoom-low .task-marker--premium,
+.map-zoom-low .premium-marker-wrapper {
+  transform: scale(0.35);
+  transform-origin: 50% 50%;
+  opacity: 0.85;
+}
+
+.map-zoom-mid .task-marker--premium,
+.map-zoom-mid .premium-marker-wrapper {
+  transform: scale(0.65);
+  transform-origin: 50% 50%;
+  opacity: 0.95;
+}
+
+.task-marker--map,
+.task-marker--premium,
+.premium-marker-wrapper,
+.bma-symbol-marker,
+.photo-pin-marker {
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.task-marker--map,
+.task-marker--premium,
+.premium-marker-wrapper,
+.bma-symbol-marker,
+.photo-pin-marker {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+}
+
 .task-card__footer {
   grid-area: footer;
   display: flex;
@@ -1859,4 +2176,26 @@ a.task-card:focus {
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 .qr-print-only { display: none; }
+
+/* ============================================================
+   PLAN MEASUREMENT MODULE – globalne style dla etykiet Leaflet
+   Leaflet Tooltip renderuje poza drzewem React, wymaga global CSS
+   ============================================================ */
+
+.leaflet-tooltip.measure-label {
+  background: rgba(15, 23, 42, 0.92) !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  padding: 3px 8px !important;
+  border-radius: 5px !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  white-space: nowrap !important;
+  font-family: inherit !important;
+}
+
+.leaflet-tooltip.measure-label::before {
+  display: none !important;
+}
 

@@ -21,7 +21,7 @@ export default function AufmassClient() {
   const [plans, setPlans] = useState<any[]>([]);
   const [newProjectId, setNewProjectId] = useState("");
   const [newPlanId, setNewPlanId] = useState("");
-  const [newType, setNewType] = useState<"aufmass" | "zusatz">("aufmass");
+  const [newType, setNewType] = useState<"aufmass" | "zusatz" | "baubehinderung" | "bestellung" | "fragen">("aufmass");
   const [newName, setNewName] = useState("");
   const [newClientName, setNewClientName] = useState("");
   const [newClientPhone, setNewClientPhone] = useState("");
@@ -106,21 +106,21 @@ export default function AufmassClient() {
       const annotatedPhotos = await Promise.all((photos || []).map(async (photo, index) => {
         let base64Image = "";
         try {
+          // Fetch original image as base64 first to avoid Canvas CORS tainting
+          const res = await fetch(getApiUrl(photo.url));
+          const blob = await res.blob();
+          const origBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+          base64Image = origBase64; // Fallback to original if rendering fails
+
           const versions = await apiGet<any[]>(`/api/aufmass/versions?sessionId=${session.id}&photoId=${photo.id}`);
           const latestShapes = versions && versions.length > 0 ? versions[0].data : [];
-          base64Image = await renderAnnotatedImage(getApiUrl(photo.url), latestShapes || []);
+          base64Image = await renderAnnotatedImage(origBase64, latestShapes || [], photo.created_at);
         } catch(e) {
           console.error("Failed to render annotated photo for PDF", e);
-          // Fallback to original
-          try {
-            const res = await fetch(getApiUrl(photo.url));
-            const blob = await res.blob();
-            base64Image = await new Promise((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(blob);
-            });
-          } catch (err) {}
         }
         return {
           id: photo.id,
@@ -169,7 +169,11 @@ export default function AufmassClient() {
           planHeight={planHeight}
           projectName={session.projects?.name || session.project_id || "Project"}
           translations={{
-            planLocation: planLocationText
+            planLocation: planLocationText,
+            questionLabel: t("aufmass", "questionLabel", "Question"),
+            answerLabel: t("aufmass", "answerLabel", "Answer"),
+            descriptionTab: t("aufmass", "descriptionTab", "Description"),
+            owner: t("footer", "owner", "Inhaber: Marcin Slapinski"),
           }}
           markers={markers || []}
         />
@@ -181,7 +185,7 @@ export default function AufmassClient() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const defaultName = `${session.session_type === 'zusatz' ? 'Zusatz' : 'Aufmass'}_${session.name.replace(/[^a-zA-Z0-9]/g, "_")}`;
+      const defaultName = `${session.session_type === 'zusatz' ? 'Zusatz' : session.session_type === 'baubehinderung' ? 'Baubehinderung' : session.session_type === 'bestellung' ? 'Bestellung' : session.session_type === 'fragen' ? 'Fragen' : 'Aufmass'}_${session.name.replace(/[^a-zA-Z0-9]/g, "_")}`;
       const enterFilenameDict = {
         pl: "Wprowadź nazwę pliku dla PDF:",
         de: "Geben Sie den Dateinamen für das PDF ein:",
@@ -273,7 +277,7 @@ export default function AufmassClient() {
                 {session.description || t("aufmass", "noDescription", "No description provided.")}
               </p>
               <div className="text-[10px] font-bold text-ui-accent uppercase tracking-widest">
-                {t("aufmass", "type", "Type")}: {session.session_type === 'zusatz' ? t("aufmass", "zusatz", "Zusatzplanung") : t("aufmass", "aufmass", "Aufmaß")}
+                {t("aufmass", "type", "Type")}: {session.session_type === 'zusatz' ? t("aufmass", "zusatz", "Zusatzplanung") : session.session_type === 'baubehinderung' ? t("aufmass", "baubehinderung", "Baubehinderung") : session.session_type === 'bestellung' ? t("aufmass", "bestellung", "Bestellung") : session.session_type === 'fragen' ? t("aufmass", "fragen", "Fragen") : t("aufmass", "aufmass", "Aufmaß")}
               </div>
 
               <div className="flex gap-3 mt-2 pt-4 border-t border-ui-border/50">
@@ -380,6 +384,9 @@ export default function AufmassClient() {
                 >
                   <option value="aufmass">{t("aufmass", "aufmass", "Aufmaß")}</option>
                   <option value="zusatz">{t("aufmass", "zusatz", "Zusatzplanung")}</option>
+                  <option value="baubehinderung">{t("aufmass", "baubehinderung", "Baubehinderung")}</option>
+                  <option value="bestellung">{t("aufmass", "bestellung", "Bestellung")}</option>
+                  <option value="fragen">{t("aufmass", "fragen", "Fragen")}</option>
                 </select>
               </div>
 

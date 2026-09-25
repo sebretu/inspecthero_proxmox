@@ -15,9 +15,10 @@ interface AufmassEditorProps {
   projectId: string;
   onClose: () => void;
   existingSessionId?: string;
+  sessionType?: string;
 }
 
-export default function AufmassEditor({ photoUrl, taskId, photoId, projectId, onClose, existingSessionId }: AufmassEditorProps) {
+export default function AufmassEditor({ photoUrl, taskId, photoId, projectId, onClose, existingSessionId, sessionType }: AufmassEditorProps) {
   const { showNotification } = useNotification();
   const { t } = useLanguage();
 
@@ -31,6 +32,7 @@ export default function AufmassEditor({ photoUrl, taskId, photoId, projectId, on
   const [historyStep, setHistoryStep] = useState(0);
 
   const [sessionId, setSessionId] = useState<string | null>(existingSessionId || null);
+  const [currentSessionType, setCurrentSessionType] = useState<string | undefined>(sessionType);
   
   // Save System Hardening
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'offline' | 'failed' | 'unsaved'>('saved');
@@ -133,6 +135,9 @@ export default function AufmassEditor({ photoUrl, taskId, photoId, projectId, on
                const sess = Array.isArray(sessionData) ? sessionData.find((s: any) => s.id === sessionId) : null;
                if (sess) {
                  setDescription(sess.description || '');
+                 if (sess.session_type) {
+                   setCurrentSessionType(sess.session_type);
+                 }
                }
             }
          } catch (e) {
@@ -362,6 +367,7 @@ export default function AufmassEditor({ photoUrl, taskId, photoId, projectId, on
                sessionId={sessionId} 
                photoId={photoId}
                description={description}
+               sessionType={currentSessionType}
                onChangeDescription={(val: string) => {
                  setDescription(val);
                  setSaveStatus('unsaved');

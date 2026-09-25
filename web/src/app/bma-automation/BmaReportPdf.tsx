@@ -79,17 +79,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#1e293b",
   },
-  mapSection: {
-    marginTop: 30,
-    alignItems: "center",
-  },
-  mapImage: {
-    width: "100%",
-    maxWidth: 500,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
   footer: {
     position: "absolute",
     bottom: 30,
@@ -130,26 +119,33 @@ export default function BmaReportPdf({ projectName, devices, connections, routes
         <Text style={styles.sectionTitle}>{translations.devices || "Devices"}</Text>
         <View style={styles.table}>
           <View style={styles.tableRow}>
-            <View style={[styles.tableColHeader, { width: "40%" }]}>
-              <Text style={styles.tableCellHeader}>{translations.deviceName || "Name"}</Text>
+            <View style={[styles.tableColHeader, { width: "50%" }]}>
+              <Text style={styles.tableCellHeader}>Gerätename (Marker Nr.)</Text>
             </View>
-            <View style={[styles.tableColHeader, { width: "30%" }]}>
-              <Text style={styles.tableCellHeader}>{translations.deviceType || "Type"}</Text>
-            </View>
-            <View style={[styles.tableColHeader, { width: "30%" }]}>
-              <Text style={styles.tableCellHeader}>Position (X, Y)</Text>
+            <View style={[styles.tableColHeader, { width: "50%" }]}>
+              <Text style={styles.tableCellHeader}>Seriennummer (Serial Number)</Text>
             </View>
           </View>
           {devices.map((dev, i) => (
-            <View key={i} style={styles.tableRow}>
-              <View style={[styles.tableCol, { width: "40%" }]}>
+            <View key={i} style={styles.tableRow} wrap={false}>
+              <View style={[styles.tableCol, { width: "50%", flexDirection: "row", alignItems: "center", paddingLeft: 5 }]}>
+                <View style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  backgroundColor: "#ef4444",
+                  borderWidth: 1,
+                  borderColor: "#ffffff",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 6,
+                }}>
+                  <Text style={{ fontSize: 7, color: "#ffffff", fontWeight: "bold" }}>{dev.name}</Text>
+                </View>
                 <Text style={styles.tableCell}>{dev.name}</Text>
               </View>
-              <View style={[styles.tableCol, { width: "30%" }]}>
-                <Text style={styles.tableCell}>{dev.type}</Text>
-              </View>
-              <View style={[styles.tableCol, { width: "30%" }]}>
-                <Text style={styles.tableCell}>{dev.x.toFixed(2)}, {dev.y.toFixed(2)}</Text>
+              <View style={[styles.tableCol, { width: "50%", justifyContent: "center" }]}>
+                <Text style={styles.tableCell}>{dev.metadata?.serial_number || "N/A"}</Text>
               </View>
             </View>
           ))}
@@ -173,14 +169,44 @@ export default function BmaReportPdf({ projectName, devices, connections, routes
             const target = devices.find(d => d.id === route.target_device_id);
             const conn = connections.find(c => c.id === route.connection_id);
             return (
-              <View key={i} style={styles.tableRow}>
-                <View style={[styles.tableCol, { width: "30%" }]}>
+              <View key={i} style={styles.tableRow} wrap={false}>
+                <View style={[styles.tableCol, { width: "30%", justifyContent: "center" }]}>
                   <Text style={styles.tableCell}>{conn?.name || "N/A"}</Text>
                 </View>
-                <View style={[styles.tableCol, { width: "35%" }]}>
+                <View style={[styles.tableCol, { width: "35%", flexDirection: "row", alignItems: "center", paddingLeft: 5 }]}>
+                  {source && (
+                    <View style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: 7,
+                      backgroundColor: "#ef4444",
+                      borderWidth: 1,
+                      borderColor: "#ffffff",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: 5,
+                    }}>
+                      <Text style={{ fontSize: 6, color: "#ffffff", fontWeight: "bold" }}>{source.name}</Text>
+                    </View>
+                  )}
                   <Text style={styles.tableCell}>{source?.name || "N/A"}</Text>
                 </View>
-                <View style={[styles.tableCol, { width: "35%" }]}>
+                <View style={[styles.tableCol, { width: "35%", flexDirection: "row", alignItems: "center", paddingLeft: 5 }]}>
+                  {target && (
+                    <View style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: 7,
+                      backgroundColor: "#ef4444",
+                      borderWidth: 1,
+                      borderColor: "#ffffff",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: 5,
+                    }}>
+                      <Text style={{ fontSize: 6, color: "#ffffff", fontWeight: "bold" }}>{target.name}</Text>
+                    </View>
+                  )}
                   <Text style={styles.tableCell}>{target?.name || "N/A"}</Text>
                 </View>
               </View>
@@ -189,7 +215,8 @@ export default function BmaReportPdf({ projectName, devices, connections, routes
         </View>
 
         <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>InspectHero BMA Automation Report</Text>
+          <Text style={styles.footerText}>et4u.de – BMA Automation Report</Text>
+          <Text style={[styles.footerText, { color: "#94a3b8" }]}>{translations?.owner || "Owner: Marcin Slapinski"}</Text>
           <Text style={styles.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} / ${totalPages}`} />
         </View>
       </Page>

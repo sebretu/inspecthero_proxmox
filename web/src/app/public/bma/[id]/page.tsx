@@ -87,7 +87,7 @@ export default function PublicBmaPlanPage({ params }: { params: Promise<{ id: st
             <div>
                 <h1 className="text-lg font-black text-white uppercase tracking-tight leading-none">{planName}</h1>
                 <div className="flex items-center gap-3 mt-1">
-                   <p className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Public Browser Mode • InspectHero</p>
+                   <p className="text-[9px] font-bold text-blue-500 uppercase tracking-widest">Public Browser Mode • ET⚡U.DE</p>
                    <span className="w-1 h-1 rounded-full bg-slate-700"></span>
                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
                       {devices.length} Units • {routes.length} Paths
@@ -119,7 +119,7 @@ export default function PublicBmaPlanPage({ params }: { params: Promise<{ id: st
       {/* Footer Instructions */}
       <div className="p-4 bg-black/60 backdrop-blur-md border-t border-white/5 text-center">
          <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em]">
-            Interactive Infrastructure Map • Powered by InspectHero Automation Engine
+            Interactive Infrastructure Map • Powered by ET⚡U.DE Automation Engine
          </p>
       </div>
     </div>

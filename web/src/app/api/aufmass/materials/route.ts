@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       article_number,
       item_name,
       quantity: quantity || 1,
-      unit: unit || 'pcs',
+      unit: unit || 'st.',
       price,
       notes
     }]).select().single();

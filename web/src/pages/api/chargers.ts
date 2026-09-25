@@ -95,6 +95,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const plan_id = String(body?.plan_id || "").trim();
     const mac = String(body?.mac || "").trim();
     const pin = String(body?.pin || "").trim();
+    const service_pin = body?.service_pin ? String(body.service_pin).trim() : null;
+    const activation_pin = body?.activation_pin ? String(body.activation_pin).trim() : null;
     const qr_text = String(body?.qr_text || "").trim();
     const photo_url = body?.photo_url ? String(body.photo_url).trim() : null;
 
@@ -119,6 +121,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       y_norm,
       mac,
       pin,
+      service_pin,
+      activation_pin,
       qr_text,
       photo_url,
       created_by: userId,
@@ -151,6 +155,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (body.photo_url !== undefined) patch.photo_url = body.photo_url ? String(body.photo_url).trim() : null;
     if (body.mac !== undefined) patch.mac = String(body.mac).trim();
     if (body.pin !== undefined) patch.pin = String(body.pin).trim();
+    if (body.service_pin !== undefined) patch.service_pin = body.service_pin ? String(body.service_pin).trim() : null;
+    if (body.activation_pin !== undefined) patch.activation_pin = body.activation_pin ? String(body.activation_pin).trim() : null;
     if (body.qr_text !== undefined) patch.qr_text = String(body.qr_text).trim();
     if (body.x_norm !== undefined) patch.x_norm = Number(body.x_norm);
     if (body.y_norm !== undefined) patch.y_norm = Number(body.y_norm);

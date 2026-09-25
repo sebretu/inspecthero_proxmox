@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import AdminMaterialsClient from "./AdminMaterialsClient";
 
 export const metadata: Metadata = {
-    title: "Zarządzanie Materiałami - InspectHero",
+    title: "Zarządzanie Materiałami - ET⚡U.DE",
     description: "Zarządzanie bazą materiałów",
 };
 

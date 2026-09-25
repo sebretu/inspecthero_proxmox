@@ -1033,6 +1033,7 @@ export const MeasurementProtocolPdf: React.FC<MeasurementProtocolPdfProps> = ({
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: "#000000", paddingTop: 4, marginTop: 6 }}>
             <Checkbox checked={true} label="Anlagen" />
             <Text style={{ fontWeight: "bold", fontSize: 7 }}>Prüfprotokoll - Blatt 1</Text>
+            <Text style={{ fontSize: 6, color: "#64748b" }}>Inhaber: Marcin Slapinski</Text>
             <Text style={{ fontSize: 7 }}>Seite 1 / {totalPages}</Text>
           </View>
         </View>
@@ -1183,6 +1184,7 @@ export const MeasurementProtocolPdf: React.FC<MeasurementProtocolPdfProps> = ({
 
           <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 0.5, borderTopColor: "#000000", paddingTop: 3, marginTop: 4 }}>
             <Text style={{ fontSize: 6, fontWeight: "bold" }}>Prüfprotokoll - Messwerte</Text>
+            <Text style={{ fontSize: 6, color: "#64748b" }}>Inhaber: Marcin Slapinski</Text>
             <Text style={{ fontSize: 6 }}>Seite 2 / {totalPages}</Text>
           </View>
         </View>
@@ -1322,6 +1324,7 @@ export const MeasurementProtocolPdf: React.FC<MeasurementProtocolPdfProps> = ({
 
               <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 0.5, borderTopColor: "#000000", paddingTop: 3, marginTop: 4 }}>
                 <Text style={{ fontSize: 6, fontWeight: "bold" }}>Prüfprotokoll - Messwerte</Text>
+                <Text style={{ fontSize: 6, color: "#64748b" }}>Inhaber: Marcin Slapinski</Text>
                 <Text style={{ fontSize: 6 }}>Seite {pageIndex + 3} / {totalPages}</Text>
               </View>
             </View>

@@ -8,11 +8,22 @@ interface AufmassPanelProps {
   photoId?: string;
   description: string;
   onChangeDescription: (val: string) => void;
+  sessionType?: string;
 }
 
-export default function AufmassPanel({ sessionId, photoId, description, onChangeDescription }: AufmassPanelProps) {
+export default function AufmassPanel({ sessionId, photoId, description, onChangeDescription, sessionType }: AufmassPanelProps) {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'desc' | 'materials' | 'labor'>('desc');
+  const [activeTab, setActiveTab] = useState<'desc' | 'materials' | 'labor'>(
+    (sessionType === 'zusatz' && !photoId) ? 'materials' : 'desc'
+  );
+
+  useEffect(() => {
+    if (sessionType === 'baubehinderung' || sessionType === 'bestellung' || sessionType === 'fragen') {
+      setActiveTab('desc');
+    } else if (sessionType === 'zusatz' && !photoId) {
+      setActiveTab('materials');
+    }
+  }, [sessionType, photoId]);
   
   // States
   // description is now a prop
@@ -79,7 +90,7 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
         photo_id: photoId || null,
         item_name: 'New Material',
         quantity: 1,
-        unit: 'pcs'
+        unit: 'st.'
       });
       setMaterials([...materials, newMat]);
       setSessionMaterialsList(prev => [...prev, newMat]);
@@ -106,7 +117,7 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
     if (matchedMaster) {
       handleUpdateMaterial(id, {
         item_name: name,
-        unit: matchedMaster.unit || 'pcs',
+        unit: matchedMaster.unit || 'st.',
         price: matchedMaster.price ? parseFloat(matchedMaster.price) : null
       });
       return;
@@ -119,7 +130,7 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
     if (matchedSession) {
       handleUpdateMaterial(id, {
         item_name: name,
-        unit: matchedSession.unit || 'pcs',
+        unit: matchedSession.unit || 'st.',
         price: matchedSession.price ? parseFloat(matchedSession.price) : null
       });
       return;
@@ -182,35 +193,39 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
           <FileText className="w-4 h-4" />
           {t("aufmass", "descriptionTab", "Description")}
         </button>
-        <button
-          onClick={() => setActiveTab('materials')}
-          className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest flex flex-col items-center gap-2 transition-all ${
-            activeTab === 'materials' ? 'bg-emerald-600/20 text-emerald-400 border-b-2 border-emerald-500' : 'text-slate-500 hover:bg-white/5'
-          }`}
-        >
-          <Package className="w-4 h-4" />
-          {t("aufmass", "materialsTab", "Materials")}
-        </button>
-        <button
-          onClick={() => setActiveTab('labor')}
-          className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest flex flex-col items-center gap-2 transition-all ${
-            activeTab === 'labor' ? 'bg-purple-600/20 text-purple-400 border-b-2 border-purple-500' : 'text-slate-500 hover:bg-white/5'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          {t("aufmass", "laborTab", "Labor")}
-        </button>
+        {sessionType !== 'baubehinderung' && sessionType !== 'bestellung' && sessionType !== 'fragen' && (
+          <>
+            <button
+              onClick={() => setActiveTab('materials')}
+              className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest flex flex-col items-center gap-2 transition-all ${
+                activeTab === 'materials' ? 'bg-emerald-600/20 text-emerald-400 border-b-2 border-emerald-500' : 'text-slate-500 hover:bg-white/5'
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              {t("aufmass", "materialsTab", "Materials")}
+            </button>
+            <button
+              onClick={() => setActiveTab('labor')}
+              className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest flex flex-col items-center gap-2 transition-all ${
+                activeTab === 'labor' ? 'bg-purple-600/20 text-purple-400 border-b-2 border-purple-500' : 'text-slate-500 hover:bg-white/5'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              {t("aufmass", "laborTab", "Labor")}
+            </button>
+          </>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
         {activeTab === 'desc' && (
           <div className="space-y-4 h-full flex flex-col">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-              {t("aufmass", "workDescription", "Work Description")}
+              {sessionType === 'baubehinderung' ? t("aufmass", "baubehinderungDesc", "Baubehinderung beschreibung") : sessionType === 'bestellung' ? t("aufmass", "bestellungDesc", "Bestellung description") : sessionType === 'fragen' ? t("aufmass", "fragenDesc", "Questions and feedback") : t("aufmass", "workDescription", "Work Description")}
             </label>
             <textarea
               className="w-full flex-1 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-slate-300 resize-none outline-none focus:border-blue-500/50 transition-all"
-              placeholder={t("aufmass", "describeWorkPlaceholder", "Describe the work done...")}
+              placeholder={sessionType === 'baubehinderung' ? t("aufmass", "baubehinderungPlaceholder", "Describe the construction obstruction...") : sessionType === 'bestellung' ? t("aufmass", "bestellungPlaceholder", "Describe the order details...") : sessionType === 'fragen' ? t("aufmass", "fragenPlaceholder", "Enter your question here...") : t("aufmass", "describeWorkPlaceholder", "Describe the work done...")}
               value={description}
               onChange={(e) => onChangeDescription(e.target.value)}
             />

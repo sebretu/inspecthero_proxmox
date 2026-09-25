@@ -230,7 +230,7 @@ export function CableRouteSingleMap({ planId, token, pinA, pinB, setPinA, setPin
       <MC crs={CRS} bounds={mapBounds} center={mapBounds.getCenter()} zoom={0}
         minZoom={meta.minZoom} maxZoom={meta.maxZoom}
         style={{ height: "100%", width: "100%", background: "#111", cursor: "crosshair" }}>
-        {token && <TileLayer url={`/api/tiles/${planId}/{z}/{x}/{y}.png?token=${token}`} />}
+        {token && <TileLayer url={`/api/tiles/${planId}/{z}/{x}/{y}.png?token=${token}&v=${meta?.activeVersionId || ''}`} />}
         <ClickHandler
           meta={meta} picking={picking} onPin={handlePin}
           pinA={pinA} pinB={pinB}

@@ -63,3 +63,43 @@ export async function sendApprovalRequest(cableId: string, cableName: string, pr
 
   return await sendTelegramMessage(text, replyMarkup);
 }
+
+export async function sendStromkreisApprovalRequest(markerId: string, subCable: string, projectName: string, planName: string, userName: string) {
+  const text = `🔌 <b>Wykonanie kabla w Stromkreise</b>\n\n` +
+    `📦 <b>Kabel:</b> ${subCable}\n` +
+    `🏢 <b>Projekt:</b> ${projectName}\n` +
+    `📄 <b>Plan:</b> ${planName}\n` +
+    `👤 <b>Zgłosił:</b> ${userName}\n\n` +
+    `Kliknij poniżej, aby zatwierdzić wykonanie:`;
+
+  const replyMarkup = {
+    inline_keyboard: [
+      [
+        { text: "✅ Zatwierdź", callback_data: `sk_approve:${markerId}:${subCable}` },
+        { text: "❌ Odrzuć", callback_data: `sk_reject:${markerId}:${subCable}` }
+      ]
+    ]
+  };
+
+  return await sendTelegramMessage(text, replyMarkup);
+}
+
+export async function sendBmaCableApprovalRequest(connectionId: string, cableName: string, projectName: string, planName: string, userName: string) {
+  const text = `🔌 <b>Wykonanie kabla na planie</b>\n\n` +
+    `📦 <b>Kabel:</b> ${cableName}\n` +
+    `🏢 <b>Projekt:</b> ${projectName}\n` +
+    `📄 <b>Plan:</b> ${planName}\n` +
+    `👤 <b>Zgłosił:</b> ${userName}\n\n` +
+    `Kliknij poniżej, aby zatwierdzić wykonanie:`;
+
+  const replyMarkup = {
+    inline_keyboard: [
+      [
+        { text: "✅ Zatwierdź", callback_data: `bma_cable_approve:${connectionId}` },
+        { text: "❌ Odrzuć", callback_data: `bma_cable_reject:${connectionId}` }
+      ]
+    ]
+  };
+
+  return await sendTelegramMessage(text, replyMarkup);
+}

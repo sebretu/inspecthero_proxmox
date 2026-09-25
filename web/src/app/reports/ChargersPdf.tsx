@@ -100,7 +100,8 @@ const styles = StyleSheet.create({
   photoImage: {
     width: 150,
     height: 150,
-    objectFit: "cover",
+    objectFit: "contain",
+    backgroundColor: "#f8fafc",
     borderRadius: 8,
   },
   qrImage: {
@@ -133,6 +134,8 @@ interface ChargerData {
   project_id: string;
   mac: string;
   pin: string;
+  service_pin?: string;
+  activation_pin?: string;
   qr_text: string;
   x_norm: number;
   y_norm: number;
@@ -146,18 +149,20 @@ interface ChargersPdfProps {
   chargers: ChargerData[];
   plansMap: Record<string, any>; // full plan objects
   projectName?: string;
+  includePin?: boolean;
   translations: {
     project: string;
     generatedOn: string;
     missingMap: string;
     missingPhoto: string;
+    owner?: string;
   };
 }
 
 // Ensure the marker URL is valid and absolute if using web urls, but for reliability in react-pdf it's better to pass as base64 or a known public URL
-const MARKER_URL = "https://inspecthero.pl/pin-icon.png"; 
+const MARKER_URL = "https://et4u.de/pin-icon.png"; 
 
-export function ChargersPdf({ chargers, plansMap, projectName, translations }: ChargersPdfProps) {
+export function ChargersPdf({ chargers, plansMap, projectName, translations, includePin = true }: ChargersPdfProps) {
   const sortedChargers = [...chargers].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
@@ -252,7 +257,7 @@ export function ChargersPdf({ chargers, plansMap, projectName, translations }: C
               </View>
 
               <Text style={{ position: "absolute", bottom: 20, left: 20, fontSize: 10, color: "#9ca3af" }}>
-                 {translations.generatedOn} InspectHero
+                 {translations.generatedOn} et4u.de
               </Text>
               <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => (`${pageNumber} / ${totalPages}`)} fixed />
             </Page>
@@ -261,7 +266,7 @@ export function ChargersPdf({ chargers, plansMap, projectName, translations }: C
               <Page key={`details-${charger.id}`} size="A4" orientation="landscape" style={styles.page}>
                 <View style={styles.header}>
                   <Text style={styles.title}>LADEGERÄTE INSTALLATION</Text>
-                  <Image src="https://inspecthero.pl/logo_bma.png" style={styles.logo} />
+                  <Image src="https://et4u.de/logo_bma.png" style={styles.logo} />
                 </View>
                 <View style={styles.content}>
                   <View style={styles.infoSection}>
@@ -282,10 +287,24 @@ export function ChargersPdf({ chargers, plansMap, projectName, translations }: C
                         <Text style={styles.detailLabel}>MAC</Text>
                         <Text style={styles.detailValue}>{charger.mac}</Text>
                       </View>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>PIN</Text>
-                        <Text style={styles.detailValue}>{charger.pin}</Text>
-                      </View>
+                      {includePin && (
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>PIN</Text>
+                          <Text style={styles.detailValue}>{charger.pin}</Text>
+                        </View>
+                      )}
+                      {charger.service_pin ? (
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Service PIN</Text>
+                          <Text style={styles.detailValue}>{charger.service_pin}</Text>
+                        </View>
+                      ) : null}
+                      {charger.activation_pin ? (
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Aktivierungs PIN</Text>
+                          <Text style={styles.detailValue}>{charger.activation_pin}</Text>
+                        </View>
+                      ) : null}
                       <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Date</Text>
                         <Text style={styles.detailValue}>{formatDate(charger.created_at)}</Text>
@@ -305,7 +324,7 @@ export function ChargersPdf({ chargers, plansMap, projectName, translations }: C
                   </View>
                 </View>
                 <Text style={styles.footer}>
-                   {translations.generatedOn} InspectHero
+                   {translations.generatedOn} et4u.de{"\n"}{translations.owner || "Inhaber: Marcin Slapinski"}
                 </Text>
                 <Text style={styles.pageNumber} render={({ pageNumber, totalPages }) => (`${pageNumber} / ${totalPages}`)} fixed />
               </Page>

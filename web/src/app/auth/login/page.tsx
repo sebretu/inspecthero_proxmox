@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { Et4uLogo } from "@/components/Et4uLogo";
+import { useAntiGravity3D } from "@/lib/antiGravity3d";
+import { Lock, Mail, Eye, EyeOff, ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +18,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const cardRef = useAntiGravity3D<HTMLDivElement>({ maxRotation: 4, enableShine: true });
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -49,159 +52,104 @@ export default function LoginPage() {
   return (
     <>
       <PWAInstallBanner />
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          fontFamily: "system-ui, -apple-system, sans-serif",
-        }}
-      >
+      <div className="min-h-screen w-full flex items-center justify-center p-4 bg-[#101114] relative overflow-hidden font-sans select-none ag-perspective-container">
+        {/* Ambient background glows */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#FFD000]/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#1A73E8]/10 rounded-full blur-[120px] pointer-events-none" />
+
         <div
-          style={{
-            background: "white",
-            padding: "40px",
-            borderRadius: "12px",
-            boxShadow: "0 10px 40px rgba(0, 0, 0, 0.3)",
-            width: "100%",
-            maxWidth: "400px",
-          }}
+          ref={cardRef}
+          className="ag-3d-card w-full max-w-md bg-[#1B1D21]/90 backdrop-blur-2xl border border-[#FFD000]/20 rounded-[36px] p-8 md:p-10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] relative z-10"
         >
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "20px" }}>
+          <div className="card-shine" />
+
+          {/* Top Bar with Language Selector */}
+          <div className="ag-layer-decor flex items-center justify-between mb-8">
+            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-ui-muted/70 bg-white/5 px-3 py-1 rounded-full border border-white/5">
+              Portal Access
+            </span>
             <LanguageSwitcher />
           </div>
 
-          <div style={{ textAlign: "center", marginBottom: "20px" }}>
-            <Image
-              src="/inspecthero-logo.png"
-              alt="InspectHero logo"
-              width={160}
-              height={120}
-              priority
-              style={{ display: "inline-block", marginBottom: "16px", maxWidth: "100%", height: "auto" }}
-            />
+          {/* Brand Logo & Headline */}
+          <div className="ag-layer-content text-center mb-8 flex flex-col items-center">
+            <Et4uLogo size="lg" animated className="mb-4" />
+            <p className="text-ui-muted text-xs font-medium tracking-wide">
+              {t("auth", "subtitle", "Digitale Plattform für Elektrotechnik")}
+            </p>
           </div>
 
           {error && (
-            <div
-              style={{
-                background: "#fee2e2",
-                border: "1px solid #fca5a5",
-                color: "#c92a2a",
-                padding: "12px",
-                borderRadius: "6px",
-                marginBottom: "20px",
-                fontSize: "14px",
-              }}
-            >
-              ⚠️ {error}
+            <div className="ag-layer-badge mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2.5 shadow-sm">
+              <span>⚠️</span>
+              <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleLogin}>
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  color: "#333",
-                  fontSize: "14px",
-                }}
-              >
-                {t("auth", "demoEmail")}
+          <form onSubmit={handleLogin} className="space-y-5">
+            {/* Email Field */}
+            <div className="ag-layer-content space-y-2">
+              <label className="block text-xs font-bold text-ui-muted uppercase tracking-wider">
+                {t("auth", "demoEmail", "E-Mail-Adresse")}
               </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  border: "1px solid #ddd",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
-                  background: loading ? "#f5f5f5" : "white",
-                  color: "#333",
-                }}
-                required
-              />
+              <div className="relative flex items-center">
+                <Mail className="absolute left-4 w-4 h-4 text-ui-muted pointer-events-none" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  placeholder="name@et4u.de"
+                  className="w-full bg-[#101114] border border-white/10 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-white placeholder:text-ui-muted/30 focus:outline-none focus:border-[#FFD000] transition-colors"
+                  required
+                />
+              </div>
             </div>
 
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  color: "#333",
-                  fontSize: "14px",
-                }}
-              >
-                {t("auth", "demoPassword")}
+            {/* Password Field */}
+            <div className="ag-layer-content space-y-2">
+              <label className="block text-xs font-bold text-ui-muted uppercase tracking-wider">
+                {t("auth", "demoPassword", "Passwort")}
               </label>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+              <div className="relative flex items-center">
+                <Lock className="absolute left-4 w-4 h-4 text-ui-muted pointer-events-none" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    paddingRight: "40px",
-                    border: "1px solid #ddd",
-                    borderRadius: "6px",
-                    fontSize: "14px",
-                    boxSizing: "border-box",
-                    background: loading ? "#f5f5f5" : "white",
-                    color: "#333",
-                  }}
+                  placeholder="••••••••"
+                  className="w-full bg-[#101114] border border-white/10 rounded-2xl pl-11 pr-12 py-3.5 text-sm text-white placeholder:text-ui-muted/30 focus:outline-none focus:border-[#FFD000] transition-colors"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={loading}
-                  style={{
-                    position: "absolute",
-                    right: "12px",
-                    background: "none",
-                    border: "none",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    fontSize: "18px",
-                    opacity: loading ? 0.5 : 1,
-                  }}
+                  className="absolute right-4 text-ui-muted hover:text-white transition-colors"
+                  aria-label="Toggle password visibility"
                 >
-                  {showPassword ? t("auth", "showPassword") : t("auth", "hidePassword")}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "12px",
-                background: loading ? "#ccc" : "#667eea",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                fontSize: "16px",
-                fontWeight: "600",
-                cursor: loading ? "not-allowed" : "pointer",
-                transition: "background 0.3s",
-              }}
-            >
-              {loading ? t("auth", "loggingIn") : t("auth", "loginButton")}
-            </button>
+            {/* Submit Button */}
+            <div className="ag-layer-btn pt-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full inline-flex items-center justify-center gap-2.5 py-4 px-6 rounded-[100px] bg-gradient-to-r from-[#FFD000] via-[#FBBF24] to-[#F59E0B] text-black font-black text-sm tracking-wider uppercase shadow-[0_10px_25px_rgba(255,208,0,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span>{loading ? t("auth", "loggingIn", "Anmeldung...") : t("auth", "loginButton", "Anmelden")}</span>
+                {!loading && <ArrowRight className="w-4 h-4 text-black stroke-[3]" />}
+              </button>
+            </div>
           </form>
 
+          <div className="ag-layer-decor mt-8 pt-6 border-t border-white/5 text-center text-[11px] text-ui-muted/60">
+            ET⚡U.DE • German Electrical Engineering Platform
+          </div>
         </div>
       </div>
     </>

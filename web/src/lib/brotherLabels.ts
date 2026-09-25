@@ -63,7 +63,7 @@ async function generateBarcodeDataUrl(text: string, is1D: boolean = false): Prom
 
 
 export async function generateBrotherLabelSvg(data: BrotherLabelData): Promise<string> {
-    const { id, type, index_number, name, info, tape_width, origin = 'https://inspecthero.app' } = data;
+    const { id, type, index_number, name, info, tape_width, origin = 'https://et4u.de' } = data;
     
     // Physical dimensions in mm
     const h_mm = tape_width;

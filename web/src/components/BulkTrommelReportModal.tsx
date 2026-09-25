@@ -114,7 +114,7 @@ export default function BulkTrommelReportModal({
     });
 
     lines.push("");
-    lines.push(t("cables", "automatedEmailNote", "Wiadomość wygenerowana automatycznie przez InspectHero."));
+    lines.push(t("cables", "automatedEmailNote", "Wiadomość wygenerowana automatycznie przez platformę ET⚡U.DE."));
     lines.push(t("cables", "pickupEmailFooter", "Pozdrawiam / Mit freundlichen Grüßen"));
 
     setEmailContent(lines.join("\n"));
@@ -184,7 +184,7 @@ export default function BulkTrommelReportModal({
           <div style="max-width: 650px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
             <div style="text-align: center; margin-bottom: 30px;">
               <h2 style="color: ${reportType === "request" ? "#0284c7" : "#10b981"}; margin: 0 0 10px 0; font-size: 24px; font-weight: 800;">${emailSubject}</h2>
-              <p style="color: #64748b; font-size: 16px; margin: 0;">${t("cables", "logisticSystem", "System logistyczny InspectHero")}</p>
+              <p style="color: #64748b; font-size: 16px; margin: 0;">${t("cables", "logisticSystem", "System logistyczny et4u.de")}</p>
             </div>
             <div style="font-size: 16px; line-height: 1.6; margin-bottom: 25px; color: #475569; white-space: pre-wrap;">
               ${emailContent.split("\n\n")[0]}<br><br>
@@ -192,7 +192,7 @@ export default function BulkTrommelReportModal({
             </div>
             ${itemsHtml}
             <div style="margin-top: 35px; padding-top: 20px; border-top: 1px solid #f1f5f9; text-align: center;">
-              <p style="font-size: 12px; color: #94a3b8; margin: 0;">${t("cables", "emailFooterSystem", "Wysłano z systemu InspectHero")}</p>
+              <p style="font-size: 12px; color: #94a3b8; margin: 0;">${t("cables", "emailFooterSystem", "Wysłano z systemu et4u.de")}</p>
               <p style="font-size: 10px; color: #94a3b8; margin: 4px 0;">${t("cables", "automatedEmailNote", "Wiadomość wygenerowana automatycznie")}</p>
             </div>
           </div>

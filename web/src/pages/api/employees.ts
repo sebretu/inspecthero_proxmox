@@ -89,8 +89,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     if (req.method === "DELETE") {
-        if (!isAdmin) {
-            return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only Admins can delete employees" } });
+        if (!isAdmin && !isMod) {
+            return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only Admins and Moderators can delete employees" } });
         }
 
         const { id } = req.query;

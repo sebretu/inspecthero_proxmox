@@ -57,6 +57,8 @@ export function AdvancedCableAdderModal({ projectId, token, onClose, onCableAdde
   const [pinB, setPinB] = useState<Pin | null>(null);
   const [waypoints, setWaypoints] = useState<Pin[]>([]);
 
+  const [routes, setRoutes] = useState<any[]>([]);
+
   // Plan 2 state
   const [showPlan2, setShowPlan2] = useState(false);
   const [planId2, setPlanId2] = useState("");
@@ -73,6 +75,150 @@ export function AdvancedCableAdderModal({ projectId, token, onClose, onCableAdde
   const [imgAspect, setImgAspect] = useState<number | null>(null);
   const [imgAspect2, setImgAspect2] = useState<number | null>(null);
 
+  const [photoUrlA, setPhotoUrlA] = useState("");
+  const [photoUrlB, setPhotoUrlB] = useState("");
+  const [uploadingA, setUploadingA] = useState(false);
+  const [uploadingB, setUploadingB] = useState(false);
+
+  const handleUploadPhoto = async (file: File, point: "A" | "B") => {
+    const setUploading = point === "A" ? setUploadingA : setUploadingB;
+    const setPhotoUrl = point === "A" ? setPhotoUrlA : setPhotoUrlB;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData
+      });
+      const data = await res.json();
+      if (data?.ok && data?.data?.url) {
+        setPhotoUrl(data.data.url);
+      } else {
+        alert("Błąd uploadu: " + (data?.error?.message || "Nieznany błąd"));
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Błąd podczas wgrywania zdjęcia.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Unique Point A & B labels from existing routes for suggestions
+  const existingPointNames = useMemo(() => {
+    const names = new Set<string>();
+    routes.forEach(r => {
+      const a = (r.point_a_label || "").trim();
+      const b = (r.point_b_label || "").trim();
+      if (a) names.add(a);
+      if (b) names.add(b);
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  }, [routes]);
+
+  const pointBOptions = useMemo(() => {
+    const cleanA = (labelA || "").trim().toLowerCase();
+    return existingPointNames.filter(name => {
+      const cleanName = name.toLowerCase();
+      if (cleanName === cleanA) return false;
+      if (cleanName === "b" || cleanName === "punkt b") return false;
+      return true;
+    });
+  }, [existingPointNames, labelA]);
+
+  const isLockedA = useMemo(() => {
+    const cleanA = (labelA || "").trim().toLowerCase();
+    if (!cleanA) return false;
+    return existingPointNames.some(name => name.toLowerCase() === cleanA);
+  }, [labelA, existingPointNames]);
+
+  const isLockedB = useMemo(() => {
+    const cleanB = (pointBLabel || "").trim().toLowerCase();
+    if (!cleanB) return false;
+    return existingPointNames.some(name => name.toLowerCase() === cleanB);
+  }, [pointBLabel, existingPointNames]);
+
+  // Auto-set pin A coordinates when labelA matches an existing point name
+  useEffect(() => {
+    const cleanA = (labelA || "").trim().toLowerCase();
+    if (!cleanA) return;
+    const match = routes.find(r => 
+      (r.point_a_label && r.point_a_label.trim().toLowerCase() === cleanA) ||
+      (r.point_b_label && r.point_b_label.trim().toLowerCase() === cleanA)
+    );
+    if (match) {
+      const isA = match.point_a_label && match.point_a_label.trim().toLowerCase() === cleanA;
+      const x = isA ? match.point_a_x : match.point_b_x;
+      const y = isA ? match.point_a_y : match.point_b_y;
+      if (x != null && y != null && match.plan_id) {
+        if (!pinA || pinA.x !== x || pinA.y !== y || planId !== match.plan_id) {
+          setPinA({ x, y });
+          setPlanId(match.plan_id);
+          setActivePlanView(1);
+          setPicking("B");
+        }
+      }
+      const photo = isA ? match.point_a_photo : match.point_b_photo;
+      if (photo) setPhotoUrlA(photo);
+    }
+  }, [labelA, routes]);
+
+  // Auto-set coordinates when pointBLabel matches an existing point name
+  useEffect(() => {
+    const cleanB = (pointBLabel || "").trim().toLowerCase();
+    if (!cleanB) return;
+    const match = routes.find(r => 
+      (r.point_a_label && r.point_a_label.trim().toLowerCase() === cleanB) ||
+      (r.point_b_label && r.point_b_label.trim().toLowerCase() === cleanB)
+    );
+    if (match) {
+      const isA = match.point_a_label && match.point_a_label.trim().toLowerCase() === cleanB;
+      
+      let x: number | null = null;
+      let y: number | null = null;
+      let pid: string | null = null;
+
+      if (isA) {
+        x = match.point_a_x;
+        y = match.point_a_y;
+        pid = match.plan_id;
+      } else {
+        if (match.plan_id_2 && match.point_d_x != null && match.point_d_y != null) {
+          x = match.point_d_x;
+          y = match.point_d_y;
+          pid = match.plan_id_2;
+        } else {
+          x = match.point_b_x;
+          y = match.point_b_y;
+          pid = match.plan_id;
+        }
+      }
+
+      if (x != null && y != null && pid) {
+        if (showPlan2) {
+          if (!pinD || pinD.x !== x || pinD.y !== y || planId2 !== pid) {
+            setPinD({ x, y });
+            setPlanId2(pid);
+            setActivePlanView(2);
+            setPicking("D");
+          }
+        } else {
+          if (!pinB || pinB.x !== x || pinB.y !== y || planId !== pid) {
+            setPinB({ x, y });
+            setPlanId(pid);
+            setActivePlanView(1);
+          }
+        }
+      }
+      const photo = isA ? match.point_a_photo : match.point_b_photo;
+      if (photo) setPhotoUrlB(photo);
+    }
+  }, [pointBLabel, routes, showPlan2]);
+
+  // Declarations moved to top
+
   const SCALE_LS_KEY = "cableMapScale_";
   const LAST_ROUTE_LS_KEY = "lastCableRoute_";
 
@@ -88,11 +234,13 @@ export function AdvancedCableAdderModal({ projectId, token, onClose, onCableAdde
     Promise.all([
       apiGet<Trommel[]>(`/api/trommels?projectId=${projectId}`),
       apiGet<any[]>(`/api/plans?projectId=${projectId}&limit=100`),
-      apiGet<Category[]>(`/api/cable-categories?projectId=${projectId}`)
-    ]).then(([trms, p, cats]) => {
+      apiGet<Category[]>(`/api/cable-categories?projectId=${projectId}`),
+      apiGet<any[]>(`/api/cable-routes?projectId=${projectId}`)
+    ]).then(([trms, p, cats, rts]) => {
       setTrommels(trms || []);
       setPlans(p || []);
       setCategories(cats || []);
+      setRoutes(rts || []);
     }).finally(() => setLoading(false));
   }, [projectId]);
 
@@ -181,7 +329,9 @@ export function AdvancedCableAdderModal({ projectId, token, onClose, onCableAdde
         point_d_y: showPlan2 ? pinD?.y : null,
         waypoints_2: showPlan2 ? waypoints2 : [],
         scale: parseFloat(planWidthM) || null,
-        scale_2: showPlan2 ? parseFloat(planWidthM2) || null : null
+        scale_2: showPlan2 ? parseFloat(planWidthM2) || null : null,
+        point_a_photo: photoUrlA || null,
+        point_b_photo: photoUrlB || null
       });
 
       await apiPost<any>("/api/cables", {
@@ -194,12 +344,16 @@ export function AdvancedCableAdderModal({ projectId, token, onClose, onCableAdde
         route_id: routeRes.id
       });
 
+      setRoutes(prev => [routeRes, ...prev]);
+
       setCableName("");
       setPointBLabel("");
       setCableLength("");
       setPinA(null); // Reset Point A
       setLabelA("A"); // Reset label to default
       setPinB(null);
+      setPhotoUrlA("");
+      setPhotoUrlB("");
       setWaypoints([]);
       setPinC(null);
       setPinD(null);
@@ -306,7 +460,53 @@ export function AdvancedCableAdderModal({ projectId, token, onClose, onCableAdde
 
               <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#94a3b8", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>
                 {t("cables", "pointAName", "Nazwa Punktu A")}
-                <input value={labelA} onChange={e => setLabelA(e.target.value)} style={{ padding: "12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#000", color: "#fff", fontSize: 13, fontWeight: 700 }} />
+                <input 
+                  value={labelA} 
+                  onChange={e => {
+                    setLabelA(e.target.value);
+                    setPicking("A");
+                    setActivePlanView(1);
+                  }} 
+                  list="adv-pointA-names" 
+                  style={{ padding: "12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#000", color: "#fff", fontSize: 13, fontWeight: 700 }} 
+                />
+                <datalist id="adv-pointA-names">
+                  {existingPointNames.map(name => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+                {/* Photo Upload/Preview for Point A */}
+                <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    id="adv-photo-a" 
+                    style={{ display: "none" }} 
+                    disabled={isLockedA}
+                    onChange={e => e.target.files?.[0] && handleUploadPhoto(e.target.files[0], "A")} 
+                  />
+                  {!isLockedA ? (
+                    <label htmlFor="adv-photo-a" style={{ padding: "6px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11, cursor: "pointer", color: "#ccc", fontWeight: 700 }}>
+                      {uploadingA ? "Wgrywanie..." : (photoUrlA ? "📷 Zmień zdjęcie A" : "📷 Dodaj zdjęcie A")}
+                    </label>
+                  ) : (
+                    photoUrlA && <span style={{ fontSize: 9, color: "#86efac", fontWeight: 800 }}>🔒 Zdjęcie z bazy</span>
+                  )}
+                  {photoUrlA && (
+                    <div style={{ position: "relative", width: 40, height: 30, borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,255,255,0.2)" }}>
+                      <img src={photoUrlA} alt="A" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      {!isLockedA && (
+                        <button 
+                          type="button"
+                          onClick={() => setPhotoUrlA("")} 
+                          style={{ position: "absolute", top: 0, right: 0, background: "rgba(0,0,0,0.7)", border: "none", color: "#ff4d4d", fontSize: 9, cursor: "pointer", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </label>
 
               <button 
@@ -331,7 +531,54 @@ export function AdvancedCableAdderModal({ projectId, token, onClose, onCableAdde
 
                   <label style={{ display: "flex", flexDirection: "column", gap: 6, color: "#94a3b8", fontSize: 10, fontWeight: 800, textTransform: "uppercase" }}>
                     {t("cables", "pointBLabel", "Cel (Punkt B)")}
-                    <input value={pointBLabel} onChange={e => setPointBLabel(e.target.value)} placeholder="np. Gniazdo 1" style={{ padding: "12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#000", color: "#fff", fontSize: 13, fontWeight: 700 }} />
+                    <input 
+                      value={pointBLabel} 
+                      onChange={e => {
+                        setPointBLabel(e.target.value);
+                        setPicking("B");
+                        setActivePlanView(1);
+                      }} 
+                      placeholder="np. Gniazdo 1" 
+                      list="adv-pointB-names" 
+                      style={{ padding: "12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#000", color: "#fff", fontSize: 13, fontWeight: 700 }} 
+                    />
+                    <datalist id="adv-pointB-names">
+                      {pointBOptions.map(name => (
+                        <option key={name} value={name} />
+                      ))}
+                    </datalist>
+                    {/* Photo Upload/Preview for Point B */}
+                    <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        id="adv-photo-b" 
+                        style={{ display: "none" }} 
+                        disabled={isLockedB}
+                        onChange={e => e.target.files?.[0] && handleUploadPhoto(e.target.files[0], "B")} 
+                      />
+                      {!isLockedB ? (
+                        <label htmlFor="adv-photo-b" style={{ padding: "6px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 11, cursor: "pointer", color: "#ccc", fontWeight: 700 }}>
+                          {uploadingB ? "Wgrywanie..." : (photoUrlB ? "📷 Zmień zdjęcie B" : "📷 Dodaj zdjęcie B")}
+                        </label>
+                      ) : (
+                        photoUrlB && <span style={{ fontSize: 9, color: "#fdba74", fontWeight: 800 }}>🔒 Zdjęcie z bazy</span>
+                      )}
+                      {photoUrlB && (
+                        <div style={{ position: "relative", width: 40, height: 30, borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,255,255,0.2)" }}>
+                          <img src={photoUrlB} alt="B" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          {!isLockedB && (
+                            <button 
+                              type="button"
+                              onClick={() => setPhotoUrlB("")} 
+                              style={{ position: "absolute", top: 0, right: 0, background: "rgba(0,0,0,0.7)", border: "none", color: "#ff4d4d", fontSize: 9, cursor: "pointer", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </label>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -462,6 +709,8 @@ export function AdvancedCableAdderModal({ projectId, token, onClose, onCableAdde
                   onPicked={(p) => { if (p === "A") setPicking("B"); else if (showPlan2) { setPicking("C"); setActivePlanView(2); } }}
                   waypoints={waypoints} setWaypoints={setWaypoints}
                   labelA={labelA}
+                  lockA={isLockedA}
+                  lockB={showPlan2 ? false : isLockedB}
                 />
               ) : (
                 <SingleMap 
@@ -472,6 +721,7 @@ export function AdvancedCableAdderModal({ projectId, token, onClose, onCableAdde
                   picking={picking === "C" ? "A" : "B"}
                   onPicked={(p) => { if (p === "A") setPicking("D"); }}
                   waypoints={waypoints2} setWaypoints={setWaypoints2}
+                  lockB={isLockedB}
                 />
               )
             ) : (

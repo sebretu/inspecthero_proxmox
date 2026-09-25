@@ -46,5 +46,5 @@ export async function requireRequesterProfile(client: any, userId: string | null
 
 export function isAdminRole(role?: string | null): boolean {
   const r = (role || "").toUpperCase();
-  return r === "ADMIN" || r === "MODERATOR";
+  return r === "ADMIN";
 }

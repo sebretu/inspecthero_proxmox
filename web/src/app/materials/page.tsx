@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import MaterialsClient from "./MaterialsClient";
 
 export const metadata: Metadata = {
-    title: "Zapotrzebowanie - InspectHero",
+    title: "Zapotrzebowanie - ET⚡U.DE",
     description: "Zapotrzebowanie na materiały z budowy.",
 };
 

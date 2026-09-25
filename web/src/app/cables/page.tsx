@@ -1,7 +1,7 @@
 import CablesClient from "./CablesClient";
 
 export const metadata = {
-  title: "Kable — InspectHero",
+  title: "Kable — ET⚡U.DE",
   description: "Manage cable runs and track completion status on site.",
 };
 

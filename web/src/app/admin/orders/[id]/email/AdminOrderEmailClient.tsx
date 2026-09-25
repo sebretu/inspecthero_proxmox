@@ -217,7 +217,7 @@ export default function AdminOrderEmailClient({ orderId }: { orderId: string }) 
     return (
         <>
             <Head>
-                <title>{t("email", "title", "Wyślij formalny e-mail")} | InspectHero</title>
+                <title>{t("email", "title", "Wyślij formalny e-mail")} | ET⚡U.DE</title>
             </Head>
 
             <main className="home-main">

@@ -297,7 +297,7 @@ export function TrommelPanel({ trommel, token, onClose, onUpdated, onDeleted, is
           </table>
           ${trommel.photo_url ? `<div style="margin-top: 30px; text-align: center;"><img src="${trommel.photo_url}" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" alt="Trommel Photo" /></div>` : ""}
           <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
-            <p style="font-size: 12px; color: #999; margin: 0;">${t("cables", "emailFooterSystem", "Wysłano z systemu InspectHero")}</p>
+            <p style="font-size: 12px; color: #999; margin: 0;">${t("cables", "emailFooterSystem", "Wysłano z systemu et4u.de")}</p>
             <p style="font-size: 10px; color: #ccc; margin: 4px 0;">${t("cables", "automatedEmailNote", "Wiadomość wygenerowana automatycznie")}</p>
           </div>
         </div>

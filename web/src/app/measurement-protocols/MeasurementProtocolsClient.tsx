@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Upload, Plus, Trash2, Edit2, FileText, Check, 
-  RefreshCw, Download, AlertCircle, FileCheck, ArrowRight, History
+  RefreshCw, Download, AlertCircle, FileCheck, ArrowRight, History, X, Database
 } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import { apiPost, apiGet, apiDelete, getToken, apiCall } from "@/lib/apiClient";
@@ -25,7 +25,7 @@ export default function MeasurementProtocolsClient() {
         const j = await apiGet<any>("/api/me");
         const role = (j?.profile?.role || "").toUpperCase();
         const hasVde = !!j?.profile?.has_vde_access;
-        const isAdm = role === "ADMIN" || role === "MODERATOR" || role === "MOD";
+        const isAdm = role === "ADMIN";
         setIsAdmin(isAdm);
         if (isAdm || hasVde) {
           setHasAccess(true);
@@ -210,6 +210,14 @@ export default function MeasurementProtocolsClient() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Plan Marker Import states
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importProjects, setImportProjects] = useState<any[]>([]);
+  const [importPlans, setImportPlans] = useState<any[]>([]);
+  const [selectedImportProjectId, setSelectedImportProjectId] = useState("");
+  const [selectedImportPlanId, setSelectedImportPlanId] = useState("");
+  const [isLoadingImportData, setIsLoadingImportData] = useState(false);
 
   // Tab state for Cover page forms
   const [activeFormTab, setActiveFormTab] = useState<"allgemein" | "besichtigen" | "erdung" | "ergebnis" | "einspeisung">("allgemein");
@@ -616,6 +624,94 @@ export default function MeasurementProtocolsClient() {
       );
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleOpenImportModal = async () => {
+    setIsImportModalOpen(true);
+    setIsLoadingImportData(true);
+    try {
+      const ps = await apiGet<any[]>("/api/projects");
+      setImportProjects(ps || []);
+      if (ps && ps.length > 0) {
+        setSelectedImportProjectId(ps[0].id);
+      }
+    } catch (err) {
+      console.error("Failed to load projects for import:", err);
+    } finally {
+      setIsLoadingImportData(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedImportProjectId) return;
+    async function loadPlans() {
+      setIsLoadingImportData(true);
+      try {
+        const res = await apiGet<any[]>(`/api/plans?projectId=${selectedImportProjectId}&limit=100`);
+        const ps = (res as any)?.data || res || [];
+        setImportPlans(ps);
+        if (ps.length > 0) {
+          setSelectedImportPlanId(ps[0].id);
+        } else {
+          setSelectedImportPlanId("");
+        }
+      } catch (err) {
+        console.error("Failed to load plans for import:", err);
+      } finally {
+        setIsLoadingImportData(false);
+      }
+    }
+    loadPlans();
+  }, [selectedImportProjectId]);
+
+  const handleImportFromMarkers = async () => {
+    if (!selectedImportProjectId || !selectedImportPlanId) {
+      alert("Bitte wählen Sie ein Projekt und einen Plan aus.");
+      return;
+    }
+    setIsLoadingImportData(true);
+    try {
+      const res = await apiGet<any>(`/api/stromkreise?projectId=${selectedImportProjectId}&planId=${selectedImportPlanId}`);
+      const markers = res?.data || res || [];
+      if (markers.length === 0) {
+        alert("Keine Stromkreis-Marker auf dem ausgewählten Plan gefunden.");
+        return;
+      }
+      
+      const mappedFuses: Fuse[] = markers.map((m: any) => {
+        const isReserve = (m.circuit_code || "").toLowerCase().includes("reserve") || (m.full_name || "").toLowerCase().includes("reserve");
+        return {
+          name: m.circuit_code || m.short_label,
+          rating: m.breaker_current || 16,
+          characteristic: m.breaker_curve || "B",
+          description: m.full_name || "",
+          rcd: m.has_rcd,
+          active: isReserve ? false : true,
+          phases: m.phase || 1
+        };
+      });
+
+      setFuses(mappedFuses);
+      setIsImportModalOpen(false);
+      
+      // Auto populate Anlage if available
+      const selectedPlan = importPlans.find(p => p.id === selectedImportPlanId);
+      if (selectedPlan) {
+        const buildingName = selectedPlan.floors?.buildings?.name || "";
+        const floorName = selectedPlan.floors?.name || "";
+        const fullName = [buildingName, floorName].filter(Boolean).join(" - ");
+        if (fullName) {
+          setAnlage(fullName);
+        }
+      }
+      
+      setStep(2);
+    } catch (err: any) {
+      console.error("Failed to import markers:", err);
+      alert("Fehler beim Importieren der Marker: " + err.message);
+    } finally {
+      setIsLoadingImportData(false);
     }
   };
 
@@ -1174,7 +1270,14 @@ export default function MeasurementProtocolsClient() {
               </div>
 
               {/* Manual mode button */}
-              <div className="mt-8 flex justify-end">
+              <div className="mt-8 flex flex-wrap justify-end gap-4">
+                <button
+                  onClick={handleOpenImportModal}
+                  className="px-6 py-4 bg-ui-accent/15 hover:bg-ui-accent/25 border border-ui-accent/30 hover:border-ui-accent rounded-xl text-xs font-black uppercase tracking-widest text-ui-accent transition-all duration-300 flex items-center gap-2"
+                >
+                  <Database className="w-4 h-4" />
+                  Aus Plan-Markern importieren
+                </button>
                 <button
                   onClick={() => setStep(2)}
                   className="px-6 py-4 bg-white/5 hover:bg-white/10 border border-ui-border hover:border-ui-accent/30 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300"
@@ -2728,6 +2831,105 @@ export default function MeasurementProtocolsClient() {
         )}
       </AnimatePresence>
       )}
+
+      {/* Import from Plan Markers Modal */}
+      <AnimatePresence>
+        {isImportModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg bg-ui-card backdrop-blur-xl border border-ui-border rounded-xl p-8 shadow-2xl flex flex-col gap-6 relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-ui-accent/15 rounded-full blur-3xl pointer-events-none" />
+              
+              <div className="flex justify-between items-center pb-4 border-b border-ui-border/50">
+                <div>
+                  <h3 className="text-xl font-black text-ui-text uppercase tracking-tight">
+                    Aus Plan-Markern importieren
+                  </h3>
+                  <p className="text-xs font-semibold text-ui-muted mt-1 uppercase tracking-widest opacity-60">
+                    Wählen Sie das Projekt und den Plan aus
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsImportModalOpen(false)}
+                  className="p-2 hover:bg-white/5 border border-transparent hover:border-ui-border rounded-xl text-ui-muted hover:text-ui-text transition-all duration-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {isLoadingImportData && (
+                <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm z-10 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <RefreshCw className="w-10 h-10 text-ui-accent animate-spin" />
+                    <span className="text-xs font-black uppercase tracking-wider text-ui-text animate-pulse">Lade Daten...</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {/* Project Selector */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-ui-muted block">
+                    Projekt auswählen
+                  </label>
+                  <select
+                    value={selectedImportProjectId}
+                    onChange={(e) => setSelectedImportProjectId(e.target.value)}
+                    className="w-full bg-black/45 border border-ui-border text-xs font-black text-ui-text uppercase tracking-widest rounded-xl p-4 outline-none cursor-pointer focus:border-ui-accent/50"
+                  >
+                    <option value="">-- Projekt wählen --</option>
+                    {importProjects.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-slate-900">
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Plan Selector */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-ui-muted block">
+                    Installationsplan auswählen
+                  </label>
+                  <select
+                    value={selectedImportPlanId}
+                    onChange={(e) => setSelectedImportPlanId(e.target.value)}
+                    className="w-full bg-black/45 border border-ui-border text-xs font-black text-ui-text uppercase tracking-widest rounded-xl p-4 outline-none cursor-pointer focus:border-ui-accent/50"
+                  >
+                    <option value="">-- Plan wählen --</option>
+                    {importPlans.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-slate-900">
+                        {[p.floors?.buildings?.name, p.floors?.name].filter(Boolean).join(" - ") || `Plan v${p.version}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-ui-border/50">
+                <button
+                  onClick={() => setIsImportModalOpen(false)}
+                  className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-ui-border rounded-xl text-xs font-black uppercase tracking-widest text-ui-text transition-all duration-200"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={handleImportFromMarkers}
+                  disabled={!selectedImportProjectId || !selectedImportPlanId}
+                  className="px-6 py-3 bg-ui-accent hover:bg-ui-accent/90 disabled:opacity-40 disabled:cursor-not-allowed border border-ui-accent rounded-xl text-xs font-black uppercase tracking-widest text-slate-950 transition-all duration-200 flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  Importieren
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

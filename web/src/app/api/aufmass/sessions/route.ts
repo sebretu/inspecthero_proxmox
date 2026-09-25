@@ -11,11 +11,13 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get("projectId");
     const taskId = searchParams.get("taskId");
+    const photoId = searchParams.get("photoId");
 
     let query = supabase.from('aufmass_sessions').select('*, profiles!aufmass_sessions_created_by_fkey(full_name), task_photos(url), projects(name), plans(floors(name, buildings(name)))');
 
     if (projectId) query = query.eq('project_id', projectId);
     if (taskId) query = query.eq('task_id', taskId);
+    if (photoId) query = query.eq('photo_id', photoId);
 
     query = query.order('created_at', { ascending: false });
 

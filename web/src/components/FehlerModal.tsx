@@ -85,7 +85,7 @@ export function FehlerModal({ open, onClose, onSaved, editItem, currentUserId, c
     const beforeRef = useRef<HTMLInputElement>(null);
     const afterRef = useRef<HTMLInputElement>(null);
 
-    const isAdmin = currentUserRole === "ADMIN" || currentUserRole === "MODERATOR";
+    const isAdmin = currentUserRole === "ADMIN";
     const isAssignee = editItem?.assigned_user_id === currentUserId;
     const canSubmitForApproval = isAdmin || isAssignee;
     const currentStatus = editItem?.status ?? "OPEN";

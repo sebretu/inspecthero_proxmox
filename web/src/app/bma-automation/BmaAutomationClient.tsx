@@ -13,6 +13,27 @@ import {
   Settings, ChevronRight, Layout, Database, Globe
 } from "lucide-react";
 import { QrScanner } from "@/components/QrScanner";
+import { pdf } from "@react-pdf/renderer";
+import BmaReportPdf from "./BmaReportPdf";
+
+const urlToBase64 = async (url: string, token?: string | null): Promise<string | null> => {
+    try {
+        const headers: RequestInit = {};
+        if (token) headers.headers = { Authorization: `Bearer ${token}` };
+        const response = await fetch(url, headers);
+        if (!response.ok) return null;
+        const blob = await response.blob();
+        return new Promise<string | null>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+        });
+    } catch (e) {
+        return null;
+    }
+};
+
 
 const BmaLeafletEditor = dynamic(
   () => import("@/components/BmaLeafletEditor"),
@@ -57,6 +78,7 @@ export default function BmaAutomationClient() {
   const [settings, setSettings] = useState<any>({ scale: 100 });
   const [qrModalPlan, setQrModalPlan] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const isAdmin = (user?.role || "").toUpperCase() === "ADMIN";
   const isLoggedIn = !!user;
 
@@ -159,6 +181,337 @@ export default function BmaAutomationClient() {
       showNotification(e.message, "error");
     }
   };
+
+  const handleExportPlanPdf = async (plan: any) => {
+    setIsExportingPdf(true);
+    showNotification(t("bmaAutomation", "generatingPdf", "Generating PDF..."), "success");
+    try {
+      const planDevices = devices.filter((d: any) => d.plan_id === plan.id);
+      const planRoutes = routes.filter((r: any) => {
+         const src = devices.find((d: any) => d.id === r.source_device_id);
+         return src?.plan_id === plan.id;
+      });
+
+      // 1. Fetch original PDF URL and array buffer
+      const urlRes = await apiGet<any>(`/api/plans/pdf-url?id=${plan.id}`);
+      const pdfUrl = urlRes?.signedUrl;
+      if (!pdfUrl) throw new Error("Could not retrieve plan PDF URL");
+
+      const response = await fetch(pdfUrl);
+      const originalPlanPdfBytes = await response.arrayBuffer();
+
+      // 2. Generate tables PDF
+      const tablesBlob = await pdf(
+        <BmaReportPdf 
+           projectName={projects.find(p => p.id === projectId)?.name || "BMA Project"}
+           devices={planDevices}
+           connections={connections}
+           routes={planRoutes}
+           translations={{
+              title: "BMA PLAN REPORT",
+              devices: t("bmaAutomation", "devices", "Devices"),
+              deviceName: t("bmaAutomation", "deviceName", "Name"),
+              deviceType: t("bmaAutomation", "deviceType", "Type"),
+              connections: t("bmaAutomation", "connections", "Connections"),
+              owner: t("footer", "owner", "Owner: Marcin Slapinski"),
+           }}
+        />
+      ).toBlob();
+      const tablesPdfBytes = await tablesBlob.arrayBuffer();
+
+      // 3. Load pdf-lib and create combined PDF
+      const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+      const mainPdfDoc = await PDFDocument.create();
+      const originalPlanPdfDoc = await PDFDocument.load(originalPlanPdfBytes);
+      const tablesPdfDoc = await PDFDocument.load(tablesPdfBytes);
+
+      // Copy first page of original plan PDF
+      const [originalPage] = await originalPlanPdfDoc.getPages();
+      const [embeddedPage] = await mainPdfDoc.embedPages([originalPage]);
+
+      // Determine dimensions for A1 page dynamically
+      const origSize = originalPage.getSize();
+      const isLandscape = origSize.width >= origSize.height;
+
+      // A1 size in points (594mm x 841mm)
+      const a1Width = 2383.94;
+      const a1Height = 1683.78;
+      const width = isLandscape ? a1Width : a1Height;
+      const height = isLandscape ? a1Height : a1Width;
+
+      const page1 = mainPdfDoc.addPage([width, height]);
+
+      // Draw original vector plan scaled to fit A1 page with margins
+      const margin = 20;
+      const fitWidth = width - 2 * margin;
+      const fitHeight = height - 2 * margin;
+
+      const scaleX = fitWidth / origSize.width;
+      const scaleY = fitHeight / origSize.height;
+      const scale = Math.min(scaleX, scaleY);
+
+      const drawWidth = origSize.width * scale;
+      const drawHeight = origSize.height * scale;
+      const drawX = margin + (fitWidth - drawWidth) / 2;
+      const drawY = margin + (fitHeight - drawHeight) / 2;
+
+      page1.drawPage(embeddedPage, {
+        x: drawX,
+        y: drawY,
+        width: drawWidth,
+        height: drawHeight
+      });
+
+      // Prepare fonts & dimensions for drawing markers & labels
+      const helveticaBold = await mainPdfDoc.embedFont(StandardFonts.HelveticaBold);
+      const radius = 16;
+      const fontSize = 8.5;
+      const markerNameFontSize = 10;
+
+      // Occupied boxes list (starts with marker bounds to avoid overlays)
+      const occupiedBoxes: any[] = [];
+
+      // Map coordinates and populate initial occupied list for all markers
+      const resolvedDevices = planDevices.map((dev) => {
+        if (typeof dev.x !== "number" || typeof dev.y !== "number") return null;
+        const finalX = drawX + (dev.x * drawWidth);
+        const finalY = drawY + ((1 - dev.y) * drawHeight);
+        
+        occupiedBoxes.push({
+          x1: finalX - radius - 2,
+          y1: finalY - radius - 2,
+          x2: finalX + radius + 2,
+          y2: finalY + radius + 2
+        });
+
+        return {
+          dev,
+          finalX,
+          finalY,
+          labelX: 0,
+          labelY: 0,
+          serial: ""
+        };
+      }).filter(Boolean) as any[];
+
+      const intersects = (boxA: any, boxB: any) => {
+        return !(boxA.x2 < boxB.x1 || boxA.x1 > boxB.x2 || boxA.y2 < boxB.y1 || boxA.y1 > boxB.y2);
+      };
+
+      const hasCollision = (box: any) => {
+        return occupiedBoxes.some(occ => intersects(box, occ));
+      };
+
+      // Candidate placements in order of preference
+      const placements = ["under", "right-down", "left-down", "right-up", "left-up", "above"];
+
+      // Resolve each serial number label position to prevent overlaps
+      resolvedDevices.forEach((rd) => {
+        const { dev, finalX, finalY } = rd;
+        const serial = dev.metadata?.serial_number;
+        if (!serial) return;
+
+        let chosenBox: any = null;
+
+        for (const pl of placements) {
+          const textWidth = serial.length * fontSize * 0.55;
+          const textHeight = fontSize;
+
+          let lx = finalX;
+          let ly = finalY;
+
+          switch (pl) {
+            case "under":
+              lx = finalX - textWidth / 2;
+              ly = finalY - radius - textHeight - 4;
+              break;
+            case "left-down":
+              lx = finalX - radius - textWidth - 6;
+              ly = finalY - radius - textHeight / 2;
+              break;
+            case "right-down":
+              lx = finalX + radius + 6;
+              ly = finalY - radius - textHeight / 2;
+              break;
+            case "left-up":
+              lx = finalX - radius - textWidth - 6;
+              ly = finalY + radius - textHeight / 2;
+              break;
+            case "right-up":
+              lx = finalX + radius + 6;
+              ly = finalY + radius - textHeight / 2;
+              break;
+            case "above":
+              lx = finalX - textWidth / 2;
+              ly = finalY + radius + 4;
+              break;
+          }
+
+          const box = {
+            x1: lx - 2,
+            y1: ly - 2,
+            x2: lx + textWidth + 2,
+            y2: ly + textHeight + 2,
+            x: lx,
+            y: ly,
+            width: textWidth,
+            height: textHeight
+          };
+
+          if (!hasCollision(box)) {
+            chosenBox = box;
+            break;
+          }
+        }
+
+        // Fallback: try under with an extra offset increments
+        if (!chosenBox) {
+          const textWidth = serial.length * fontSize * 0.55;
+          const textHeight = fontSize;
+          
+          for (let attempt = 1; attempt <= 10; attempt++) {
+            const offset = 4 + attempt * (fontSize + 6);
+            const lx = finalX - textWidth / 2;
+            const ly = finalY - radius - textHeight - offset;
+            const box = {
+              x1: lx - 2,
+              y1: ly - 2,
+              x2: lx + textWidth + 2,
+              y2: ly + textHeight + 2,
+              x: lx,
+              y: ly,
+              width: textWidth,
+              height: textHeight
+            };
+            if (!hasCollision(box)) {
+              chosenBox = box;
+              break;
+            }
+          }
+
+          if (!chosenBox) {
+            const lx = finalX - textWidth / 2;
+            const ly = finalY - radius - textHeight - 4;
+            chosenBox = {
+              x1: lx - 2,
+              y1: ly - 2,
+              x2: lx + textWidth + 2,
+              y2: ly + textHeight + 2,
+              x: lx,
+              y: ly
+            };
+          }
+        }
+
+        occupiedBoxes.push(chosenBox);
+        rd.labelX = chosenBox.x;
+        rd.labelY = chosenBox.y;
+        rd.serial = serial;
+      });
+
+      // Draw vector markers and outlined text labels onto page 1
+      resolvedDevices.forEach((rd) => {
+        const { dev, finalX, finalY, labelX, labelY, serial } = rd;
+
+        // Draw marker circle (red with white border)
+        page1.drawCircle({
+          x: finalX,
+          y: finalY,
+          size: radius,
+          color: rgb(239 / 255, 68 / 255, 68 / 255), // #ef4444
+          borderColor: rgb(1, 1, 1),
+          borderWidth: 2
+        });
+
+        // Draw device name inside the circle
+        const devName = String(dev.name || "");
+        const devNameWidth = devName.length * markerNameFontSize * 0.55;
+        const devNameHeight = markerNameFontSize * 0.35; // centered height approximation
+        
+        page1.drawText(devName, {
+          x: finalX - devNameWidth / 2,
+          y: finalY - devNameHeight,
+          size: markerNameFontSize,
+          font: helveticaBold,
+          color: rgb(1, 1, 1)
+        });
+
+        // Draw outlined serial number label
+        if (serial && typeof labelX === "number" && typeof labelY === "number") {
+          const textWidth = serial.length * fontSize * 0.55;
+          const textHeight = fontSize;
+          const labelCenterX = labelX + textWidth / 2;
+          const labelCenterY = labelY + textHeight / 2;
+          const dist = Math.sqrt(Math.pow(labelCenterX - finalX, 2) + Math.pow(labelCenterY - finalY, 2));
+
+          // Draw leader line if offset from marker
+          if (dist > radius + 4) {
+            page1.drawLine({
+              start: { x: finalX, y: finalY },
+              end: { x: labelCenterX, y: labelCenterY },
+              thickness: 1.0,
+              color: rgb(59 / 255, 130 / 255, 246 / 255), // blue (#3b82f6)
+              opacity: 0.8
+            });
+          }
+
+          const strokeWidth = 1.5;
+          const offsets = [
+            [-strokeWidth, 0], [strokeWidth, 0], [0, -strokeWidth], [0, strokeWidth],
+            [-strokeWidth, -strokeWidth], [-strokeWidth, strokeWidth], [strokeWidth, -strokeWidth], [strokeWidth, strokeWidth]
+          ];
+          
+          // Render white halo outline
+          offsets.forEach(([dx, dy]) => {
+            page1.drawText(serial, {
+              x: labelX + dx,
+              y: labelY + dy,
+              size: fontSize,
+              font: helveticaBold,
+              color: rgb(1, 1, 1)
+            });
+          });
+
+          // Render red text fill
+          page1.drawText(serial, {
+            x: labelX,
+            y: labelY,
+            size: fontSize,
+            font: helveticaBold,
+            color: rgb(239 / 255, 68 / 255, 68 / 255)
+          });
+        }
+      });
+
+      // Append pages from A4 tables PDF
+      const copiedPages = await mainPdfDoc.copyPages(tablesPdfDoc, tablesPdfDoc.getPageIndices());
+      copiedPages.forEach((page) => {
+        mainPdfDoc.addPage(page);
+      });
+
+      // Export and trigger download
+      const mainPdfBytes = await mainPdfDoc.save();
+      const finalBlob = new Blob([mainPdfBytes as any], { type: "application/pdf" });
+
+      const url = URL.createObjectURL(finalBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `bma_plan_${plan.id}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      showNotification(err.message || "Failed to generate PDF", "error");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const handleExportPlanXml = (plan: any) => {
+    window.open(`/api/bma/export-xml?projectId=${projectId}&planId=${plan.id}&token=${token || ""}`, '_blank');
+  };
+
 
   const loadSnapshots = useCallback(async () => {
     if (!activePlanId || !projectId) return;
@@ -273,7 +626,7 @@ export default function BmaAutomationClient() {
             planId: activePlanId, 
             projectId: projectId,
             useExisting: true 
-        });
+        }, { timeoutMs: 120000 });
         const detected = res.data || res;
         setScanResults(Array.isArray(detected) ? detected : []);
         setSelectedScanIds(Array.isArray(detected) ? detected.map((_, i) => i) : []);
@@ -898,12 +1251,27 @@ export default function BmaAutomationClient() {
                                       {[p.floors?.buildings?.name, p.floors?.name].filter(Boolean).join(" - ") || `Plan v${p.version}`}
                                    </h5>
                                 </div>
-                                <button 
-                                   onClick={() => setQrModalPlan(p)}
-                                   className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all shadow-lg"
-                                >
-                                   GENERATE QR LABEL
-                                </button>
+                                <div className="flex flex-col gap-3 mt-4">
+                                   <button 
+                                      onClick={() => setQrModalPlan(p)}
+                                      className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all shadow-lg"
+                                   >
+                                      GENERATE QR LABEL
+                                   </button>
+                                   <button 
+                                      onClick={() => handleExportPlanPdf(p)}
+                                      disabled={isExportingPdf}
+                                      className="w-full py-4 bg-emerald-600/10 border border-emerald-500/30 rounded-2xl text-[10px] font-black text-emerald-400 uppercase tracking-widest hover:bg-emerald-600 hover:text-white hover:border-emerald-500 transition-all shadow-lg disabled:opacity-50"
+                                   >
+                                      EXPORT PLAN PDF
+                                   </button>
+                                   <button 
+                                      onClick={() => handleExportPlanXml(p)}
+                                      className="w-full py-4 bg-blue-600/10 border border-blue-500/30 rounded-2xl text-[10px] font-black text-blue-400 uppercase tracking-widest hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all shadow-lg"
+                                   >
+                                      EXPORT BMA XML
+                                   </button>
+                                </div>
                              </motion.div>
                           ))}
                        </div>

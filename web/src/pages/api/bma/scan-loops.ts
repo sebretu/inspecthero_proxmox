@@ -1,23 +1,10 @@
+import "@/lib/pdfPolyfill";
 import { NextApiRequest, NextApiResponse } from "next";
 import { createServerSupabaseClient } from "@/lib/supabaseServer";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 import fs from "fs/promises";
 import path from "path";
-
-// DOMMatrix Polyfill for Node.js
-if (typeof global.DOMMatrix === 'undefined') {
-  (global as any).DOMMatrix = class DOMMatrix {
-    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
-    constructor(arg: any) {
-      if (typeof arg === 'string') return;
-      if (Array.isArray(arg)) {
-        this.a = arg[0]; this.b = arg[1]; this.c = arg[2];
-        this.d = arg[3]; this.e = arg[4]; this.f = arg[5];
-      }
-    }
-  };
-}
 
 const COLORS = [
   "#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", 

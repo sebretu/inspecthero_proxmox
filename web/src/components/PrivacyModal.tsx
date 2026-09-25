@@ -79,9 +79,9 @@ export function PrivacyModal({ open, onClose }: PrivacyModalProps) {
           {language === "pl" && (
             <>
               <h4 style={{ fontSize: 16, fontWeight: 700, margin: "10px 0 0 0", color: "var(--ui-accent, #3b82f6)" }}>1. Informacje ogólne</h4>
-              <p style={{ margin: 0 }}>Niniejsza Polityka Prywatności określa zasady przetwarzania danych osobowych użytkowników serwisu inspecthero.pl (dalej: „Serwis”).</p>
-              <p style={{ margin: 0 }}>Administratorem danych osobowych jest właściciel serwisu InspectHero (dalej: „Administrator”).</p>
-              <p style={{ margin: 0 }}>W sprawach dotyczących danych osobowych można skontaktować się z Administratorem za pośrednictwem adresu e-mail: <a href="mailto:kontakt@inspecthero.pl" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 600 }}>kontakt@inspecthero.pl</a></p>
+              <p style={{ margin: 0 }}>Niniejsza Polityka Prywatności określa zasady przetwarzania danych osobowych użytkowników serwisu et4u.de (dalej: „Serwis”).</p>
+              <p style={{ margin: 0 }}>Administratorem danych osobowych jest właściciel serwisu ET⚡U.DE (dalej: „Administrator”).</p>
+              <p style={{ margin: 0 }}>W sprawach dotyczących danych osobowych można skontaktować się z Administratorem za pośrednictwem adresu e-mail: <a href="mailto:kontakt@et4u.de" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 600 }}>kontakt@et4u.de</a></p>
 
               <h4 style={{ fontSize: 16, fontWeight: 700, margin: "10px 0 0 0", color: "var(--ui-accent, #3b82f6)" }}>2. Zakres przetwarzanych danych</h4>
               <p style={{ margin: 0 }}>Administrator może przetwarzać następujące dane:</p>
@@ -136,16 +136,16 @@ export function PrivacyModal({ open, onClose }: PrivacyModalProps) {
               <p style={{ margin: 0 }}>Administrator zastrzega sobie prawo do aktualizacji niniejszej Polityki Prywatności. Aktualna wersja będzie publikowana w Serwisie.</p>
 
               <h4 style={{ fontSize: 16, fontWeight: 700, margin: "10px 0 0 0", color: "var(--ui-accent, #3b82f6)" }}>12. Kontakt</h4>
-              <p style={{ margin: 0 }}>W sprawach związanych z przetwarzaniem danych osobowych prosimy o kontakt pod adresem e-mail: <a href="mailto:kontakt@inspecthero.pl" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 600 }}>kontakt@inspecthero.pl</a></p>
+              <p style={{ margin: 0 }}>W sprawach związanych z przetwarzaniem danych osobowych prosimy o kontakt pod adresem e-mail: <a href="mailto:kontakt@et4u.de" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 600 }}>kontakt@et4u.de</a></p>
             </>
           )}
 
           {language === "de" && (
             <>
               <h4 style={{ fontSize: 16, fontWeight: 700, margin: "10px 0 0 0", color: "var(--ui-accent, #3b82f6)" }}>1. Allgemeine Informationen</h4>
-              <p style={{ margin: 0 }}>Diese Datenschutzerklärung legt die Regeln für die Verarbeitung personenbezogener Daten von Nutzern der Website inspecthero.pl (nachfolgend: „Website“) fest.</p>
-              <p style={{ margin: 0 }}>Verantwortlicher für die Verarbeitung personenbezogener Daten ist der Eigentümer der Website InspectHero (nachfolgend: „Administrator“).</p>
-              <p style={{ margin: 0 }}>In Angelegenheiten des Datenschutzes können Sie den Administrator per E-Mail kontaktieren: <a href="mailto:kontakt@inspecthero.pl" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 600 }}>kontakt@inspecthero.pl</a></p>
+              <p style={{ margin: 0 }}>Diese Datenschutzerklärung legt die Regeln für die Verarbeitung personenbezogener Daten von Nutzern der Website et4u.de (nachfolgend: „Website“) fest.</p>
+              <p style={{ margin: 0 }}>Verantwortlicher für die Verarbeitung personenbezogener Daten ist der Eigentümer der Website ET⚡U.DE (nachfolgend: „Administrator“).</p>
+              <p style={{ margin: 0 }}>In Angelegenheiten des Datenschutzes können Sie den Administrator per E-Mail kontaktieren: <a href="mailto:kontakt@et4u.de" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 600 }}>kontakt@et4u.de</a></p>
 
               <h4 style={{ fontSize: 16, fontWeight: 700, margin: "10px 0 0 0", color: "var(--ui-accent, #3b82f6)" }}>2. Umfang der verarbeiteten Daten</h4>
               <p style={{ margin: 0 }}>Der Administrator kann folgende Daten verarbeiten:</p>
@@ -200,16 +200,16 @@ export function PrivacyModal({ open, onClose }: PrivacyModalProps) {
               <p style={{ margin: 0 }}>Der Administrator behält sich das Recht vor, diese Datenschutzerklärung zu aktualisieren. Die aktuelle Version wird auf der Website veröffentlicht.</p>
 
               <h4 style={{ fontSize: 16, fontWeight: 700, margin: "10px 0 0 0", color: "var(--ui-accent, #3b82f6)" }}>12. Kontakt</h4>
-              <p style={{ margin: 0 }}>In Angelegenheiten der Verarbeitung personenbezogener Daten kontaktieren Sie uns bitte per E-Mail unter: <a href="mailto:kontakt@inspecthero.pl" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 600 }}>kontakt@inspecthero.pl</a></p>
+              <p style={{ margin: 0 }}>In Angelegenheiten der Verarbeitung personenbezogener Daten kontaktieren Sie uns bitte per E-Mail unter: <a href="mailto:kontakt@et4u.de" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 600 }}>kontakt@et4u.de</a></p>
             </>
           )}
 
           {language !== "pl" && language !== "de" && (
             <>
               <h4 style={{ fontSize: 16, fontWeight: 700, margin: "10px 0 0 0", color: "var(--ui-accent, #3b82f6)" }}>1. General Information</h4>
-              <p style={{ margin: 0 }}>This Privacy Policy defines the rules for processing personal data of users of the inspecthero.pl website (hereinafter: "Website").</p>
-              <p style={{ margin: 0 }}>The administrator of personal data is the owner of the InspectHero website (hereinafter: "Administrator").</p>
-              <p style={{ margin: 0 }}>In matters regarding personal data, you can contact the Administrator via e-mail: <a href="mailto:kontakt@inspecthero.pl" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 600 }}>kontakt@inspecthero.pl</a></p>
+              <p style={{ margin: 0 }}>This Privacy Policy defines the rules for processing personal data of users of the et4u.de website (hereinafter: "Website").</p>
+              <p style={{ margin: 0 }}>The administrator of personal data is the owner of the ET⚡U.DE website (hereinafter: "Administrator").</p>
+              <p style={{ margin: 0 }}>In matters regarding personal data, you can contact the Administrator via e-mail: <a href="mailto:kontakt@et4u.de" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 600 }}>kontakt@et4u.de</a></p>
 
               <h4 style={{ fontSize: 16, fontWeight: 700, margin: "10px 0 0 0", color: "var(--ui-accent, #3b82f6)" }}>2. Scope of processed data</h4>
               <p style={{ margin: 0 }}>The Administrator may process the following data:</p>
@@ -264,7 +264,7 @@ export function PrivacyModal({ open, onClose }: PrivacyModalProps) {
               <p style={{ margin: 0 }}>The Administrator reserves the right to update this Privacy Policy. The current version will be published on the Website.</p>
 
               <h4 style={{ fontSize: 16, fontWeight: 700, margin: "10px 0 0 0", color: "var(--ui-accent, #3b82f6)" }}>12. Contact</h4>
-              <p style={{ margin: 0 }}>In matters related to the processing of personal data, please contact us by e-mail at: <a href="mailto:kontakt@inspecthero.pl" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 600 }}>kontakt@inspecthero.pl</a></p>
+              <p style={{ margin: 0 }}>In matters related to the processing of personal data, please contact us by e-mail at: <a href="mailto:kontakt@et4u.de" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: 600 }}>kontakt@et4u.de</a></p>
             </>
           )}
         </div>

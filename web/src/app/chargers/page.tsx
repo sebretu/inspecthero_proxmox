@@ -1,7 +1,7 @@
 import ChargersClient from "./ChargersClient";
 
 export const metadata = {
-  title: "Ladegeräte - InspectHero",
+  title: "Ladegeräte - ET⚡U.DE",
 };
 
 export default async function ChargersPage() {

@@ -201,6 +201,79 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return;
     }
 
+    if (data) {
+      try {
+        const adminClient = getAdminClientSafely();
+        if (adminClient) {
+          // If a specific planId is requested, we optimize by fetching just its active version
+          let activeVersions: any[] = [];
+          if (planId) {
+            const { data: av } = await adminClient
+              .from('plan_versions')
+              .select('id, plan_id, version_number')
+              .eq('plan_id', planId)
+              .eq('status', 'active');
+            if (av) activeVersions = av;
+          } else {
+            // Fetch active versions for all distinct plans in the result set
+            const uniquePlanIds = Array.from(new Set(data.map((t: any) => t.plan_id)));
+            if (uniquePlanIds.length > 0) {
+              const { data: av } = await adminClient
+                .from('plan_versions')
+                .select('id, plan_id, version_number')
+                .in('plan_id', uniquePlanIds)
+                .eq('status', 'active');
+              if (av) activeVersions = av;
+            }
+          }
+
+          if (activeVersions.length > 0) {
+            const versionMap = new Map(activeVersions.map(v => [v.plan_id, v]));
+            const activeVersionIds = activeVersions.map(v => v.id);
+
+            const { data: locations } = await adminClient
+              .from('entity_locations')
+              .select('entity_id, x_norm, y_norm, plan_version_id')
+              .in('plan_version_id', activeVersionIds)
+              .eq('is_orphaned', false);
+
+            const locMap = new Map();
+            if (locations) {
+              locations.forEach((loc: any) => locMap.set(loc.entity_id, loc));
+            }
+
+            data.forEach((task: any) => {
+              const activeVer = versionMap.get(task.plan_id);
+              if (activeVer) {
+                const loc = locMap.get(task.id);
+                if (loc && loc.plan_version_id === activeVer.id) {
+                  task.render_x = loc.x_norm;
+                  task.render_y = loc.y_norm;
+                  task.render_contract_version = activeVer.version_number;
+                } else {
+                  task.render_x = task.x_norm;
+                  task.render_y = task.y_norm;
+                  task.render_contract_version = activeVer.version_number;
+                }
+              } else {
+                task.render_x = task.x_norm;
+                task.render_y = task.y_norm;
+                task.render_contract_version = 0;
+              }
+            });
+          } else {
+            data.forEach((task: any) => {
+              task.render_x = task.x_norm;
+              task.render_y = task.y_norm;
+              task.render_contract_version = 0;
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[tasks api] Error in coordinate abstraction layer:', err);
+      }
+    }
+
     res.status(200).json({ ok: true, data: data ?? [], meta: { limit, offset, planId: planId || null } });
     return;
   }
@@ -320,10 +393,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
     }
 
-    const creationHistoryClient = getAdminClientSafely();
-    if (creationHistoryClient && data?.id) {
+    const adminClient = getAdminClientSafely();
+    if (adminClient && data?.id) {
       try {
-        await creationHistoryClient.from("task_history").insert({
+        // Coordinate Abstraction: Save to entity_locations if plan is versioned
+        const { data: activeVersion } = await adminClient
+          .from('plan_versions')
+          .select('id')
+          .eq('plan_id', plan_id)
+          .eq('status', 'active')
+          .single();
+        
+        if (activeVersion) {
+          await adminClient.from('entity_locations').insert({
+            entity_id: data.id,
+            plan_version_id: activeVersion.id,
+            x_norm: data.x_norm,
+            y_norm: data.y_norm,
+            migrated_by: 'original'
+          });
+        }
+
+        await adminClient.from("task_history").insert({
           task_id: data.id,
           changed_by: created_by,
           action: "Task created",
@@ -338,9 +429,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           },
         });
       } catch (historyErr) {
-        console.error("[tasks api] failed to log creation history", historyErr);
+        console.error("[tasks api] failed to log creation history or save entity location", historyErr);
       }
-    } else if (!creationHistoryClient) {
+    } else if (!adminClient) {
       console.warn("[tasks api] cannot log creation history - admin client missing");
     }
 

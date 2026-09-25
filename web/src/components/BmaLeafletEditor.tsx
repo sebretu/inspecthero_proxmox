@@ -56,6 +56,9 @@ const makeDeviceIcon = (name: string, type: string, scale: number = 1, serial?: 
     let bgColor = "bg-red-600";
     if (type === "GATEWAY") bgColor = "bg-purple-600";
     if (type === "CALIB") bgColor = "bg-amber-600";
+    if (type === "DETECTOR_BLUE" || type === "detector_blue") bgColor = "bg-blue-600";
+    if (type === "SIREN" || type === "sirene") bgColor = "bg-orange-600";
+    if (type === "SIGNAL" || type === "dis_signalgeber") bgColor = "bg-amber-500";
     const size = Math.max(16, Math.floor(40 * scale));
     const fontSize = Math.max(8, Math.floor(14 * scale));
     const serialFontSize = Math.max(10, Math.floor(20 * scale));
@@ -84,6 +87,16 @@ function WaypointIcon() { return L.divIcon({ className: "", html: `<div style="w
 
 function MapEvents({ onClick, onZoom }: { onClick: (e: any, isDbl?: boolean) => void, onZoom: (z: number) => void }) {
   const map = useMapEvents({ click: (e: any) => onClick(e), dblclick: (e: any) => onClick(e, true), zoomend: () => onZoom(map.getZoom()) });
+  return null;
+}
+
+function AutoFit({ bounds }: { bounds: any }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds) {
+      map.fitBounds(bounds, { padding: [30, 30] });
+    }
+  }, [bounds, map]);
   return null;
 }
 
@@ -127,6 +140,23 @@ export default function BmaLeafletEditor({
       setHasSetDefaultFilter(true);
     }
   }, [allLoopNames, hasSetDefaultFilter]);
+
+  // ESC key to close photo preview, editing modal, scanner, and reset drawing modes
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedPhotoUrl(null);
+        setEditingDevice(null);
+        setIsScanningSerial(false);
+        setPendingRoute(null);
+        setIsCalibrating(false);
+        setCalibPoints([]);
+        if (mode !== "view") setMode("view");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mode]);
 
   useEffect(() => {
     if (!planId) return;
@@ -247,8 +277,9 @@ export default function BmaLeafletEditor({
           z-index: 99999 !important;
         }
       `}</style>
-      <MC key={planId} crs={CRS} center={bounds.getCenter()} zoom={currentZoom} minZoom={1} maxZoom={z + 2} style={{ height: "100%", width: "100%", background: "#0f172a" }}>
-        <TL url={`/api/tiles/${planId}/{z}/{x}/{y}.png?${token ? `token=${token}` : 'public=true'}`} maxNativeZoom={z} maxZoom={z + 2} noWrap bounds={bounds} />
+      <MC key={planId} crs={CRS} center={bounds.getCenter()} zoom={currentZoom} minZoom={1} maxZoom={z + 2} style={{ height: "100%", width: "100%", background: "#ffffff" }}>
+        <AutoFit bounds={bounds} />
+        <TL url={`/api/tiles/${planId}/{z}/{x}/{y}.png?${token ? `token=${token}` : 'public=true'}&v=${meta?.activeVersionId || ''}`} maxNativeZoom={z} maxZoom={z + 2} />
         <MapEvents onClick={handleMapClick} onZoom={setCurrentZoom} />
         {devices.map(dev => {
           const pos = localDevicePos[dev.id] || { x: dev.x, y: dev.y }; const scale = Math.pow(0.8, (meta?.maxZoom || 0) - currentZoom);
@@ -311,7 +342,7 @@ export default function BmaLeafletEditor({
               <Pl positions={pts} pathOptions={{ color, weight: activeRouteId === route.id ? 6 : 4, opacity: 0.8 }} ref={(el: any) => { if (el) polylineRefs.current[route.id] = el; }} eventHandlers={{ click: (e: any) => { setActiveRouteId(route.id); if (e.originalEvent?.shiftKey) { const { x, y } = mapData.fromLL(e.latlng); const nextWps = [...(route.waypoints || []), [x, y] as [number, number]]; const len = calculateLength([[s?.x || 0, s?.y || 0], ...nextWps, [t?.x || 0, t?.y || 0]]); apiPatch("/api/bma/connections", { type: "route", data: { id: route.id, waypoints: nextWps, length_meters: len } }).then(() => onSave()); } } }}>
                 <Popup><div className="p-4 bg-slate-900 text-white rounded-2xl min-w-[150px]"><p className="text-sm font-black uppercase text-center">{conn?.name || "Route"}</p><p className="text-[10px] font-bold text-blue-400 text-center">{route.length_meters.toFixed(2)} m</p></div></Popup>
               </Pl>
-              {activeRouteId === route.id && (route.waypoints || []).map((wp, idx) => <Mk key={`${route.id}-wp-${idx}`} position={toLL(wp[0], wp[1])} icon={WaypointIcon()} draggable eventHandlers={{ drag: (e: any) => updateWaypointVisuals(route.id, idx, e.target.getLatLng()), dragend: (e: any) => handleWaypointMove(route.id, idx, e.target.getLatLng(), true) }} />)}
+              {activeRouteId === route.id && (route.waypoints || []).map((wp, idx) => <Mk key={`${route.id}-wp-${idx}`} position={toLL(wp[0], wp[1])} icon={WaypointIcon()} draggable={isAdmin} eventHandlers={{ drag: (e: any) => updateWaypointVisuals(route.id, idx, e.target.getLatLng()), dragend: (e: any) => handleWaypointMove(route.id, idx, e.target.getLatLng(), true) }} />)}
             </div>
           );
         })}
@@ -425,7 +456,7 @@ export default function BmaLeafletEditor({
                            {(editingDevice.metadata?.photos || []).map((p: string, i: number) => (
                                <div key={i} className="aspect-square rounded-2xl overflow-hidden bg-black/40 border border-white/5 relative group" onClick={(e) => { e.stopPropagation(); setSelectedPhotoUrl(p); }}>
                                    <img src={p} className="w-full h-full object-cover" />
-                                   {isLoggedIn && <button onClick={async (e) => { e.stopPropagation(); if (window.confirm("Delete photo?")) { const n = (editingDevice.metadata?.photos || []).filter((_:any,idx:any)=>idx!==i); await apiPatch("/api/bma/devices", { id: editingDevice.id, metadata: { ...editingDevice.metadata, photos: n } }); setEditingDevice({ ...editingDevice, metadata: { ...editingDevice.metadata, photos: n } }); onSave(); } }} className="absolute inset-0 bg-red-600/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="w-6 h-6 text-white" /></button>}
+                                   {isLoggedIn && <button onClick={async (e) => { e.stopPropagation(); if (window.confirm("Delete photo?")) { const n = (editingDevice.metadata?.photos || []).filter((_:any,idx:any)=>idx!==i); const newSerial = n.length === 0 ? "" : serialNumber; if (n.length === 0) setSerialNumber(""); const updatedMeta = { ...editingDevice.metadata, photos: n, serial_number: newSerial ? newSerial.trim() : null }; await apiPatch("/api/bma/devices", { id: editingDevice.id, metadata: updatedMeta }); setEditingDevice({ ...editingDevice, metadata: updatedMeta }); onSave(); showNotification("Photo deleted", "success"); } }} className="absolute inset-0 bg-red-600/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="w-6 h-6 text-white" /></button>}
                                </div>
                            ))}
                            {isLoggedIn && (
@@ -438,7 +469,7 @@ export default function BmaLeafletEditor({
                         </div>
                      </div>
                   </div>
-                  {isLoggedIn && <button disabled={isScanningSerial || uploading || !serialNumber.trim()} onClick={async (e) => { e.stopPropagation(); await apiPatch("/api/bma/devices", { id: editingDevice.id, metadata: { ...editingDevice.metadata, serial_number: serialNumber } }); setEditingDevice(null); onSave(); showNotification("Saved successfully", "success"); }} className="w-full py-6 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:shadow-none disabled:active:scale-100 disabled:cursor-not-allowed text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-2xl shadow-blue-600/20 active:scale-95 transition-all">{(!serialNumber.trim()) ? "SCAN SERIAL TO SAVE" : "SAVE CHANGES"}</button>}
+                  {isLoggedIn && <button disabled={isScanningSerial || uploading} onClick={async (e) => { e.stopPropagation(); const trimmed = serialNumber.trim(); const updatedMeta = { ...editingDevice.metadata, serial_number: trimmed ? trimmed : null }; await apiPatch("/api/bma/devices", { id: editingDevice.id, metadata: updatedMeta }); setEditingDevice(null); onSave(); showNotification("Saved successfully", "success"); }} className="w-full py-6 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:shadow-none disabled:active:scale-100 disabled:cursor-not-allowed text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-2xl shadow-blue-600/20 active:scale-95 transition-all">SAVE CHANGES</button>}
                </div>
             </div>
           )}

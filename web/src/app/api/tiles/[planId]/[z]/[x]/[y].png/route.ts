@@ -32,11 +32,12 @@ function redTile(msg: string) {
 const cacheRef = {
   auth: new Map<string, { userId: string | null; expires: number }>(),
   meta: new Map<string, { data: Meta; expires: number }>(),
-  pendingAuth: new Map<string, Promise<string | null>>()
+  pendingAuth: new Map<string, Promise<string | null>>(),
+  activeVersion: new Map<string, { activeVersionId: string | null; expires: number }>()
 };
 
 const AUTH_CACHE_TTL = 60 * 1000;
-const META_CACHE_TTL = 300 * 1000; // 5 minutes
+const META_CACHE_TTL = 5 * 1000; // 5 seconds
 
 async function getCachedUserId(token: string): Promise<string | null> {
   const now = Date.now();
@@ -70,12 +71,45 @@ async function getCachedUserId(token: string): Promise<string | null> {
   return promise;
 }
 
+const ACTIVE_VERSION_TTL = 5 * 1000; // 5 seconds
+
+async function getActiveVersionId(planId: string): Promise<string | null> {
+  const now = Date.now();
+  const cached = cacheRef.activeVersion.get(planId);
+  if (cached && cached.expires > now) return cached.activeVersionId;
+
+  try {
+    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
+    const { data: activeVersion } = await supabase
+      .from("plan_versions")
+      .select("id")
+      .eq("plan_id", planId)
+      .eq("status", "active")
+      .maybeSingle();
+    const activeVersionId = activeVersion?.id || null;
+    cacheRef.activeVersion.set(planId, { activeVersionId, expires: now + ACTIVE_VERSION_TTL });
+    return activeVersionId;
+  } catch {
+    return null;
+  }
+}
+
 async function getCachedMeta(planId: string): Promise<Meta | null> {
   const now = Date.now();
   const cached = cacheRef.meta.get(planId);
   if (cached && cached.expires > now) return cached.data;
 
+  let targetFolder = planId;
+  const activeVersionId = await getActiveVersionId(planId);
+  if (activeVersionId) {
+    targetFolder = activeVersionId;
+  }
+
   const basePaths = [
+    path.join(process.cwd(), "private_tiles", targetFolder),
+    path.join(process.cwd(), "web", "private_tiles", targetFolder),
     path.join(process.cwd(), "private_tiles", planId),
     path.join(process.cwd(), "web", "private_tiles", planId)
   ];
@@ -120,7 +154,13 @@ export async function GET(
     const isPublic = url.searchParams.get("public") === "true";
 
     if (!userId && !isPublic) {
-      const token = url.searchParams.get("token");
+      let token = url.searchParams.get("token");
+      if (!token) {
+        const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+        if (authHeader?.startsWith("Bearer ")) {
+          token = authHeader.slice(7).trim();
+        }
+      }
       if (token) {
         userId = await getCachedUserId(token);
       }
@@ -157,7 +197,15 @@ export async function GET(
       return transparent("Negative coords");
     }
 
+    let targetFolder = planIdStr;
+    const activeVersionId = await getActiveVersionId(planIdStr);
+    if (activeVersionId) {
+      targetFolder = activeVersionId;
+    }
+
     const basePaths = [
+      path.join(process.cwd(), "private_tiles", targetFolder, String(zNum), String(xNum), `${yNum}.png`),
+      path.join(process.cwd(), "web", "private_tiles", targetFolder, String(zNum), String(xNum), `${yNum}.png`),
       path.join(process.cwd(), "private_tiles", planIdStr, String(zNum), String(xNum), `${yNum}.png`),
       path.join(process.cwd(), "web", "private_tiles", planIdStr, String(zNum), String(xNum), `${yNum}.png`)
     ];

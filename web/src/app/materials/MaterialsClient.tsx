@@ -427,7 +427,7 @@ export default function MaterialsClient() {
     return (
         <>
             <Head>
-                <title>{title} | InspectHero</title>
+                <title>{title} | ET⚡U.DE</title>
             </Head>
 
             <main className="home-main">

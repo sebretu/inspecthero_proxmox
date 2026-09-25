@@ -305,25 +305,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (fetchErr) return supaErr(res, fetchErr);
     if (!photo) return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Photo not found" } });
 
-    // 2. Check if this is an admin photo
-    const { data: uploaderProfile } = await adminForFetch
-      .from("profiles")
-      .select("role")
-      .eq("id", photo.uploaded_by)
-      .single();
-
-    const isPhotoByAdmin = uploaderProfile?.role === "ADMIN";
-
-    // 3. Check permissions
-    try {
-      await assertCanManagePhotos(photo.task_id);
-      // Extra check: Non-admins cannot delete admin photos
-      if (!isAdmin && isPhotoByAdmin) {
-        throw { status: 403, code: "FORBIDDEN", message: "Photos added by administrators cannot be deleted by users or moderators." };
-      }
-    } catch (err: any) {
-      const status = err?.status || 400;
-      return res.status(status).json({ ok: false, error: { code: err?.code || "FORBIDDEN", message: err?.message || "Access denied", meta: err?.meta } });
+    // 2. Only administrators can delete task photos
+    if (!isAdmin) {
+      return res.status(403).json({
+        ok: false,
+        error: { code: "FORBIDDEN", message: "Only administrators can delete task photos" },
+      });
     }
 
     // 3. Delete from Storage — use admin client to bypass storage RLS

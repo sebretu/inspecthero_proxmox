@@ -108,9 +108,10 @@ const styles = StyleSheet.create({
         gap: 2
     },
     photo: {
-        width: 200,
-        height: 150,
-        objectFit: 'cover',
+        width: 250,
+        height: 190,
+        objectFit: 'contain',
+        backgroundColor: '#f8fafc',
         borderRadius: 2
     },
     photoLabel: {

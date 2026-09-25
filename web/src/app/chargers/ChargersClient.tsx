@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { apiGet } from "@/lib/apiClient";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Trash2, MapPin, ExternalLink, Calendar, Plus } from "lucide-react";
+import { Trash2, MapPin, ExternalLink, Calendar, Plus, Download } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -76,6 +76,20 @@ export default function ChargersClient() {
 
   const title = t("charger", "listTitle", "Ladegeräte / Ładowarki");
 
+  const duplicateMacs = new Set<string>();
+  const macSeen = new Map<string, number>();
+  chargers.forEach(c => {
+    if (c.mac) {
+      const m = c.mac.toUpperCase();
+      macSeen.set(m, (macSeen.get(m) || 0) + 1);
+    }
+  });
+  macSeen.forEach((count, mac) => {
+    if (count > 1) {
+      duplicateMacs.add(mac);
+    }
+  });
+
   return (
     <div className="flex flex-col gap-6 p-4 md:p-8 max-w-7xl mx-auto pb-32 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -127,10 +141,19 @@ export default function ChargersClient() {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {chargers.map((c) => (
-                  <tr key={c.id} className="border-b border-ui-border/50 hover:bg-ui-bg/50 transition-colors">
-                    <td className="p-4 font-black font-monospace text-ui-text">{c.mac}</td>
-                    <td className="p-4 font-bold text-ui-accent tracking-widest">{c.pin}</td>
+                {chargers.map((c) => {
+                  const isDup = c.mac ? duplicateMacs.has(c.mac.toUpperCase()) : false;
+                  return (
+                    <tr key={c.id} className={`border-b border-ui-border/50 hover:bg-ui-bg/50 transition-colors ${isDup ? 'bg-red-500/10 border-red-500/30' : ''}`}>
+                      <td className="p-4 font-black font-monospace text-ui-text flex items-center gap-2">
+                        {c.mac}
+                        {isDup && (
+                          <span className="px-2 py-0.5 rounded-md bg-red-600 text-white font-black text-[9px] uppercase tracking-widest animate-pulse">
+                            {t("charger", "duplicateBadge", "DUPLIKAT")}
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-4 font-bold text-ui-accent tracking-widest">{c.pin}</td>
                     <td className="p-4 text-ui-muted whitespace-nowrap">
                        <div className="flex items-center gap-2">
                          <Calendar size={14} /> {formatDate(c.created_at)}
@@ -158,7 +181,8 @@ export default function ChargersClient() {
                       )}
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           </div>

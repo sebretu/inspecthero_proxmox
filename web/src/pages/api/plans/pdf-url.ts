@@ -53,6 +53,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Plan not found" } });
   }
 
+  // Get active version file url if exists
+  const { data: activeVersion } = await supabase
+    .from("plan_versions")
+    .select("file_url")
+    .eq("plan_id", id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  let storagePath = plan.storage_path;
+  if (activeVersion?.file_url) {
+    if (activeVersion.file_url.includes("/")) {
+      storagePath = activeVersion.file_url;
+    } else {
+      const parts = plan.storage_path.split("/");
+      parts.pop();
+      parts.push(activeVersion.file_url);
+      storagePath = parts.join("/");
+    }
+  }
+
   if (!isAdmin) {
     const { data: taskAccess, error: taskAccessError } = await supabase
       .from("tasks")
@@ -80,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const adminClient = createServiceSupabaseClient();
   const { data: signed, error: signedError } = await adminClient.storage
     .from(plan.storage_bucket as string)
-    .createSignedUrl(plan.storage_path as string, 60);
+    .createSignedUrl(storagePath as string, 60);
 
   if (signedError || !signed?.signedUrl) {
     return res.status((signedError as any)?.status || 500).json({

@@ -19,6 +19,7 @@ import { SerialCableAdderModal } from "@/components/SerialCableAdderModal";
 import { CategoryMapModal } from "@/components/CategoryMapModal";
 import { normalizeCableType } from "@/lib/cableUtils";
 import { TrommelVisual } from "@/components/TrommelVisual";
+import { Et4uLogo } from "@/components/Et4uLogo";
 import { motion } from "framer-motion";
 import { 
   Cable, 
@@ -58,6 +59,8 @@ type Cable = {
     waypoints_2?: any[] | null;
     scale?: number | null;
     scale_2?: number | null;
+    point_a_photo?: string | null;
+    point_b_photo?: string | null;
   } | null;
   trommels?: { id: string; name: string; index_number?: number | null; total_length: number | null } | null;
   reported_profile?: { id: string; full_name: string } | null;
@@ -73,6 +76,8 @@ type Route = {
   waypoints_2?: any[] | null;
   scale?: number | null;
   scale_2?: number | null;
+  point_a_photo?: string | null;
+  point_b_photo?: string | null;
 };
 type Trommel = { id: string; name: string; index_number?: number | null; total_length: number | null; cable_type?: string | null; used_length?: number; remaining_length?: number | null; remnant_length?: number | null; cables?: any[]; photo_url?: string | null; company_name?: string | null; serial_number?: string | null; diameter?: number | null; status?: "pending" | "delivered" | "empty" | "pickup_requested" | "picked_up"; pickup_requested_at?: string | null; pickup_requested_email_sent?: boolean; picked_up_at?: string | null; pickup_email_sent?: boolean; updated_at?: string; is_archived?: boolean; };
 type Category = { id: string; project_id: string; name: string; plan_id?: string | null; point_a_x?: number; point_a_y?: number; point_a_label?: string; };
@@ -87,8 +92,8 @@ const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }>
 export default function CablesClient() {
   const { t } = useLanguage();
   const [userRole, setUserRole] = useState<string | null>(null);
-  const isMod = ["ADMIN", "MODERATOR"].includes((userRole || "").toUpperCase());
   const isAdmin = (userRole || "").toUpperCase() === "ADMIN";
+  const isMod = isAdmin;
   const [token, setToken] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState("");
@@ -714,7 +719,7 @@ export default function CablesClient() {
                 )}
               </button>
             </div>
-            <p className="mt-6 text-[10px] text-ui-muted font-bold uppercase tracking-widest opacity-40">{t("cables", "publicSearchSystemInfo", "System Informacji QR • InspectHero")}</p>
+            <p className="mt-6 text-[10px] text-ui-muted font-bold uppercase tracking-widest opacity-40">{t("cables", "publicSearchSystemInfo", "System Informacji QR • ET⚡U.DE")}</p>
           </div>
         </div>
       )}
@@ -2007,6 +2012,8 @@ export default function CablesClient() {
           initialWaypoints2={routeToEdit?.cable_routes?.waypoints_2 || []}
           initialScale={routeToEdit?.cable_routes?.scale}
           initialScale2={routeToEdit?.cable_routes?.scale_2}
+          initialPointAPhoto={routeToEdit?.cable_routes?.point_a_photo}
+          initialPointBPhoto={routeToEdit?.cable_routes?.point_b_photo}
           onChange={async (val: any) => {
             try {
               if (routeToEdit?.route_id) {
@@ -2204,8 +2211,8 @@ export default function CablesClient() {
         <div style={{ position: "fixed", inset: 0, zIndex: 100000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.9)", backdropFilter: "blur(20px)", padding: 20 }}>
           {publicItemInfo.type === "inactive" ? (
             <div className="w-full max-w-sm bg-ui-card border border-red-500/30 rounded-2xl p-10 text-center shadow-2xl animate-in zoom-in duration-300">
-              <div className="mb-8">
-                 <img src="https://inspecthero.pl/inspecthero-logo.png" alt="InspectHero" className="h-10 mx-auto brightness-0 invert opacity-80" />
+              <div className="mb-8 flex flex-col items-center">
+                 <Et4uLogo size="md" animated />
                  <div className="h-px bg-white/10 w-24 mx-auto mt-6"></div>
               </div>
               
@@ -2234,7 +2241,7 @@ export default function CablesClient() {
               </button>
               
               <p className="mt-8 text-[10px] text-ui-muted font-bold uppercase tracking-tighter opacity-40">
-                InspectHero • QR Information System
+                ET⚡U.DE • QR Information System
               </p>
             </div>
           ) : (
@@ -2368,7 +2375,7 @@ export default function CablesClient() {
             >
               {t("common", "close", "Zamknij")}
             </button>
-            <p className="mt-6 text-[10px] text-ui-muted font-bold uppercase tracking-tighter opacity-40">InspectHero • QR Information System</p>
+            <p className="mt-6 text-[10px] text-ui-muted font-bold uppercase tracking-tighter opacity-40">ET⚡U.DE • QR Information System</p>
           </div>
           )}
         </div>

@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { apiDelete, apiGet, apiPatch, getToken } from "@/lib/apiClient";
+import { apiDelete, apiGet, apiPatch, apiPost, getToken } from "@/lib/apiClient";
 import { supabase } from "@/lib/supabase";
 import { useLanguage } from "@/contexts/LanguageContext";
 import PlanCompositeThumbnail from "@/components/PlanCompositeThumbnail";
 import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-type Project = { id: string; name: string; company_id?: string };
+type Project = { id: string; name: string; company_id?: string; companies?: { name: string } | null };
 type Building = { id: string; name: string };
 type Company = { id: string; name: string };
 
@@ -45,6 +46,8 @@ export default function PlansPage() {
   const [floors, setFloors] = useState<Floor[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  const [editingBuildingId, setEditingBuildingId] = useState<string | null>(null);
+  const [editingBuildingName, setEditingBuildingName] = useState("");
   const [editingFloorId, setEditingFloorId] = useState<string | null>(null);
   const [editingFloorName, setEditingFloorName] = useState("");
   const [savingFloorName, setSavingFloorName] = useState(false);
@@ -125,6 +128,41 @@ export default function PlansPage() {
   const normalizedRole = (viewerProfile?.role || "").toUpperCase();
   const isAdmin = normalizedRole === "ADMIN";
 
+  const [favoritePlans, setFavoritePlans] = useState<Array<{ id: string; name: string; projectName?: string }>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("et4u_favorite_plans");
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const favPlansRef = useRef<HTMLDivElement>(null);
+  const scrollFavPlans = (offset: number) => {
+    favPlansRef.current?.scrollBy({ left: offset, behavior: "smooth" });
+  };
+
+  const toggleFavoritePlan = (planId: string, planName: string, projName?: string) => {
+    setFavoritePlans((prev) => {
+      const exists = prev.some((f) => f.id === planId);
+      let next;
+      if (exists) {
+        next = prev.filter((f) => f.id !== planId);
+      } else {
+        next = [...prev, { id: planId, name: planName, projectName: projName || "" }];
+      }
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("et4u_favorite_plans", JSON.stringify(next));
+        }
+      } catch {}
+      return next;
+    });
+  };
+
   async function loadAll(pid?: string) {
     setErr(null);
     try {
@@ -141,7 +179,30 @@ export default function PlansPage() {
       setProjects(ps);
       setCompanies(comps);
 
-      const usePid = pid || projectId || ps[0]?.id;
+      let savedPid: string | null = null;
+      if (typeof window !== "undefined") {
+        try {
+          savedPid = localStorage.getItem("et4u_active_project_id");
+        } catch {}
+      }
+
+      // Check if first favorite plan belongs to a valid project
+      let favTargetPid: string | null = null;
+      let favTargetPlanId: string | null = null;
+      if (!pid && !projectId && favoritePlans.length > 0) {
+        try {
+          const firstFav = favoritePlans[0];
+          const planRes = await apiGet<any>(`/api/plan?id=${firstFav.id}`, token);
+          const planData = planRes?.data || planRes;
+          if (planData?.project_id && ps.some(p => p.id === planData.project_id)) {
+            favTargetPid = planData.project_id;
+            favTargetPlanId = firstFav.id;
+          }
+        } catch {}
+      }
+
+      const validSavedPid = savedPid && ps.some(p => p.id === savedPid) ? savedPid : null;
+      const usePid = pid || favTargetPid || projectId || validSavedPid || ps[0]?.id;
       if (!usePid) {
         setProjectId("");
         setBuildings([]);
@@ -151,6 +212,13 @@ export default function PlansPage() {
         return;
       }
       setProjectId(usePid);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("et4u_active_project_id", usePid);
+          const pObj = ps.find(p => p.id === usePid);
+          if (pObj) localStorage.setItem("et4u_active_project_name", pObj.name);
+        } catch {}
+      }
 
       const [bs, fs, pls] = await Promise.all([
         apiGet<Building[]>(`/api/buildings?projectId=${encodeURIComponent(usePid)}`, token),
@@ -162,7 +230,28 @@ export default function PlansPage() {
       setFloors(fs);
       setPlans(pls);
 
-      if (usePid !== projectId) {
+      if (pls.length > 0) {
+        let chosenId = pls[0].id;
+        if (favTargetPlanId && pls.some(p => p.id === favTargetPlanId)) {
+          chosenId = favTargetPlanId;
+          setSelectedPlanId(favTargetPlanId);
+        } else {
+          const favInPls = favoritePlans.find(fav => pls.some(p => p.id === fav.id));
+          if (favInPls) {
+            chosenId = favInPls.id;
+            setSelectedPlanId(favInPls.id);
+          } else if (!selectedPlanId || usePid !== projectId) {
+            chosenId = pls[0].id;
+            setSelectedPlanId(pls[0].id);
+          }
+        }
+
+        const isDirect = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("direct") === "1";
+        if (isDirect && chosenId) {
+          router.replace(`/plan/${chosenId}`);
+          return;
+        }
+      } else {
         setSelectedPlanId("");
       }
     } catch (e: any) {
@@ -187,19 +276,43 @@ export default function PlansPage() {
     }
   }
 
-  async function handleSaveFloorName(floorId: string, newName: string) {
-    if (!newName.trim()) return;
+  async function handleSaveNames(buildingId: string | undefined, newBuildingName: string, floorId: string, newFloorName: string) {
+    if (!newFloorName.trim()) return;
     setSavingFloorName(true);
     setErr(null);
     try {
       const token = await getToken();
-      await apiPatch(`/api/floors`, { id: floorId, name: newName }, token!);
-      setFloors(floors.map(f => f.id === floorId ? { ...f, name: newName } : f));
+      if (!token) throw new Error("No session token");
+
+      // 1. Update existing building or create new if not present
+      let resolvedBuildingId = buildingId;
+      if (buildingId && newBuildingName.trim()) {
+        await apiPatch(`/api/buildings`, { id: buildingId, name: newBuildingName.trim() }, token);
+        setBuildings(prev => prev.map(b => b.id === buildingId ? { ...b, name: newBuildingName.trim() } : b));
+      } else if (!buildingId && newBuildingName.trim() && projectId) {
+        const createdBuilding = await apiPost<Building>(`/api/buildings`, { project_id: projectId, name: newBuildingName.trim() }, token);
+        if (createdBuilding?.id) {
+          resolvedBuildingId = createdBuilding.id;
+          setBuildings(prev => [...prev, createdBuilding]);
+        }
+      }
+
+      // 2. Update floor name (and attach building_id if created)
+      const floorPayload: any = { id: floorId, name: newFloorName.trim() };
+      if (resolvedBuildingId && resolvedBuildingId !== buildingId) {
+        floorPayload.building_id = resolvedBuildingId;
+      }
+      await apiPatch(`/api/floors`, floorPayload, token);
+      setFloors(prev => prev.map(f => f.id === floorId ? { ...f, name: newFloorName.trim(), building_id: resolvedBuildingId || f.building_id } : f));
+
+      // 3. Reload in background to ensure all joins/relations are fresh
+      loadAll(projectId || undefined);
     } catch (e: any) {
-      setErr(e.message);
+      setErr(e.message || "Failed to save names");
     } finally {
       setSavingFloorName(false);
       setEditingFloorId(null);
+      setEditingBuildingId(null);
     }
   }
 
@@ -359,6 +472,118 @@ export default function PlansPage() {
           )}
         </div>
 
+        {/* Quick Access Bar: Active Project & Starred Plans */}
+        <div className="mb-10 bg-ui-card/60 backdrop-blur-2xl border border-ui-border rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#FFD000] animate-pulse" />
+              <span className="text-xs font-black uppercase tracking-widest text-ui-text">
+                ⚡ {t("plansPage", "quickAccess", "Szybki dostęp")}:
+              </span>
+            </div>
+            {projectId && (() => {
+              const currentProj = projects.find(p => p.id === projectId);
+              const compName = currentProj?.companies?.name || companies.find(c => c.id === currentProj?.company_id)?.name;
+              return (
+                <div className="text-[11px] font-bold text-ui-muted flex items-center gap-2 bg-black/30 px-3.5 py-1.5 rounded-xl border border-white/5">
+                  <span>{t("plansPage", "activeProject", "Aktualny projekt:")}</span>
+                  {compName && (
+                    <span className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-400 text-[10px] font-black border border-blue-500/30">
+                      🏢 {compName.toUpperCase()}
+                    </span>
+                  )}
+                  <span className="text-[#FFD000] font-black">{currentProj?.name || projectId}</span>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Quick projects switch buttons */}
+          {projects.length > 1 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-ui-muted shrink-0">
+                {t("plansPage", "projects", "Projekty:")}
+              </span>
+              {projects.map((p) => {
+                const isActive = p.id === projectId;
+                const compName = p.companies?.name || companies.find(c => c.id === p.company_id)?.name;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => loadAll(p.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 flex items-center gap-1.5 ${
+                      isActive
+                        ? "bg-[#FFD000]/20 border-[#FFD000] text-[#FFD000] shadow-md shadow-[#FFD000]/10"
+                        : "bg-black/30 hover:bg-black/50 border-white/10 hover:border-white/20 text-ui-muted hover:text-white"
+                    }`}
+                  >
+                    {compName && (
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-black border ${
+                        isActive ? "bg-[#FFD000]/30 text-[#FFD000] border-[#FFD000]/40" : "bg-white/10 text-slate-300 border-white/10"
+                      }`}>
+                        {compName.toUpperCase()}
+                      </span>
+                    )}
+                    <span>📁 {p.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Favorite plans chips */}
+          {favoritePlans.length > 0 && (
+            <div className="flex items-center gap-1.5 pt-2 border-t border-ui-border/30 max-w-full">
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#FFD000] shrink-0 mr-0.5 flex items-center gap-1">
+                ⭐ {t("plansPage", "favoritePlans", "Ulubione plany:")}
+              </span>
+              <button
+                type="button"
+                onClick={() => scrollFavPlans(-200)}
+                className="w-6 h-6 flex items-center justify-center rounded-lg bg-ui-card/80 hover:bg-ui-card border border-ui-border text-ui-muted hover:text-ui-text text-xs shrink-0 transition-all active:scale-95 cursor-pointer shadow-sm"
+                title="Przewiń w lewo"
+                aria-label="Przewiń w lewo"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <div
+                ref={favPlansRef}
+                className="flex items-center gap-2 overflow-x-auto py-1 px-0.5 flex-nowrap scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {favoritePlans.map((fav) => (
+                  <div key={fav.id} className="inline-flex items-center rounded-xl bg-[#FFD000]/10 border border-[#FFD000]/30 overflow-hidden shrink-0 group leading-tight">
+                    <Link
+                      href={`/plan/${fav.id}`}
+                      className="px-3 py-1.5 text-xs font-bold text-[#FFD000] hover:underline whitespace-nowrap flex items-center gap-1.5"
+                      title={fav.name}
+                    >
+                      <span>⭐ {fav.name}</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => toggleFavoritePlan(fav.id, fav.name)}
+                      title={t("plansPage", "removeFromFavorites", "Usuń z ulubionych")}
+                      className="px-2 py-1.5 text-ui-muted hover:text-red-400 hover:bg-red-500/10 text-xs transition-colors shrink-0"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => scrollFavPlans(200)}
+                className="w-6 h-6 flex items-center justify-center rounded-lg bg-ui-card/80 hover:bg-ui-card border border-ui-border text-ui-muted hover:text-ui-text text-xs shrink-0 transition-all active:scale-95 cursor-pointer shadow-sm"
+                title="Przewiń w prawo"
+                aria-label="Przewiń w prawo"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+
         {err && (
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="p-6 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-black uppercase tracking-widest mb-8">
             ⚠️ {err}
@@ -379,10 +604,10 @@ export default function PlansPage() {
                     className="w-full bg-black/40 border border-ui-border rounded-2xl px-6 py-4 text-xs font-bold text-ui-text outline-none appearance-none cursor-pointer focus:border-ui-accent/50 transition-all"
                   >
                     {projects.map(p => {
-                      const comp = companies.find(c => c.id === p.company_id);
+                      const compName = p.companies?.name || companies.find(c => c.id === p.company_id)?.name;
                       return (
                         <option key={p.id} value={p.id} className="bg-ui-bg">
-                          🏢 {comp ? comp.name.toUpperCase() : "GLOBAL"} / 📁 {p.name.toUpperCase()}
+                          🏢 {compName ? compName.toUpperCase() : "GLOBAL"} / 📁 {p.name.toUpperCase()}
                         </option>
                       );
                     })}
@@ -459,47 +684,113 @@ export default function PlansPage() {
                   <div className="p-8 md:p-12 border-b border-ui-border/50 bg-black/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div className="flex-1">
                       {editingFloorId ? (
-                        <div className="flex gap-4 w-full">
-                          <input
-                            type="text"
-                            value={editingFloorName}
-                            onChange={e => setEditingFloorName(e.target.value)}
-                            className="flex-1 bg-black/40 border border-ui-accent/30 rounded-xl px-5 py-3 text-xs font-bold text-ui-text outline-none"
-                            autoFocus
-                          />
-                          <button 
-                            onClick={() => {
-                              const p = plans.find(plan => plan.id === selectedPlanId);
-                              if (p) handleSaveFloorName(p.floor_id, editingFloorName);
-                            }}
-                            className="px-6 rounded-xl bg-ui-accent text-ui-bg text-[10px] font-black uppercase tracking-widest"
-                          >
-                            {t("plansPage", "saveBtn", "SAVE")}
-                          </button>
+                        <div className="w-full space-y-3 bg-black/40 p-4 rounded-2xl border border-ui-accent/30">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-ui-accent uppercase tracking-widest flex items-center gap-1">
+                                🏢 GEBÄUDE (Budynek / Building)
+                              </label>
+                              <input
+                                type="text"
+                                value={editingBuildingName}
+                                onChange={e => setEditingBuildingName(e.target.value)}
+                                placeholder="Nazwa budynku / Gebäude"
+                                className="w-full bg-black/60 border border-ui-border focus:border-ui-accent/60 rounded-xl px-4 py-2.5 text-xs font-bold text-ui-text outline-none transition-all"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-[#FFD000] uppercase tracking-widest flex items-center gap-1">
+                                📐 ETAGE / GESCHOSS (Piętro / Floor) *
+                              </label>
+                              <input
+                                type="text"
+                                value={editingFloorName}
+                                onChange={e => setEditingFloorName(e.target.value)}
+                                placeholder="Nazwa piętra / Etage"
+                                className="w-full bg-black/60 border border-ui-border focus:border-[#FFD000]/60 rounded-xl px-4 py-2.5 text-xs font-bold text-ui-text outline-none transition-all"
+                                autoFocus
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-end gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingFloorId(null);
+                                setEditingBuildingId(null);
+                              }}
+                              className="px-4 py-2 rounded-xl border border-ui-border bg-black/30 text-ui-muted hover:text-white text-[10px] font-black uppercase tracking-widest transition-all"
+                            >
+                              Anuluj / Cancel
+                            </button>
+                            <button
+                              type="button"
+                              disabled={savingFloorName || !editingFloorName.trim()}
+                              onClick={() => {
+                                handleSaveNames(editingBuildingId || undefined, editingBuildingName, editingFloorId, editingFloorName);
+                              }}
+                              className="px-6 py-2 rounded-xl bg-ui-accent text-ui-bg text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                              {savingFloorName ? "Zapisywanie..." : "💾 Zapisz / Save"}
+                            </button>
+                          </div>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-4">
-                          <h2 className="text-2xl md:text-3xl font-black text-ui-text uppercase tracking-tight">
-                            {(() => {
-                              const p = plans.find(plan => plan.id === selectedPlanId);
-                              const floor = floors.find(f => f.id === p?.floor_id);
-                              const building = buildings.find(b => b.id === floor?.building_id);
-                              return [building?.name, floor?.name].filter(Boolean).join(" - ") || "Unnamed Plan";
-                            })()}
-                          </h2>
-                          {isAdmin && (
-                            <button 
-                              onClick={() => {
+                        <div className="flex flex-wrap items-center gap-4">
+                          {selectedPlanId && (() => {
+                            const p = plans.find(plan => plan.id === selectedPlanId);
+                            const floor = floors.find(f => f.id === p?.floor_id);
+                            const building = buildings.find(b => b.id === floor?.building_id);
+                            const planName = [building?.name, floor?.name].filter(Boolean).join(" - ") || "Plan";
+                            const isFav = favoritePlans.some(f => f.id === selectedPlanId);
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => toggleFavoritePlan(selectedPlanId, planName, projects.find(pr => pr.id === projectId)?.name)}
+                                title={isFav ? "Aus Favoriten entfernen / Usuń z ulubionych" : "Zu Favoriten hinzufügen / Dodaj do ulubionych"}
+                                className={`p-2 rounded-xl border transition-all flex items-center justify-center shrink-0 ${
+                                  isFav
+                                    ? "bg-[#FFD000]/15 border-[#FFD000]/60 text-[#FFD000] shadow-[0_0_12px_rgba(255,208,0,0.3)]"
+                                    : "bg-ui-card/50 border-ui-border text-ui-muted hover:text-[#FFD000] hover:border-[#FFD000]/30"
+                                }`}
+                              >
+                                <span className="text-base leading-none">{isFav ? "⭐" : "☆"}</span>
+                              </button>
+                            );
+                          })()}
+                          <div className="flex flex-wrap items-center gap-3">
+                            <h2 className="text-2xl md:text-3xl font-black text-ui-text uppercase tracking-tight flex items-center flex-wrap gap-2">
+                              {(() => {
                                 const p = plans.find(plan => plan.id === selectedPlanId);
                                 const floor = floors.find(f => f.id === p?.floor_id);
-                                setEditingFloorId(floor?.id || null);
-                                setEditingFloorName(floor?.name || "");
-                              }}
-                              className="w-8 h-8 rounded-full bg-ui-border hover:bg-ui-accent hover:text-ui-bg flex items-center justify-center transition-all"
-                            >
-                              ✏️
-                            </button>
-                          )}
+                                const building = buildings.find(b => b.id === floor?.building_id);
+                                return (
+                                  <>
+                                    <span className="text-ui-accent">🏢 {building?.name || "—"}</span>
+                                    <span className="text-ui-muted font-normal">/</span>
+                                    <span>📐 {floor?.name || "Unnamed"}</span>
+                                  </>
+                                );
+                              })()}
+                            </h2>
+                            {isAdmin && (
+                              <button 
+                                onClick={() => {
+                                  const p = plans.find(plan => plan.id === selectedPlanId);
+                                  const floor = floors.find(f => f.id === p?.floor_id);
+                                  const building = buildings.find(b => b.id === floor?.building_id);
+                                  setEditingFloorId(floor?.id || null);
+                                  setEditingFloorName(floor?.name || "");
+                                  setEditingBuildingId(building?.id || null);
+                                  setEditingBuildingName(building?.name || "");
+                                }}
+                                title="Edytuj budynek i piętro / Edit Building & Floor"
+                                className="w-8 h-8 rounded-full bg-ui-border hover:bg-ui-accent hover:text-ui-bg flex items-center justify-center transition-all text-xs"
+                              >
+                                ✏️
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )}
                       <div className="flex items-center gap-4 mt-3">
@@ -658,10 +949,10 @@ export default function PlansPage() {
                               >
                                 <option value="" className="bg-ui-bg">-- Select Project --</option>
                                 {projects.map((p) => {
-                                  const comp = companies.find(c => c.id === p.company_id);
+                                  const compName = p.companies?.name || companies.find(c => c.id === p.company_id)?.name;
                                   return (
                                     <option key={p.id} value={p.id} className="bg-ui-bg">
-                                      🏢 {comp ? comp.name.toUpperCase() : "GLOBAL"} / 📁 {p.name.toUpperCase()}
+                                      🏢 {compName ? compName.toUpperCase() : "GLOBAL"} / 📁 {p.name.toUpperCase()}
                                     </option>
                                   );
                                 })}
@@ -765,6 +1056,12 @@ export default function PlansPage() {
                           className="px-6 py-3 rounded-xl bg-ui-accent/10 border border-ui-accent/30 text-ui-accent text-[10px] font-black uppercase tracking-widest hover:bg-ui-accent hover:text-ui-bg transition-all"
                         >
                           {isCloningPlan ? "✕ CLOSE SHARE PANEL" : "📋 ASSIGN / CLONE / MOVE PLAN TO ANOTHER PROJECT"}
+                        </button>
+                        <button
+                          onClick={() => router.push(`/admin/plans/${selectedPlanId}/versions`)}
+                          className="px-6 py-3 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all"
+                        >
+                          🔄 VERSION MANAGER
                         </button>
                         <button
                           onClick={() => handleDeletePlan(selectedPlanId)}

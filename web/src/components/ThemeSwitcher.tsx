@@ -4,10 +4,11 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 const THEMES = [
-  { value: "deep-space", label: "Deep Space", icon: "🌌" },
-  { value: "graphite-tech", label: "Graphite Tech", icon: "⚙️" },
-  { value: "black-silver", label: "Black Silver", icon: "🌑" },
-  { value: "inspect", label: "Inspect", icon: "🔍" },
+  { value: "deep-space", label: "01 — Deep Space", icon: "🌌" },
+  { value: "graphite-tech", label: "02 — Graphite Tech", icon: "⚙️" },
+  { value: "black-silver", label: "03 — Black Silver", icon: "🌑" },
+  { value: "inspect", label: "04 — Inspect", icon: "🔍" },
+  { value: "tech-core", label: "05 — TECH CORE", icon: "⚡" },
 ];
 
 export function ThemeSwitcher() {

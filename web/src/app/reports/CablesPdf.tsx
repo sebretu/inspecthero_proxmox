@@ -106,13 +106,123 @@ const styles = StyleSheet.create({
     }
 });
 
-export default function CablesPdf({ projectName, cables, trommels, plansMap, buildingsMap, floorsMap, translations }: any) {
+export default function CablesPdf({ projectName, cables, trommels, plansMap, buildingsMap, floorsMap, translations, exportType = "standard", categories = [] }: any) {
     // translations is a flat object with keys from the cables_pdf namespace
     const t = (key: string, fallback?: string) => translations[key] || fallback || key;
 
     const getStatusLabel = (status: string) => {
         return t(`status_${status}`, status);
     };
+
+    // Group cables by category
+    const cablesByCategory: Record<string, any[]> = {};
+    cables.forEach((c: any) => {
+        const catId = c.category_id || 'none';
+        if (!cablesByCategory[catId]) cablesByCategory[catId] = [];
+        cablesByCategory[catId].push(c);
+    });
+
+    const categoriesMap = (categories || []).reduce((acc: any, cat: any) => {
+        acc[cat.id] = cat.name;
+        return acc;
+    }, {} as Record<string, string>);
+
+    const activeCategoryIds = Object.keys(cablesByCategory);
+    activeCategoryIds.sort((a, b) => {
+        if (a === 'none') return 1;
+        if (b === 'none') return -1;
+        const nameA = categoriesMap[a] || '';
+        const nameB = categoriesMap[b] || '';
+        return nameA.localeCompare(nameB);
+    });
+
+    if (exportType === 'by_category') {
+        return (
+            <Document>
+                {/* Title Page */}
+                <Page size="A4" style={styles.page}>
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <Text style={styles.header}>{t('title')} - {t('byCategory', 'Podział na kategorie')}</Text>
+                        <Text style={{ fontSize: 16, marginBottom: 10 }}>{t('project')}: {projectName}</Text>
+                        <Text style={{ marginBottom: 5 }}>{t('generatedOn')}: {new Date().toLocaleString()}</Text>
+                    </View>
+
+                    {/* Summary */}
+                    <View style={styles.section}>
+                        <Text style={styles.subHeader}>{t('summary')}</Text>
+                        <Text style={{ marginBottom: 8 }}>{t('totalCables')}: {cables.length}</Text>
+                        {activeCategoryIds.map((catId) => {
+                            const name = catId === 'none' ? t('noCategory', 'Bez kategorii') : (categoriesMap[catId] || t('unknownCategory', 'Nieznana kategoria'));
+                            const count = cablesByCategory[catId].length;
+                            return (
+                                <Text key={catId} style={{ marginLeft: 10, fontSize: 9, marginTop: 2 }}>
+                                    • {name}: {count}
+                                </Text>
+                            );
+                        })}
+                    </View>
+                </Page>
+
+                {/* Categories Pages */}
+                {activeCategoryIds.map((catId) => {
+                    const name = catId === 'none' ? t('noCategory', 'Bez kategorii') : (categoriesMap[catId] || t('unknownCategory', 'Nieznana kategoria'));
+                    const catCables = cablesByCategory[catId];
+                    return (
+                        <Page key={catId} size="A4" style={styles.page}>
+                            <Text style={[styles.subHeader, { marginBottom: 15 }]}>{t('category', 'Kategoria')}: {name} ({catCables.length})</Text>
+                            <View style={{ flexDirection: 'column' }}>
+                                {catCables.map((c: any) => {
+                                    const finalType = c.cable_type || c.trommels?.cable_type || '-';
+                                    const isDone = c.status === 'DONE' || c.status === 'APPROVED';
+                                    const isInProgress = c.status === 'IN_PROGRESS' || c.status === 'PENDING_APPROVAL' || c.status === 'DONE_WAITING_APPROVAL';
+                                    const badgeBg = isDone ? '#e2fbe8' : isInProgress ? '#fef3c7' : '#f3f4f6';
+                                    const badgeColor = isDone ? '#166534' : isInProgress ? '#92400e' : '#374151';
+                                    return (
+                                        <View key={c.id} style={{ 
+                                            flexDirection: 'row', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'space-between',
+                                            paddingTop: 8,
+                                            paddingBottom: 8,
+                                            paddingLeft: 8,
+                                            paddingRight: 8,
+                                            borderBottomWidth: 0.5,
+                                            borderBottomColor: '#bfbfbf',
+                                        }} wrap={false}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                                                <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#111827' }}>
+                                                    {c.index_number ? `#${c.index_number} ` : ""}{c.name}
+                                                </Text>
+                                                <Text style={{ fontSize: 8.5, color: '#06b6d4', fontWeight: 'bold' }}>
+                                                    {finalType}
+                                                </Text>
+                                            </View>
+                                            <View style={{ 
+                                                paddingTop: 2.5,
+                                                paddingBottom: 2.5,
+                                                paddingLeft: 6,
+                                                paddingRight: 6,
+                                                borderRadius: 4, 
+                                                backgroundColor: badgeBg
+                                            }}>
+                                                <Text style={{ 
+                                                    fontSize: 8, 
+                                                    fontWeight: 'bold', 
+                                                    color: badgeColor
+                                                }}>
+                                                    {getStatusLabel(c.status)}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        </Page>
+                    );
+                })}
+            </Document>
+        );
+    }
 
     // Group cables by plan
     const cablesByPlan: Record<string, any[]> = {};

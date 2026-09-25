@@ -34,7 +34,8 @@ export default async function handler(
     });
   }
 
-  const isMod = isAdminRole(requester.role) || (requester.role || "").toUpperCase() === "MODERATOR";
+  const isAdmin = isAdminRole(requester.role);
+  const isMod = isAdmin;
 
   // GET /api/cable-routes?projectId=...
   if (req.method === "GET") {
@@ -54,8 +55,11 @@ export default async function handler(
     return res.status(200).json({ ok: true, data: data ?? [] });
   }
 
-  // POST /api/cable-routes
+  // POST /api/cable-routes (admin only)
   if (req.method === "POST") {
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only administrators can create cable routes" } });
+    }
     const body = readJsonBody(req);
     const point_a_label = String(body?.point_a_label || "").trim();
     const point_b_label = String(body?.point_b_label || "").trim();
@@ -75,6 +79,8 @@ export default async function handler(
     const waypoints_2   = Array.isArray(body?.waypoints_2) ? body.waypoints_2 : null;
     const scale         = body?.scale != null ? Number(body.scale) : null;
     const scale_2       = body?.scale_2 != null ? Number(body.scale_2) : null;
+    const point_a_photo = body?.point_a_photo != null ? String(body.point_a_photo).trim() || null : null;
+    const point_b_photo = body?.point_b_photo != null ? String(body.point_b_photo).trim() || null : null;
 
     if (!point_a_label || !point_b_label) {
       return res.status(400).json({ ok: false, error: { code: "BAD_REQUEST", message: "point_a_label and point_b_label are required" } });
@@ -103,6 +109,8 @@ export default async function handler(
     if (point_a_x !== null && Number.isFinite(point_a_x)) payload.point_a_x = point_a_x;
     if (point_a_y !== null && Number.isFinite(point_a_y)) payload.point_a_y = point_a_y;
     if (point_b_x !== null && Number.isFinite(point_b_x)) payload.point_b_x = point_b_x;
+    if (point_a_photo) payload.point_a_photo = point_a_photo;
+    if (point_b_photo) payload.point_b_photo = point_b_photo;
     if (point_b_y !== null && Number.isFinite(point_b_y)) payload.point_b_y = point_b_y;
     if (waypoints !== null) payload.waypoints = waypoints;
 
@@ -122,10 +130,10 @@ export default async function handler(
     return res.status(200).json({ ok: true, data });
   }
 
-  // DELETE /api/cable-routes?id=... (mod/admin only)
+  // DELETE /api/cable-routes?id=... (admin only)
   if (req.method === "DELETE") {
-    if (!isMod) {
-      return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only admins/mods can delete routes" } });
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only administrators can delete routes" } });
     }
     const id = typeof req.query.id === "string" ? req.query.id.trim() : "";
     if (!id) {
@@ -138,8 +146,11 @@ export default async function handler(
     return res.status(200).json({ ok: true, data: { deleted: id } });
   }
 
-  // PATCH /api/cable-routes — edit name, labels, waypoints
+  // PATCH /api/cable-routes (admin only)
   if (req.method === "PATCH") {
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only administrators can edit routes" } });
+    }
     const body = readJsonBody(req);
     const id = String(body?.id || "").trim();
     if (!id) return res.status(400).json({ ok: false, error: { code: "BAD_REQUEST", message: "Missing id" } });
@@ -153,6 +164,8 @@ export default async function handler(
     if (body.point_a_y !== undefined)     patch.point_a_y = body.point_a_y != null ? Number(body.point_a_y) : null;
     if (body.point_b_x !== undefined)     patch.point_b_x = body.point_b_x != null ? Number(body.point_b_x) : null;
     if (body.point_b_y !== undefined)     patch.point_b_y = body.point_b_y != null ? Number(body.point_b_y) : null;
+    if (body.point_a_photo !== undefined) patch.point_a_photo = body.point_a_photo === null || String(body.point_a_photo).trim() === "" ? null : String(body.point_a_photo).trim();
+    if (body.point_b_photo !== undefined) patch.point_b_photo = body.point_b_photo === null || String(body.point_b_photo).trim() === "" ? null : String(body.point_b_photo).trim();
     if (body.waypoints !== undefined)     patch.waypoints = Array.isArray(body.waypoints) ? body.waypoints : null;
     
     if (body.plan_id_2 !== undefined)      patch.plan_id_2 = String(body.plan_id_2 || "").trim() || null;

@@ -1,7 +1,7 @@
 import BmaAutomationClient from "./BmaAutomationClient";
 
 export const metadata = {
-  title: "BMA Automatyka | InspectHero",
+  title: "BMA Automatyka | ET⚡U.DE",
   description: "Professional Fire Alarm System infrastructure designer",
 };
 

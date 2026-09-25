@@ -14,11 +14,12 @@ type Meta = {
   gridH: number;
   format?: string;
   limits?: Record<string, { maxX: number; maxY: number }>;
+  activeVersionId?: string;
 };
 
 // Simple memory cache for metadata
 const metaCache = new Map<string, { data: Meta; expires: number }>();
-const META_TTL = 300 * 1000; // 5 minutes
+const META_TTL = 5 * 1000; // 5 seconds
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -38,7 +39,13 @@ export async function GET(
     let { userId } = createServerSupabaseClient(req, { requireAuth: false });
 
     if (!userId && !isPublic) {
-      const token = url.searchParams.get("token");
+      let token = url.searchParams.get("token");
+      if (!token) {
+        const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+        if (authHeader?.startsWith("Bearer ")) {
+          token = authHeader.slice(7).trim();
+        }
+      }
       if (token) {
         const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
         const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -75,11 +82,32 @@ export async function GET(
       console.log(`[tiles meta] Returning cached meta for ${planId}`);
       return NextResponse.json(cached.data, {
         status: 200,
-        headers: { "Cache-Control": "public, max-age=300" }
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" }
       });
     }
 
+    // Resolve version directory or fall back to planId
+    let targetFolder = planId;
+    try {
+      const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
+      const { data: activeVersion } = await supabase
+        .from("plan_versions")
+        .select("id")
+        .eq("plan_id", planId)
+        .eq("status", "active")
+        .maybeSingle();
+      if (activeVersion?.id) {
+        targetFolder = activeVersion.id;
+      }
+    } catch (err) {
+      console.error("[tiles meta] Failed to resolve active version:", err);
+    }
+
     const basePaths = [
+      path.join(process.cwd(), "private_tiles", targetFolder),
+      path.join(process.cwd(), "web", "private_tiles", targetFolder),
       path.join(process.cwd(), "private_tiles", planId),
       path.join(process.cwd(), "web", "private_tiles", planId)
     ];
@@ -110,11 +138,17 @@ export async function GET(
         return jsonError("meta.json is invalid", 500);
       }
 
-      metaCache.set(planId, { data: meta, expires: now + META_TTL });
+      // Enrich meta with activeVersionId
+      const enrichedMeta = {
+        ...meta,
+        activeVersionId: targetFolder
+      };
 
-      return NextResponse.json(meta, {
+      metaCache.set(planId, { data: enrichedMeta, expires: now + META_TTL });
+
+      return NextResponse.json(enrichedMeta, {
         status: 200,
-        headers: { "Cache-Control": "public, max-age=300" }
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" }
       });
     } catch (err: any) {
       return jsonError(`Failed to load metadata: ${err.message}`, 404);

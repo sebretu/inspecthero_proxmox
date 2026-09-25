@@ -80,7 +80,7 @@ import { Capacitor } from '@capacitor/core';
 export function getApiUrl(path: string | undefined | null) {
   if (!path) return '';
   const isMobile = Capacitor.isNativePlatform();
-  const baseUrl = isMobile ? 'https://inspecthero.pl' : '';
+  const baseUrl = isMobile ? 'https://et4u.de' : '';
   return path.startsWith('/api/') ? `${baseUrl}${path}` : path;
 }
 
@@ -140,6 +140,9 @@ export async function apiCall<T>(
     try {
       j = await r.json();
     } catch (e) {
+      if (!r.ok) {
+        throw new Error(`Server error (${r.status}) for ${fullPath}`);
+      }
       throw new Error(`Parse error for ${fullPath}: ${e}`);
     }
 
@@ -170,8 +173,24 @@ export async function apiGet<T>(path: string, token?: string | null): Promise<T>
 /**
  * Convenience: POST with auto-token
  */
-export async function apiPost<T>(path: string, body?: any, token?: string | null): Promise<T> {
-  return apiCall<T>(path, { method: "POST", body, token });
+export async function apiPost<T>(
+  path: string,
+  body?: any,
+  tokenOrOptions?: string | null | { token?: string | null; timeoutMs?: number },
+  options?: { timeoutMs?: number }
+): Promise<T> {
+  let token: string | null | undefined;
+  let timeoutMs: number | undefined;
+
+  if (typeof tokenOrOptions === "object" && tokenOrOptions !== null) {
+    token = tokenOrOptions.token;
+    timeoutMs = tokenOrOptions.timeoutMs;
+  } else {
+    token = tokenOrOptions;
+    timeoutMs = options?.timeoutMs;
+  }
+
+  return apiCall<T>(path, { method: "POST", body, token, timeoutMs });
 }
 
 /**

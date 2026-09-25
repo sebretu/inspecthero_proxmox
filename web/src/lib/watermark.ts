@@ -9,96 +9,139 @@ export async function applyWatermark(
     location: LocationCoordinates | null,
     language: string = "pl"
 ): Promise<File> {
-    // 1. Create an Image object from the file
-    const img = new Image();
-    const imageUrl = URL.createObjectURL(file);
-
-    await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = imageUrl;
+    const timeoutPromise = new Promise<File>((resolve) => {
+        setTimeout(() => resolve(file), 8000);
     });
 
-    URL.revokeObjectURL(imageUrl);
+    const watermarkProcess = async (): Promise<File> => {
+        try {
+            let width = 0;
+            let height = 0;
+            let sourceDrawable: CanvasImageSource | null = null;
+            let cleanup: (() => void) | null = null;
 
-    // 1.5 Calculate dimensions (resize if too large)
-    const MAX_DIM = 1600;
-    let width = img.width;
-    let height = img.height;
+            // 1. Try createImageBitmap for automatic EXIF orientation support on modern browsers
+            if (typeof window !== "undefined" && "createImageBitmap" in window) {
+                try {
+                    const bitmap = await createImageBitmap(file);
+                    if (bitmap && bitmap.width > 0 && bitmap.height > 0) {
+                        width = bitmap.width;
+                        height = bitmap.height;
+                        sourceDrawable = bitmap;
+                        cleanup = () => bitmap.close?.();
+                    }
+                } catch (bitmapErr) {
+                    console.warn("createImageBitmap fallback to Image:", bitmapErr);
+                }
+            }
 
-    if (width > MAX_DIM || height > MAX_DIM) {
-        const ratio = Math.min(MAX_DIM / width, MAX_DIM / height);
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
-    }
+            // 1.1 Fallback to standard Image if bitmap wasn't created
+            if (!sourceDrawable) {
+                const img = new Image();
+                const imageUrl = URL.createObjectURL(file);
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                    img.src = imageUrl;
+                });
+                width = img.naturalWidth || img.width;
+                height = img.naturalHeight || img.height;
+                sourceDrawable = img;
+                cleanup = () => URL.revokeObjectURL(imageUrl);
+            }
 
-    // 2. Create a Canvas
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
+            if (!width || !height) {
+                cleanup?.();
+                return file;
+            }
 
-    if (!ctx) {
-        throw new Error("Could not get canvas context");
-    }
+            // 1.5 Calculate dimensions (resize if too large, max 2.5K HD)
+            const MAX_DIM = 2560;
+            let targetWidth = width;
+            let targetHeight = height;
 
-    // 3. Draw the original image
-    ctx.drawImage(img, 0, 0, width, height);
+            if (targetWidth > MAX_DIM || targetHeight > MAX_DIM) {
+                const ratio = Math.min(MAX_DIM / targetWidth, MAX_DIM / targetHeight);
+                targetWidth = Math.round(targetWidth * ratio);
+                targetHeight = Math.round(targetHeight * ratio);
+            }
 
-    // 4. Configure watermark style
-    // We want the text to be readable regardless of image size
-    const fontSize = Math.max(12, Math.floor(canvas.height * 0.025));
-    ctx.font = `bold ${fontSize}px sans-serif`;
+            // 2. Create a Canvas
+            const canvas = document.createElement("canvas");
+            canvas.width = targetWidth;
+            canvas.height = targetHeight;
+            const ctx = canvas.getContext("2d");
 
-    const now = new Date();
-    const dateStr = now.toLocaleDateString(language === "pl" ? "pl-PL" : language === "de" ? "de-DE" : "en-US");
-    const timeStr = now.toLocaleTimeString(language === "pl" ? "pl-PL" : language === "de" ? "de-DE" : "en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-    });
+            if (!ctx) {
+                cleanup?.();
+                return file;
+            }
 
-    const watermarkText = `${dateStr} ${timeStr}`;
+            // 3. Draw the original image
+            ctx.drawImage(sourceDrawable, 0, 0, targetWidth, targetHeight);
+            cleanup?.();
 
-    // 5. Draw background for the watermark (semi-transparent)
-    const textMetrics = ctx.measureText(watermarkText);
-    const padding = fontSize * 0.5;
-    const bgHeight = fontSize + padding * 2;
-    const bgWidth = textMetrics.width + padding * 2;
+            // 4. Configure watermark style
+            const fontSize = Math.max(14, Math.floor(canvas.height * 0.025));
+            ctx.font = `bold ${fontSize}px sans-serif`;
 
-    // Position it at the bottom-right
-    const x = canvas.width - bgWidth - padding;
-    const y = canvas.height - bgHeight - padding;
+            const now = new Date();
+            const dateStr = now.toLocaleDateString(language === "pl" ? "pl-PL" : language === "de" ? "de-DE" : language === "sk" ? "sk-SK" : "en-US");
+            const timeStr = now.toLocaleTimeString(language === "pl" ? "pl-PL" : language === "de" ? "de-DE" : language === "sk" ? "sk-SK" : "en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+            });
 
-    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-    ctx.beginPath();
-    // Round corners for a nicer look
-    const radius = 8;
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + bgWidth - radius, y);
-    ctx.quadraticCurveTo(x + bgWidth, y, x + bgWidth, y + radius);
-    ctx.lineTo(x + bgWidth, y + bgHeight - radius);
-    ctx.quadraticCurveTo(x + bgWidth, y + bgHeight, x + bgWidth - radius, y + bgHeight);
-    ctx.lineTo(x + radius, y + bgHeight);
-    ctx.quadraticCurveTo(x, y + bgHeight, x, y + bgHeight - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-    ctx.fill();
+            const watermarkText = `${dateStr} ${timeStr}`;
 
-    // 6. Draw the text
-    ctx.fillStyle = "white";
-    ctx.textBaseline = "middle";
-    ctx.fillText(watermarkText, x + padding, y + bgHeight / 2);
+            // 5. Draw background for the watermark (semi-transparent)
+            const textMetrics = ctx.measureText(watermarkText);
+            const padding = fontSize * 0.5;
+            const bgHeight = fontSize + padding * 2;
+            const bgWidth = textMetrics.width + padding * 2;
 
-    // 7. Convert back to File
-    const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.75);
-    });
+            // Position it at the bottom-right
+            const x = canvas.width - bgWidth - padding;
+            const y = canvas.height - bgHeight - padding;
 
-    if (!blob) {
-        throw new Error("Failed to create blob from canvas");
-    }
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+            ctx.beginPath();
+            const radius = 8;
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + bgWidth - radius, y);
+            ctx.quadraticCurveTo(x + bgWidth, y, x + bgWidth, y + radius);
+            ctx.lineTo(x + bgWidth, y + bgHeight - radius);
+            ctx.quadraticCurveTo(x + bgWidth, y + bgHeight, x + bgWidth - radius, y + bgHeight);
+            ctx.lineTo(x + radius, y + bgHeight);
+            ctx.quadraticCurveTo(x, y + bgHeight, x, y + bgHeight - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fill();
 
-    return new File([blob], file.name, { type: "image/jpeg" });
+            // 6. Draw the text
+            ctx.fillStyle = "#ffffff";
+            ctx.textBaseline = "middle";
+            ctx.fillText(watermarkText, x + padding, y + bgHeight / 2);
+
+            // 7. Convert back to File with 90% quality
+            const blob = await new Promise<Blob | null>((resolve) => {
+                canvas.toBlob((b) => resolve(b), "image/jpeg", 0.90);
+            });
+
+            if (!blob) {
+                return file;
+            }
+
+            const rawName = file.name || "photo.jpg";
+            const safeName = rawName.replace(/\.[^/.]+$/, "") + ".jpg";
+            return new File([blob], safeName, { type: "image/jpeg", lastModified: Date.now() });
+        } catch (err) {
+            console.warn("applyWatermark failed, falling back to original file:", err);
+            return file;
+        }
+    };
+
+    return Promise.race([watermarkProcess(), timeoutPromise]);
 }

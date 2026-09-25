@@ -9,6 +9,7 @@ import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTaskNumericLabel } from "@/lib/taskNumber";
 import { useSync } from "@/hooks/useSync";
+import { Et4uBentoHero } from "@/components/Et4uBentoHero";
 
 function PendingSyncIndicator() {
   const { pendingCount, isSyncing } = useSync();
@@ -69,6 +70,7 @@ type User = {
   email: string;
   full_name: string;
   role?: string;
+  has_vde_access?: boolean;
 };
 type Profile = {
   id: string;
@@ -588,19 +590,69 @@ export default function Home() {
       <PWAInstallBanner />
 
       <div className="w-full flex flex-col items-center animate-in fade-in duration-700">
-        <div className="w-full max-w-[1600px] p-4 md:p-16 lg:py-24 lg:px-8 space-y-12 md:space-y-20">
+        <div className="w-full max-w-[1600px] p-4 md:p-12 lg:py-16 lg:px-8 space-y-10 md:space-y-16">
           {/* Offline Sync Indicator */}
           <PendingSyncIndicator />
 
-          {err && <div className="p-4 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm font-semibold tracking-wide uppercase shadow-[0_0_15px_rgba(255,20,20,0.1)]">{err}</div>}
-          <section className="bg-ui-card backdrop-blur-2xl border border-ui-border rounded-xl md:rounded-xl p-6 md:p-16 mx-8 lg:mx-24 shadow-2xl relative group/panel">
+          {/* ── ET⚡U.DE PREMIUM BENTO HERO ── */}
+          <Et4uBentoHero hasVdeAccess={!!user?.has_vde_access || user?.role === "ADMIN"} />
+
+          {err && <div className="p-4 bg-danger/10 border border-danger/20 rounded-2xl text-danger text-sm font-semibold tracking-wide uppercase shadow-[0_0_15px_rgba(255,20,20,0.1)]">{err}</div>}
+          
+          <section className="bg-ui-card backdrop-blur-2xl border border-ui-border rounded-[32px] md:rounded-[40px] p-6 md:p-12 shadow-2xl relative group/panel">
             <div className="absolute -top-24 -right-24 w-64 h-64 bg-ui-accent/10 rounded-full blur-[100px] pointer-events-none" />
 
-            <div className="w-full h-5 md:h-8 pointer-events-none" aria-hidden="true" />
+            <div className="relative mb-8 flex flex-col gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-3xl md:text-4xl font-black tracking-tight text-white uppercase">{t("home", "title")}</h2>
+                  <p className="text-ui-muted text-xs tracking-[0.2em] uppercase font-bold mt-1 opacity-70">{t("home", "tasksSubtitle")}</p>
+                </div>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-semibold text-ui-muted">
+                  <span className="text-ui-accent uppercase font-black text-[10px] tracking-widest">Projekt:</span>
+                  <span className="text-white font-bold">{projects.find(p => p.id === projectId)?.name || "—"}</span>
+                </div>
+              </div>
 
-            <div className="relative mb-10">
-              <h2 className="text-4xl font-black tracking-tighter text-ui-text uppercase">{t("home", "title")}</h2>
-              <p className="text-ui-muted text-[10px] tracking-[0.2em] uppercase font-black mt-2 opacity-60">{t("home", "tasksSubtitle")}</p>
+              {/* Engineering Control Center KPI Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 pt-2">
+                <div className="p-3.5 rounded-xl bg-black/30 border border-ui-border flex flex-col justify-between">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-ui-muted">Status</span>
+                  <span className="text-sm font-black text-[#19D98A] flex items-center gap-1.5 mt-1">
+                    <span className="w-2 h-2 rounded-full bg-[#19D98A] animate-pulse" />
+                    ACTIVE
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-black/30 border border-ui-border flex flex-col justify-between">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-ui-muted">Fortschritt</span>
+                  <span className="text-sm font-black text-[#00C8FF] mt-1">
+                    {tasks.length > 0 ? Math.round((tasks.filter(t => t.status === "DONE" || t.status === "APPROVED").length / tasks.length) * 100) : 68}%
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-black/30 border border-ui-border flex flex-col justify-between">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-ui-muted">Aufgaben</span>
+                  <span className="text-sm font-black text-white mt-1">{tasks.length}</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-black/30 border border-ui-border flex flex-col justify-between">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-ui-muted">Offen</span>
+                  <span className="text-sm font-black text-[#FFC400] mt-1">
+                    {tasks.filter(t => t.status === "OPEN" || t.status === "IN_PROGRESS").length}
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-black/30 border border-ui-border flex flex-col justify-between">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-ui-muted">Erledigt</span>
+                  <span className="text-sm font-black text-[#19D98A] mt-1">
+                    {tasks.filter(t => t.status === "DONE" || t.status === "APPROVED").length}
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-black/30 border border-ui-border flex flex-col justify-between">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-ui-muted">System Sync</span>
+                  <span className="text-sm font-black text-ui-muted mt-1 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#19D98A]" />
+                    ONLINE
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* COMMAND BAR (Refined Filter Panel) */}
@@ -627,11 +679,14 @@ export default function Home() {
                       setOffset(0);
                     }}
                   >
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id} className="bg-ui-bg">
-                        {p.companies?.name ? `[${p.companies.name.toUpperCase()}] ` : ""}{p.name}
-                      </option>
-                    ))}
+                    {projects.map((p) => {
+                      const compName = p.companies?.name;
+                      return (
+                        <option key={p.id} value={p.id} className="bg-ui-bg">
+                          {compName ? `[${compName.toUpperCase()}] ` : ""}{p.name}
+                        </option>
+                      );
+                    })}
                   </select>
 
                   <select

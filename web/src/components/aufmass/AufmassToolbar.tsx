@@ -1,5 +1,5 @@
 import React from 'react';
-import { MousePointer2, Hand, PenTool, Minus, MoveDiagonal, Square, Circle, Type, MapPin, Ruler } from 'lucide-react';
+import { MousePointer2, Hand, PenTool, Minus, MoveDiagonal, Square, Circle, Type, MapPin, Ruler, ArrowLeftRight } from 'lucide-react';
 import { ToolType } from './AufmassCanvas';
 
 interface AufmassToolbarProps {
@@ -21,6 +21,7 @@ const tools: { id: ToolType; icon: React.FC<any>; label: string }[] = [
   { id: 'pen', icon: PenTool, label: 'Draw' },
   { id: 'line', icon: Minus, label: 'Line' },
   { id: 'arrow', icon: MoveDiagonal, label: 'Arrow' },
+  { id: 'double-arrow', icon: ArrowLeftRight, label: 'Double Arrow' },
   { id: 'rect', icon: Square, label: 'Rectangle' },
   { id: 'circle', icon: Circle, label: 'Circle' },
   { id: 'text', icon: Type, label: 'Text' },

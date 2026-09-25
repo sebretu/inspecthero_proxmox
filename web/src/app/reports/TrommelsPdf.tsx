@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     photoCol: { width: 64, flexShrink: 0 },
-    photo: { width: 64, height: 64, borderRadius: 6, objectFit: 'cover', border: '1px solid #ccc' },
+    photo: { width: 64, height: 64, borderRadius: 6, objectFit: 'contain', backgroundColor: '#f8fafc', border: '1px solid #ccc' },
     photoPlaceholder: { width: 64, height: 64, borderRadius: 6, backgroundColor: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     infoCol: { flex: 1 },
     trommelName: { fontSize: 12, fontWeight: 'bold', color: '#1a1a2e', marginBottom: 4 },
@@ -130,6 +130,9 @@ export default function TrommelsPdf({ projectName, trommels, translations, inclu
                     })}
                 </View>
 
+                <Text style={{ position: 'absolute', bottom: 18, left: 30, fontSize: 7, color: '#aaa' }} fixed>
+                    {t('owner', 'Inhaber: Marcin Slapinski')}
+                </Text>
                 <Text style={styles.pageNum} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} fixed />
             </Page>
         </Document>

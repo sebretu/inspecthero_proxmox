@@ -13,6 +13,7 @@ interface Pin { x: number; y: number }
 
 interface MapRoute {
   id: string;
+  routeId?: string | null;
   name: string;
   color: string;
   pinA: Pin;
@@ -24,6 +25,8 @@ interface MapRoute {
   status?: string;
   waypoints?: Pin[];
   isVerified?: boolean;
+  pointAPhoto?: string | null;
+  pointBPhoto?: string | null;
 }
 
 interface Props {
@@ -36,6 +39,7 @@ interface Props {
   onVerifyCable?: (cableId: string, manualIndex?: number) => void;
   onUpdateCableNumber?: (cableId: string, newIndex: number) => void;
   isAdmin?: boolean;
+  onRouteUpdated?: () => void;
 }
 
 function makeIcon(letter: string, color: string, isSmall = false) {
@@ -54,12 +58,88 @@ function AutoFit({ bounds }: { bounds: any }) {
   return null;
 }
 
-export function CableMapLeaflet({ planId, token, routes, onSelectCable, onEditCable, onSelectTrommel, onVerifyCable, onUpdateCableNumber, isAdmin }: Props) {
+export function CableMapLeaflet({ planId, token, routes, onSelectCable, onEditCable, onSelectTrommel, onVerifyCable, onUpdateCableNumber, isAdmin, onRouteUpdated }: Props) {
   const { t } = useLanguage();
   const [meta, setMeta] = useState<any>(null);
   const [manualIndexes, setManualIndexes] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [highlightedCableId, setHighlightedCableId] = useState<string | null>(null);
+
+  const [uploadingPopupId, setUploadingPopupId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const handleUpdatePhotoInPopup = async (routeId: string, point: "A" | "B", file: File) => {
+    setUploadingPopupId(`${routeId}-${point}`);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData
+      });
+      const data = await uploadRes.json();
+      if (data?.ok && data?.data?.url) {
+        const publicUrl = data.data.url;
+        
+        const patchPayload: Record<string, any> = { id: routeId };
+        if (point === "A") patchPayload.point_a_photo = publicUrl;
+        else patchPayload.point_b_photo = publicUrl;
+        
+        const patchRes = await fetch("/api/cable-routes", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(patchPayload)
+        });
+        const patchData = await patchRes.json();
+        if (patchData?.ok) {
+          onRouteUpdated?.();
+        } else {
+          alert("Błąd zapisu: " + (patchData?.error?.message || "Nieznany błąd"));
+        }
+      } else {
+        alert("Błąd uploadu: " + (data?.error?.message || "Nieznany błąd"));
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Błąd podczas aktualizacji zdjęcia.");
+    } finally {
+      setUploadingPopupId(null);
+    }
+  };
+
+  const handleDeletePhotoInPopup = async (routeId: string, point: "A" | "B") => {
+    if (!confirm(t("cables", "confirmDeletePhoto", "Czy na pewno chcesz usunąć to zdjęcie?"))) return;
+    setUploadingPopupId(`${routeId}-${point}`);
+    try {
+      const patchPayload: Record<string, any> = { id: routeId };
+      if (point === "A") patchPayload.point_a_photo = null;
+      else patchPayload.point_b_photo = null;
+      
+      const patchRes = await fetch("/api/cable-routes", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(patchPayload)
+      });
+      const patchData = await patchRes.json();
+      if (patchData?.ok) {
+        onRouteUpdated?.();
+      } else {
+        alert("Błąd zapisu: " + (patchData?.error?.message || "Nieznany błąd"));
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Błąd podczas usuwania zdjęcia.");
+    } finally {
+      setUploadingPopupId(null);
+    }
+  };
 
   useEffect(() => {
     if (!planId) return;
@@ -159,7 +239,7 @@ export function CableMapLeaflet({ planId, token, routes, onSelectCable, onEditCa
         style={{ height: "100%", width: "100%", background: "#111" }}
       >
         <TL 
-          url={`/api/tiles/${planId}/{z}/{x}/{y}.png?${token ? `token=${token}` : "public=true"}`} 
+          url={`/api/tiles/${planId}/{z}/{x}/{y}.png?${token ? `token=${token}` : "public=true"}&v=${meta?.activeVersionId || ''}`} 
           maxNativeZoom={meta.maxZoom}
           maxZoom={meta.maxZoom + 2}
           noWrap={true}
@@ -175,73 +255,134 @@ export function CableMapLeaflet({ planId, token, routes, onSelectCable, onEditCa
           const markerB = isDone ? "✓" : "B";
           const colorB = isDone ? "#22c55e" : "#f97316";
 
-          const renderPopupContent = (isPointA: boolean) => (
-            <P>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                <div 
-                  onClick={() => onSelectCable?.(r.id)}
-                  style={{ cursor: "pointer", color: "#38bdf8", fontWeight: 900, textDecoration: "underline" }}
-                >
-                  {r.name}
-                </div>
-                {onEditCable && (
-                  <button 
-                    onClick={() => onEditCable(r.id)}
-                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, padding: "2px 6px", color: "#94a3b8", fontSize: 9, cursor: "pointer", fontWeight: 800 }}
+          const renderPopupContent = (isPointA: boolean) => {
+            const photoUrl = isPointA ? r.pointAPhoto : r.pointBPhoto;
+            return (
+              <P>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  <div 
+                    onClick={() => onSelectCable?.(r.id)}
+                    style={{ cursor: "pointer", color: "#38bdf8", fontWeight: 900, textDecoration: "underline" }}
                   >
-                    EDIT
-                  </button>
-                )}
-                {r.isVerified && (
-                  <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: "rgba(16,185,129,0.15)", color: "#10b981", fontWeight: 900, border: "1px solid rgba(16,185,129,0.3)" }}>
-                    VERIFIED
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 11, color: "#94a3b8" }}>{isPointA ? "Start" : "Koniec"}: {isPointA ? r.labelA : r.labelB}</div>
-              {r.trommelName && (
-                <div 
-                  onClick={() => r.trommelId && onSelectTrommel?.(r.trommelId)}
-                  style={{ fontSize: 10, color: "#fbbf24", fontWeight: 800, marginTop: 2, cursor: r.trommelId ? "pointer" : "default", textDecoration: r.trommelId ? "underline" : "none" }}
-                >
-                  📦 {r.trommelName}
-                </div>
-              )}
-              <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>Status: {r.status}</div>
-              
-                  {isAdmin && !r.isVerified && (
-                    <div 
-                      style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8 }}
-                      onClick={(e) => e.stopPropagation()}
-                      onMouseDown={(e) => e.stopPropagation()}
+                    {r.name}
+                  </div>
+                  {onEditCable && (
+                    <button 
+                      onClick={() => onEditCable(r.id)}
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, padding: "2px 6px", color: "#94a3b8", fontSize: 9, cursor: "pointer", fontWeight: 800 }}
                     >
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          let msg = t("cables", "confirmVerifyCable", `Czy na pewno oznaczyć kabel "{name}" jako zweryfikowany?`).replace("{name}", r.name);
-                          if (confirm(msg)) {
-                            onVerifyCable?.(r.id);
-                          }
-                        }}
+                      EDIT
+                    </button>
+                  )}
+                  {r.isVerified && (
+                    <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: "rgba(16,185,129,0.15)", color: "#10b981", fontWeight: 900, border: "1px solid rgba(16,185,129,0.3)" }}>
+                      VERIFIED
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: "#94a3b8" }}>{isPointA ? "Start" : "Koniec"}: {isPointA ? r.labelA : r.labelB}</div>
+                
+                <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 5 }}>
+                  {photoUrl ? (
+                    <div 
+                      onClick={() => setPreviewUrl(photoUrl)}
+                      style={{ position: "relative", width: 140, height: 105, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.2)", cursor: "pointer" }}
+                    >
+                      <img src={photoUrl} alt="Photo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                  ) : null}
+                  
+                  {r.routeId && (
+                    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        id={`popup-photo-input-${r.id}-${isPointA ? 'A' : 'B'}`}
+                        style={{ display: "none" }}
+                        onChange={e => e.target.files?.[0] && handleUpdatePhotoInPopup(r.routeId!, isPointA ? "A" : "B", e.target.files[0])}
+                      />
+                      <label 
+                        htmlFor={`popup-photo-input-${r.id}-${isPointA ? 'A' : 'B'}`}
                         style={{ 
-                          width: "100%",
-                          padding: "8px", 
-                          borderRadius: 8, 
-                          background: "rgba(16,185,129,0.1)", 
-                          border: "1px solid rgba(16,185,129,0.3)", 
-                          color: "#10b981", 
-                          fontSize: 11, 
-                          fontWeight: 900, 
-                          cursor: "pointer",
-                          textTransform: "uppercase"
+                          padding: "3px 6px", 
+                          background: "rgba(56,189,248,0.1)", 
+                          border: "1px solid rgba(56,189,248,0.25)", 
+                          borderRadius: 6, 
+                          fontSize: 9, 
+                          cursor: "pointer", 
+                          color: "#38bdf8", 
+                          fontWeight: 800,
+                          textAlign: "center"
                         }}
                       >
-                        {t("cables", "verifyBtn", "VERIFIZIEREN")}
-                      </button>
+                        {uploadingPopupId === `${r.routeId}-${isPointA ? 'A' : 'B'}` ? "..." : (photoUrl ? "Zmień" : "Dodaj zdjęcie")}
+                      </label>
+                      
+                      {photoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePhotoInPopup(r.routeId!, isPointA ? "A" : "B")}
+                          style={{ 
+                            padding: "3px 6px", 
+                            background: "rgba(239,68,68,0.15)", 
+                            border: "1px solid rgba(239,68,68,0.3)", 
+                            borderRadius: 6, 
+                            fontSize: 9, 
+                            cursor: "pointer", 
+                            color: "#ef4444", 
+                            fontWeight: 800 
+                          }}
+                        >
+                          Usuń
+                        </button>
+                      )}
                     </div>
                   )}
-            </P>
-          );
+                </div>
+                {r.trommelName && (
+                  <div 
+                    onClick={() => r.trommelId && onSelectTrommel?.(r.trommelId)}
+                    style={{ fontSize: 10, color: "#fbbf24", fontWeight: 800, marginTop: 2, cursor: r.trommelId ? "pointer" : "default", textDecoration: r.trommelId ? "underline" : "none" }}
+                  >
+                    📦 {r.trommelName}
+                  </div>
+                )}
+                <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>Status: {r.status}</div>
+                
+                    {isAdmin && !r.isVerified && (
+                      <div 
+                        style={{ marginTop: 8, borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 8 }}
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            let msg = t("cables", "confirmVerifyCable", `Czy na pewno oznaczyć kabel "{name}" jako zweryfikowany?`).replace("{name}", r.name);
+                            if (confirm(msg)) {
+                              onVerifyCable?.(r.id);
+                            }
+                          }}
+                          style={{ 
+                            width: "100%",
+                            padding: "8px", 
+                            borderRadius: 8, 
+                            background: "rgba(16,185,129,0.1)", 
+                            border: "1px solid rgba(16,185,129,0.3)", 
+                            color: "#10b981", 
+                            fontSize: 11, 
+                            fontWeight: 900, 
+                            cursor: "pointer",
+                            textTransform: "uppercase"
+                          }}
+                        >
+                          {t("cables", "verifyBtn", "VERIFIZIEREN")}
+                        </button>
+                      </div>
+                    )}
+              </P>
+            );
+          };
 
           return (
             <span key={r.id}>
@@ -286,6 +427,64 @@ export function CableMapLeaflet({ planId, token, routes, onSelectCable, onEditCa
           );
         })}
       </MC>
+      {/* 📷 fullscreen photo preview overlay */}
+      {previewUrl && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 99999,
+            background: "rgba(0,0,0,0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+          onClick={() => setPreviewUrl(null)}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setPreviewUrl(null);
+            }}
+            style={{
+              position: "absolute",
+              top: 20,
+              right: 20,
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              background: "white",
+              border: "none",
+              color: "black",
+              fontSize: 24,
+              fontWeight: "bold",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            }}
+          >
+            ✕
+          </button>
+          <img
+            src={previewUrl}
+            alt="Preview"
+            style={{
+              maxWidth: "100%",
+              maxHeight: "100%",
+              objectFit: "contain",
+              borderRadius: 8,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

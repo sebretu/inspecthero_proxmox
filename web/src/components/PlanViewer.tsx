@@ -59,6 +59,7 @@ export default function PlanViewer({
   onMapClick,
   onMarkerDragEnd,
   onMarkerDelete,
+  onMarkerClick,
 }: {
   planId: string;
   fullHeight?: boolean;
@@ -78,6 +79,7 @@ export default function PlanViewer({
   onMapClick?: (x_norm: number, y_norm: number) => void;
   onMarkerDragEnd?: (id: string, x: number, y: number) => void;
   onMarkerDelete?: (id: string) => void;
+  onMarkerClick?: (id: string) => void;
 }) {
   const { t } = useLanguage();
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -201,6 +203,15 @@ export default function PlanViewer({
 
     let alive = true;
 
+    // Load profile immediately on mount
+    apiGet<any>('/api/me')
+      .then((j) => {
+        if (alive && j?.profile) {
+          setViewerProfile(j.profile);
+        }
+      })
+      .catch(() => {});
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!alive) return;
 
@@ -212,7 +223,7 @@ export default function PlanViewer({
         } catch (err) {
           // ignore error
         }
-        setViewerProfile(j.profile || null);
+        setViewerProfile(j?.profile || null);
 
       } else {
         setViewerProfile(null);
@@ -404,6 +415,7 @@ export default function PlanViewer({
       onMapClick={onMapClick}
       onMarkerDragEnd={onMarkerDragEnd}
       onMarkerDelete={onMarkerDelete}
+      onMarkerClick={onMarkerClick}
     />
   );
 }

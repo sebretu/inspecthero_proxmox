@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Stage, Layer, Image, Line, Rect, Circle, Arrow, Text, Group } from 'react-konva';
 import useImage from 'use-image';
 import Konva from 'konva';
+import { useLanguage } from '@/contexts/LanguageContext';
 
-export type ToolType = 'select' | 'pan' | 'pen' | 'line' | 'arrow' | 'rect' | 'circle' | 'text' | 'marker' | 'measurement';
+export type ToolType = 'select' | 'pan' | 'pen' | 'line' | 'arrow' | 'rect' | 'circle' | 'text' | 'marker' | 'measurement' | 'double-arrow';
 
 interface Shape {
   id: string;
@@ -22,11 +23,11 @@ interface Shape {
 interface AufmassCanvasProps {
   imageUrl: string;
   shapes: Shape[];
-  onShapesChange: (shapes: Shape[]) => void;
-  activeTool: ToolType;
-  currentColor: string;
-  currentStrokeWidth: number;
-  onSelectMarker: (id: string | null) => void;
+  onShapesChange?: (shapes: Shape[]) => void;
+  activeTool?: ToolType;
+  currentColor?: string;
+  currentStrokeWidth?: number;
+  onSelectMarker?: (id: string | null) => void;
   readOnly?: boolean;
 }
 
@@ -45,13 +46,14 @@ function getCenter(p1: { x: number, y: number }, p2: { x: number, y: number }) {
 export default function AufmassCanvas({
   imageUrl,
   shapes,
-  onShapesChange,
-  activeTool,
-  currentColor,
-  currentStrokeWidth,
-  onSelectMarker,
+  onShapesChange = () => {},
+  activeTool = 'select',
+  currentColor = '#ef4444',
+  currentStrokeWidth = 2,
+  onSelectMarker = () => {},
   readOnly = false
 }: AufmassCanvasProps) {
+  const { t } = useLanguage();
   const [image] = useImage(imageUrl, 'anonymous');
   const stageRef = useRef<Konva.Stage>(null);
   
@@ -155,7 +157,12 @@ export default function AufmassCanvas({
         const markerCount = shapes.filter(s => s.type === 'marker').length;
         newShape.text = (markerCount + 1).toString();
       } else {
-        newShape.text = 'Note';
+        const userText = window.prompt(t("aufmass", "enterTextPrompt", "Wpisz tekst, który chcesz wstawić:"), "");
+        if (userText === null) {
+          setIsDrawing(false);
+          return;
+        }
+        newShape.text = userText || "Note";
       }
       setIsDrawing(false); // Don't drag to create
       onShapesChange([...shapes, newShape]);
@@ -211,7 +218,7 @@ export default function AufmassCanvas({
 
     if (activeTool === 'pen') {
       lastShape.points = lastShape.points?.concat([point.x, point.y]);
-    } else if (activeTool === 'line' || activeTool === 'arrow' || activeTool === 'measurement') {
+    } else if (activeTool === 'line' || activeTool === 'arrow' || activeTool === 'measurement' || activeTool === 'double-arrow') {
       lastShape.points = [lastShape.points![0], lastShape.points![1], point.x, point.y];
     } else if (activeTool === 'rect') {
       lastShape.width = point.x - lastShape.x!;
@@ -230,7 +237,13 @@ export default function AufmassCanvas({
     lastDistRef.current = 0;
 
     if (isDrawing && draftShape) {
-      onShapesChange([...shapes, draftShape]);
+      if (draftShape.type === 'double-arrow') {
+        const dimText = window.prompt(t("aufmass", "enterDimensionPrompt", "Wpisz wymiar (np. 150 cm):"), "");
+        const finalShape = { ...draftShape, text: dimText || "" };
+        onShapesChange([...shapes, finalShape]);
+      } else {
+        onShapesChange([...shapes, draftShape]);
+      }
       setDraftShape(null);
     }
 
@@ -334,6 +347,39 @@ export default function AufmassCanvas({
                   pointerLength={10}
                   pointerWidth={10}
                 />
+              );
+            }
+            if (shape.type === 'double-arrow') {
+              const pts = shape.points || [0, 0, 0, 0];
+              const midX = (pts[0] + pts[2]) / 2;
+              const midY = (pts[1] + pts[3]) / 2;
+              return (
+                <Group key={shape.id}>
+                  <Arrow
+                    {...commonProps}
+                    points={pts}
+                    stroke={shape.color}
+                    fill={shape.color}
+                    strokeWidth={shape.strokeWidth}
+                    pointerLength={10}
+                    pointerWidth={10}
+                    pointerAtBeginning={true}
+                    pointerAtEnding={true}
+                  />
+                  {shape.text && (
+                    <Text
+                      x={midX - 100 / scale}
+                      y={midY - 25 / scale}
+                      width={200 / scale}
+                      text={shape.text}
+                      fontSize={18 / scale}
+                      fill="#ffffff"
+                      fontFamily="Inter, sans-serif"
+                      align="center"
+                      perfectDrawEnabled={false}
+                    />
+                  )}
+                </Group>
               );
             }
             if (shape.type === 'measurement') {

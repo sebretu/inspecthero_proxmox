@@ -3,9 +3,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useNotification } from "@/contexts/NotificationContext";
 import { apiGet, apiPost, apiPatch, apiDelete, getToken } from "@/lib/apiClient";
 import PhotoLightbox from "@/components/PhotoLightbox";
 import { motion, AnimatePresence } from "framer-motion";
+import { Camera, X, Plus, Trash2, Check, Users, User, Clock, AlertCircle } from "lucide-react";
 
 interface Worker {
     id: string;
@@ -54,6 +56,7 @@ const COLORS = {
 export default function AttendanceCalendarClient() {
     const router = useRouter();
     const { t } = useLanguage();
+    const { showNotification } = useNotification();
 
     const [data, setData] = useState<CalendarData | null>(null);
     const [year, setYear] = useState(new Date().getFullYear());
@@ -106,8 +109,11 @@ export default function AttendanceCalendarClient() {
         try {
             const token = await getToken();
             const res = await apiGet<Worker[]>("/api/employees", token);
-            setAllEmployees(res);
-        } catch (err: any) { alert(err.message); }
+            setAllEmployees(Array.isArray(res) ? res : []);
+        } catch (err: any) {
+            console.error("loadEmployeesList error:", err);
+            setAllEmployees([]);
+        }
         finally { setIsManaging(false); }
     };
 
@@ -115,16 +121,24 @@ export default function AttendanceCalendarClient() {
         setIsUploading(true);
         try {
             const token = await getToken();
-            const reader = new FileReader(); reader.readAsDataURL(file);
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64 = reader.result as string;
                 try {
                     await apiPost("/api/employee-photos", { [isProfile ? 'profile_id' : 'employee_id']: workerId, base64, file_name: file.name }, token);
-                    loadData(); loadEmployeesList();
-                } catch (e: any) { alert(e.message); }
+                    showNotification?.("Foto erfolgreich hochgeladen!", "success");
+                    loadData();
+                    loadEmployeesList();
+                } catch (e: any) {
+                    showNotification?.(e.message || "Fehler beim Hochladen des Fotos", "error");
+                }
                 finally { setIsUploading(false); }
             };
-        } catch (err: any) { alert(err.message); setIsUploading(false); }
+        } catch (err: any) {
+            showNotification?.(err.message || "Fehler beim Lesen der Datei", "error");
+            setIsUploading(false);
+        }
     };
 
     const handleAddEmployee = async () => {
@@ -132,12 +146,19 @@ export default function AttendanceCalendarClient() {
         setIsSaving(true);
         try {
             const token = await getToken();
-            const res = await apiPost<any>("/api/employees", { full_name: newEmployeeName }, token || "");
+            const res = await apiPost<any>("/api/employees", { full_name: newEmployeeName.trim() }, token || "");
             if (newEmployeePhoto && res?.id) {
                 await apiPost("/api/employee-photos", { employee_id: res.id, base64: newEmployeePhoto.base64, file_name: newEmployeePhoto.file.name }, token || "");
             }
-            setShowEmployeeModal(false); setNewEmployeeName(""); setNewEmployeePhoto(null); loadData();
-        } catch (err: any) { alert(err.message); }
+            setShowEmployeeModal(false);
+            setNewEmployeeName("");
+            setNewEmployeePhoto(null);
+            showNotification?.("Mitarbeiter erfolgreich hinzugefügt!", "success");
+            loadData();
+            loadEmployeesList();
+        } catch (err: any) {
+            showNotification?.(err.message || "Fehler beim Hinzufügen des Mitarbeiters", "error");
+        }
         finally { setIsSaving(false); }
     };
 
@@ -170,8 +191,14 @@ export default function AttendanceCalendarClient() {
                     date, status: editStatus, start_time: editStatus === 'PRESENT' ? editStart : null, end_time: editStatus === 'PRESENT' ? editEnd : null, break_time: editStatus === 'PRESENT' ? editBreak : 0, [worker.type === 'PROFILE' ? 'user_id' : 'employee_id']: worker.id
                 }, token || "");
             });
-            await Promise.all(promises); setShowBulkModal(false); setSelectedCells(new Set()); loadData();
-        } catch (err: any) { alert(err.message); }
+            await Promise.all(promises);
+            setShowBulkModal(false);
+            setSelectedCells(new Set());
+            showNotification?.("Einträge erfolgreich gespeichert!", "success");
+            loadData();
+        } catch (err: any) {
+            showNotification?.(err.message || "Fehler beim Speichern", "error");
+        }
         finally { setIsSaving(false); }
     };
 
@@ -183,8 +210,12 @@ export default function AttendanceCalendarClient() {
             await apiPost("/api/attendance", {
                 date: editingCell.date, status: editStatus, start_time: editStatus === 'PRESENT' ? editStart : null, end_time: editStatus === 'PRESENT' ? editEnd : null, break_time: editStatus === 'PRESENT' ? editBreak : 0, [editingCell.worker.type === 'PROFILE' ? 'user_id' : 'employee_id']: editingCell.worker.id
             }, token || "");
-            setShowEditModal(false); loadData();
-        } catch (err: any) { alert(err.message); }
+            setShowEditModal(false);
+            showNotification?.("Anwesenheit gespeichert!", "success");
+            loadData();
+        } catch (err: any) {
+            showNotification?.(err.message || "Fehler beim Speichern", "error");
+        }
         finally { setIsSaving(false); }
     };
 
@@ -196,8 +227,12 @@ export default function AttendanceCalendarClient() {
             const token = await getToken();
             const idKey = editingCell.worker.type === 'PROFILE' ? 'user_id' : 'employee_id';
             await apiDelete(`/api/attendance?date=${editingCell.date}&${idKey}=${editingCell.worker.id}`, token || "");
-            setShowEditModal(false); loadData();
-        } catch (err: any) { alert(err.message); }
+            setShowEditModal(false);
+            showNotification?.("Eintrag gelöscht!", "success");
+            loadData();
+        } catch (err: any) {
+            showNotification?.(err.message || "Fehler beim Löschen", "error");
+        }
         finally { setIsSaving(false); }
     };
 
@@ -205,17 +240,25 @@ export default function AttendanceCalendarClient() {
         try {
             const token = await getToken();
             await apiPatch("/api/employees", { id, full_name: name, is_active: active }, token || "");
-            loadEmployeesList(); loadData();
-        } catch (err: any) { alert(err.message); }
+            showNotification?.("Mitarbeiter aktualisiert!", "success");
+            loadEmployeesList();
+            loadData();
+        } catch (err: any) {
+            showNotification?.(err.message || "Fehler beim Aktualisieren", "error");
+        }
     };
 
     const handleDeleteEmployee = async (id: string) => {
-        if (!confirm("Are you sure?")) return;
+        if (!confirm(t("common", "deleteConfirm", "Are you sure?"))) return;
         try {
             const token = await getToken();
             await apiDelete(`/api/employees?id=${id}`, token || "");
-            loadEmployeesList(); loadData();
-        } catch (err: any) { alert(err.message); }
+            showNotification?.("Mitarbeiter gelöscht!", "success");
+            loadEmployeesList();
+            loadData();
+        } catch (err: any) {
+            showNotification?.(err.message || "Fehler beim Löschen", "error");
+        }
     };
 
     const getDayStatus = (worker: Worker, dateStr: string) => {
@@ -435,17 +478,25 @@ export default function AttendanceCalendarClient() {
 
             {/* Modals */}
             <AnimatePresence>
+                {/* Single Day Edit Modal */}
                 {showEditModal && editingCell && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowEditModal(false)} className="absolute inset-0 bg-[#020617]/90 backdrop-blur-sm" />
-                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-lg bg-slate-900 border border-slate-700/50 rounded-lg md:rounded-xl p-6 md:p-12 shadow-2xl">
-                            <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">{editingCell.worker.full_name}</h2>
-                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-10">{editingCell.date}</p>
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-lg bg-slate-900 border border-slate-700/50 rounded-2xl p-6 md:p-10 shadow-2xl">
+                            <div className="flex justify-between items-start mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-1">{editingCell.worker.full_name}</h2>
+                                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{editingCell.date}</p>
+                                </div>
+                                <button onClick={() => setShowEditModal(false)} className="p-2 text-slate-500 hover:text-white rounded-xl hover:bg-slate-800 transition-colors">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
                             
-                            <div className="space-y-8">
-                                <div className="space-y-3">
-                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">{t("common", "status", "STATUS")}</label>
-                                    <select value={editStatus} onChange={e => setEditStatus(e.target.value as any)} className="w-full bg-black/40 border border-slate-700/50 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none appearance-none cursor-pointer">
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{t("common", "status", "STATUS")}</label>
+                                    <select value={editStatus} onChange={e => setEditStatus(e.target.value as any)} className="w-full bg-black/40 border border-slate-700/50 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none appearance-none cursor-pointer focus:border-blue-500/50">
                                         <option value="PRESENT" className="bg-slate-900">{t("common", "present", "Anwesend")}</option>
                                         <option value="ABSENT" className="bg-slate-900">{t("common", "absent", "Abwesend")}</option>
                                         <option value="VACATION" className="bg-slate-900">{t("common", "vacation", "Urlaub")}</option>
@@ -453,30 +504,248 @@ export default function AttendanceCalendarClient() {
                                 </div>
 
                                 {editStatus === 'PRESENT' && (
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div className="space-y-3">
-                                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">{t("common", "start", "VON")}</label>
-                                            <input type="time" value={editStart} onChange={e => setEditStart(e.target.value)} className="w-full bg-black/40 border border-slate-700/50 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none" />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{t("common", "start", "VON")}</label>
+                                            <input type="time" value={editStart} onChange={e => setEditStart(e.target.value)} className="w-full bg-black/40 border border-slate-700/50 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none focus:border-blue-500/50" />
                                         </div>
-                                        <div className="space-y-3">
-                                            <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">{t("common", "end", "BIS")}</label>
-                                            <input type="time" value={editEnd} onChange={e => setEditEnd(e.target.value)} className="w-full bg-black/40 border border-slate-700/50 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none" />
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{t("common", "end", "BIS")}</label>
+                                            <input type="time" value={editEnd} onChange={e => setEditEnd(e.target.value)} className="w-full bg-black/40 border border-slate-700/50 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none focus:border-blue-500/50" />
                                         </div>
                                     </div>
                                 )}
 
                                 {editStatus === 'PRESENT' && (
-                                    <div className="space-y-3">
-                                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">{t("attendance", "unpaidBreak", "UNBEZAHLTE PAUSE (H)")}</label>
-                                        <select value={editBreak} onChange={e => setEditBreak(Number(e.target.value))} className="w-full bg-black/40 border border-slate-700/50 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none appearance-none cursor-pointer">
-                                            {[0, 0.5, 1.0].map(v => <option key={v} value={v} className="bg-slate-900">{v}</option>)}
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{t("attendance", "unpaidBreak", "UNBEZAHLTE PAUSE (H)")}</label>
+                                        <select value={editBreak} onChange={e => setEditBreak(Number(e.target.value))} className="w-full bg-black/40 border border-slate-700/50 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none appearance-none cursor-pointer focus:border-blue-500/50">
+                                            {[0, 0.5, 1.0].map(v => <option key={v} value={v} className="bg-slate-900">{v} h</option>)}
                                         </select>
                                     </div>
                                 )}
 
-                                <div className="flex gap-4 pt-10 border-t border-slate-800/50">
-                                    <button onClick={handleDeleteAttendance} className="flex-1 bg-red-500/10 text-red-500 border border-red-500/20 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest">LÖSCHEN</button>
-                                    <button onClick={handleSaveAttendance} disabled={isSaving} className="flex-1 bg-blue-500 text-slate-950 py-5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20">{isSaving ? "..." : "SPEICHERN"}</button>
+                                <div className="flex gap-4 pt-6 border-t border-slate-800/50">
+                                    <button onClick={handleDeleteAttendance} disabled={isSaving} className="flex-1 bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
+                                        LÖSCHEN
+                                    </button>
+                                    <button onClick={handleSaveAttendance} disabled={isSaving} className="flex-1 bg-blue-500 hover:bg-blue-400 text-slate-950 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 transition-all">
+                                        {isSaving ? "..." : "SPEICHERN"}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* Add Employee Modal */}
+                {showEmployeeModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowEmployeeModal(false)} className="absolute inset-0 bg-[#020617]/90 backdrop-blur-sm" />
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-md bg-slate-900 border border-slate-700/50 rounded-2xl p-6 md:p-8 shadow-2xl">
+                            <div className="flex justify-between items-center mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400">
+                                        <Plus className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg font-black text-white uppercase tracking-tight">{t("attendance", "addWorkerTitle", "Neuen Mitarbeiter hinzufügen")}</h2>
+                                        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{t("attendance", "title", "Anwesenheitskalender")}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowEmployeeModal(false)} className="p-2 text-slate-500 hover:text-white rounded-xl hover:bg-slate-800 transition-colors">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{t("attendance", "workerName", "Vollständiger Name")}</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="z.B. Jan Kowalski" 
+                                        value={newEmployeeName} 
+                                        onChange={e => setNewEmployeeName(e.target.value)} 
+                                        autoFocus
+                                        className="w-full bg-black/40 border border-slate-700/50 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-600" 
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{t("attendance", "workerPhoto", "Foto (optional)")}</label>
+                                    {newEmployeePhoto ? (
+                                        <div className="flex items-center gap-4 p-3 bg-black/40 border border-slate-700/50 rounded-xl">
+                                            <img src={newEmployeePhoto.base64} alt="Preview" className="w-12 h-12 rounded-full object-cover border border-blue-500/50" />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-bold text-white truncate">{newEmployeePhoto.file.name}</p>
+                                                <p className="text-[9px] text-slate-500">{(newEmployeePhoto.file.size / 1024).toFixed(0)} KB</p>
+                                            </div>
+                                            <button onClick={() => setNewEmployeePhoto(null)} className="p-2 text-slate-500 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-colors">
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-700/60 hover:border-blue-500/50 rounded-xl cursor-pointer bg-black/20 hover:bg-black/40 transition-all">
+                                            <Camera className="w-6 h-6 text-slate-400 mb-2" />
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{t("attendance", "choosePhoto", "Foto auswählen")}</span>
+                                            <span className="text-[9px] text-slate-600 mt-1">PNG, JPG bis 5MB</span>
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                className="hidden" 
+                                                onChange={e => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        const reader = new FileReader();
+                                                        reader.readAsDataURL(file);
+                                                        reader.onload = () => setNewEmployeePhoto({ file, base64: reader.result as string });
+                                                    }
+                                                }} 
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-4 pt-4 border-t border-slate-800/50">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowEmployeeModal(false)} 
+                                        className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                    >
+                                        {t("common", "cancel", "Abbrechen")}
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={handleAddEmployee} 
+                                        disabled={isSaving || !newEmployeeName.trim()} 
+                                        className="flex-1 bg-blue-500 hover:bg-blue-400 disabled:opacity-50 text-slate-950 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 transition-all"
+                                    >
+                                        {isSaving ? "..." : t("attendance", "addBtn", "Hinzufügen")}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* Manage Employees Modal */}
+                {showManageModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowManageModal(false)} className="absolute inset-0 bg-[#020617]/90 backdrop-blur-sm" />
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-2xl bg-slate-900 border border-slate-700/50 rounded-2xl p-6 md:p-8 shadow-2xl max-h-[85vh] flex flex-col">
+                            <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-800/60">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 bg-slate-800 border border-slate-700/60 rounded-xl text-blue-400">
+                                        <Users className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight">{t("attendance", "manageWorkersTitle", "Mitarbeiter verwalten")}</h2>
+                                        <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{allEmployees.length} {t("attendance", "workersCount", "Mitarbeiter registriert")}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <button 
+                                        onClick={() => { setShowManageModal(false); setShowEmployeeModal(true); }}
+                                        className="bg-blue-500 hover:bg-blue-400 text-slate-950 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-lg shadow-blue-500/20"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> {t("attendance", "add", "Hinzufügen")}
+                                    </button>
+                                    <button onClick={() => setShowManageModal(false)} className="p-2 text-slate-500 hover:text-white rounded-xl hover:bg-slate-800 transition-colors">
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 py-2">
+                                {isManaging ? (
+                                    <div className="py-12 flex flex-col items-center justify-center gap-3">
+                                        <div className="w-8 h-8 border-3 border-slate-800 border-t-blue-500 rounded-full animate-spin"></div>
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Laden...</span>
+                                    </div>
+                                ) : allEmployees.length === 0 ? (
+                                    <div className="py-12 text-center text-slate-500 text-xs font-bold uppercase tracking-widest">
+                                        {t("attendance", "noWorkersFound", "Keine Mitarbeiter gefunden")}
+                                    </div>
+                                ) : (
+                                    allEmployees.map(emp => (
+                                        <EmployeeRow 
+                                            key={emp.id} 
+                                            emp={emp} 
+                                            onUpdate={handleUpdateEmployee} 
+                                            onDelete={handleDeleteEmployee} 
+                                            onPhotoUpload={handlePhotoUpload} 
+                                            isUploading={isUploading}
+                                        />
+                                    ))
+                                )}
+                            </div>
+
+                            <div className="pt-4 border-t border-slate-800/60 flex justify-end">
+                                <button 
+                                    onClick={() => setShowManageModal(false)} 
+                                    className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                >
+                                    {t("common", "close", "Schließen")}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* Bulk Edit Modal */}
+                {showBulkModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowBulkModal(false)} className="absolute inset-0 bg-[#020617]/90 backdrop-blur-sm" />
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-lg bg-slate-900 border border-slate-700/50 rounded-2xl p-6 md:p-10 shadow-2xl">
+                            <div className="flex justify-between items-start mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-1">BULK EDIT</h2>
+                                    <p className="text-blue-400 text-[10px] font-bold uppercase tracking-widest">{selectedCells.size} Einträge ausgewählt</p>
+                                </div>
+                                <button onClick={() => setShowBulkModal(false)} className="p-2 text-slate-500 hover:text-white rounded-xl hover:bg-slate-800 transition-colors">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{t("common", "status", "STATUS")}</label>
+                                    <select value={editStatus} onChange={e => setEditStatus(e.target.value as any)} className="w-full bg-black/40 border border-slate-700/50 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none appearance-none cursor-pointer focus:border-blue-500/50">
+                                        <option value="PRESENT" className="bg-slate-900">{t("common", "present", "Anwesend")}</option>
+                                        <option value="ABSENT" className="bg-slate-900">{t("common", "absent", "Abwesend")}</option>
+                                        <option value="VACATION" className="bg-slate-900">{t("common", "vacation", "Urlaub")}</option>
+                                    </select>
+                                </div>
+
+                                {editStatus === 'PRESENT' && (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{t("common", "start", "VON")}</label>
+                                            <input type="time" value={editStart} onChange={e => setEditStart(e.target.value)} className="w-full bg-black/40 border border-slate-700/50 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none focus:border-blue-500/50" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{t("common", "end", "BIS")}</label>
+                                            <input type="time" value={editEnd} onChange={e => setEditEnd(e.target.value)} className="w-full bg-black/40 border border-slate-700/50 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none focus:border-blue-500/50" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {editStatus === 'PRESENT' && (
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{t("attendance", "unpaidBreak", "UNBEZAHLTE PAUSE (H)")}</label>
+                                        <select value={editBreak} onChange={e => setEditBreak(Number(e.target.value))} className="w-full bg-black/40 border border-slate-700/50 rounded-xl px-5 py-3.5 text-xs font-bold text-white outline-none appearance-none cursor-pointer focus:border-blue-500/50">
+                                            {[0, 0.5, 1.0].map(v => <option key={v} value={v} className="bg-slate-900">{v} h</option>)}
+                                        </select>
+                                    </div>
+                                )}
+
+                                <div className="flex gap-4 pt-6 border-t border-slate-800/50">
+                                    <button onClick={() => setShowBulkModal(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
+                                        {t("common", "cancel", "Abbrechen")}
+                                    </button>
+                                    <button onClick={handleBulkSave} disabled={isSaving} className="flex-1 bg-blue-500 hover:bg-blue-400 text-slate-950 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 transition-all">
+                                        {isSaving ? "..." : "SPEICHERN"}
+                                    </button>
                                 </div>
                             </div>
                         </motion.div>
@@ -490,5 +759,142 @@ export default function AttendanceCalendarClient() {
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
             `}</style>
         </motion.div>
+    );
+}
+
+function EmployeeRow({
+    emp,
+    onUpdate,
+    onDelete,
+    onPhotoUpload,
+    isUploading
+}: {
+    emp: Worker;
+    onUpdate: (id: string, name: string, active: boolean) => Promise<void>;
+    onDelete: (id: string) => Promise<void>;
+    onPhotoUpload: (id: string, isProfile: boolean, file: File) => Promise<void>;
+    isUploading: boolean;
+}) {
+    const [name, setName] = useState(emp.full_name);
+    const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const isActive = emp.is_active !== false;
+
+    const handleSaveName = async () => {
+        if (!name.trim() || name.trim() === emp.full_name) {
+            setIsEditing(false);
+            return;
+        }
+        setIsSaving(true);
+        try {
+            await onUpdate(emp.id, name.trim(), isActive);
+            setIsEditing(false);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleToggleActive = async () => {
+        await onUpdate(emp.id, emp.full_name, !isActive);
+    };
+
+    return (
+        <div className="flex items-center justify-between gap-3 p-3 bg-black/40 border border-slate-800 rounded-xl hover:border-slate-700/80 transition-all">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="relative w-10 h-10 rounded-full bg-slate-800 border border-slate-700/60 overflow-hidden cursor-pointer shrink-0 group flex items-center justify-center"
+                    title="Foto ändern"
+                >
+                    {emp.photo_url ? (
+                        <img src={emp.photo_url} alt={emp.full_name} className="w-full h-full object-cover" />
+                    ) : (
+                        <span className="text-xs font-black text-slate-300">{emp.full_name?.[0] || "?"}</span>
+                    )}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <Camera className="w-4 h-4 text-white" />
+                    </div>
+                </div>
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) onPhotoUpload(emp.id, emp.type === 'PROFILE', file);
+                    }} 
+                />
+
+                <div className="flex-1 min-w-0">
+                    {isEditing ? (
+                        <div className="flex items-center gap-2">
+                            <input 
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveName();
+                                    if (e.key === 'Escape') { setName(emp.full_name); setIsEditing(false); }
+                                }}
+                                autoFocus
+                                className="w-full bg-slate-900 border border-blue-500/50 rounded-lg px-3 py-1.5 text-xs font-bold text-white outline-none"
+                            />
+                            <button 
+                                onClick={handleSaveName}
+                                disabled={isSaving}
+                                className="p-1.5 bg-blue-500 text-slate-950 rounded-lg hover:bg-blue-400 transition-colors"
+                            >
+                                <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                                onClick={() => { setName(emp.full_name); setIsEditing(false); }}
+                                className="p-1.5 bg-slate-800 text-slate-400 rounded-lg hover:text-white transition-colors"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 group/name">
+                            <span className="text-xs font-bold text-white truncate">{emp.full_name}</span>
+                            <button 
+                                onClick={() => setIsEditing(true)}
+                                className="opacity-0 group-hover/name:opacity-100 text-[10px] text-slate-500 hover:text-blue-400 transition-all"
+                            >
+                                ✏️
+                            </button>
+                        </div>
+                    )}
+                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                        {emp.type === 'PROFILE' ? 'Benutzerkonto' : 'Mitarbeiter'}
+                    </span>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+                <button
+                    onClick={handleToggleActive}
+                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                        isActive 
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20" 
+                            : "bg-slate-800/80 text-slate-400 border border-slate-700/50 hover:bg-slate-800"
+                    }`}
+                >
+                    {isActive ? "Aktiv" : "Inaktiv"}
+                </button>
+
+                {emp.type !== 'PROFILE' && (
+                    <button
+                        onClick={() => onDelete(emp.id)}
+                        className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg border border-transparent hover:border-red-500/20 transition-all"
+                        title="Löschen"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                )}
+            </div>
+        </div>
     );
 }

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -25,7 +26,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: "AUTH_INVALID" });
   }
 
-  const { data: profile, error: profileErr } = await supabase
+  // The user is authenticated, we can safely fetch their profile with admin rights
+  // The user is authenticated, we can safely fetch their profile with admin rights
+  const adminClient = getSupabaseAdminClient();
+  const { data: profile, error: profileErr } = await adminClient
     .from("profiles")
     .select("id, email, full_name, role, company_id, has_vde_access")
     .eq("id", user.id)

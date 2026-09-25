@@ -52,7 +52,7 @@ function sendZpl(zpl: string, host: string, port: number, timeoutMs = 5000): Pro
  * Contains a QR code (native ZPL BQ command — no image) and the cable name.
  */
 function buildZpl(cable: { id: string; name: string }): string {
-  const appUrl = process.env.APP_URL || "https://inspecthero.pl";
+  const appUrl = process.env.APP_URL || "https://et4u.de";
   const qrData = `${appUrl}/cables/${cable.id}`;
   // Sanitize name for ZPL (strip ^ and ~ which are ZPL control chars)
   const safeName = cable.name.replace(/[^~]/g, (c) => (c === "^" ? "" : c)).slice(0, 60);

@@ -9,6 +9,7 @@ import fs from "fs/promises";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { generateTilesInBackground } from "@/lib/tileGenerator";
 
 export const config = {
   api: {
@@ -54,145 +55,7 @@ async function parseMultipart(req: NextApiRequest): Promise<{
   });
 }
 
-/**
- * Usuwa alpha i spłaszcza PNG na białe tło (ImageMagick).
- * Jeśli ImageMagick nie jest dostępny, nie wywala procesu – tylko log.
- */
-async function flattenPngToWhite(inputPng: string, outputPng: string) {
-  try {
-    // convert in.png -background white -alpha remove -alpha off out.png
-    await execFileAsync("convert", [inputPng, "-background", "white", "-alpha", "remove", "-alpha", "off", outputPng]);
-  } catch (e: any) {
-    console.error("[plans/upload] flattenPngToWhite failed (convert):", e?.message || e);
-    // fallback: przepisz plik 1:1, żeby pipeline i tak działał
-    if (inputPng !== outputPng) {
-      await fs.copyFile(inputPng, outputPng);
-    }
-  }
-}
 
-/**
- * Po generowaniu tiles: usuń alpha ze wszystkich kafli.
- * To naprawia “siwy” plan + kratkę między kaflami.
- */
-async function flattenTilesDirToWhite(dir: string) {
-  try {
-    // find dir -type f -name "*.png" ! -name "blank.png" -print0 | xargs -0 mogrify ...
-    // robimy to w Node bez find/xargs, żeby było przenośne
-    const walk = async (p: string) => {
-      const entries = await fs.readdir(p, { withFileTypes: true });
-      for (const ent of entries) {
-        const full = path.join(p, ent.name);
-        if (ent.isDirectory()) {
-          await walk(full);
-        } else if (ent.isFile()) {
-          if (!ent.name.toLowerCase().endsWith(".png")) continue;
-          if (ent.name === "blank.png") continue;
-
-          // mogrify modyfikuje plik in-place
-          try {
-            await execFileAsync("mogrify", ["-background", "white", "-alpha", "remove", "-alpha", "off", full]);
-          } catch (e: any) {
-            // jak nie ma mogrify, próbuj convert → tmp → replace
-            try {
-              const tmp = full + ".tmp.png";
-              await execFileAsync("convert", [full, "-background", "white", "-alpha", "remove", "-alpha", "off", tmp]);
-              await fs.rename(tmp, full);
-            } catch (e2: any) {
-              console.error("[plans/upload] flatten tile failed:", full, e2?.message || e2);
-            }
-          }
-        }
-      }
-    };
-    await walk(dir);
-  } catch (e: any) {
-    console.error("[plans/upload] flattenTilesDirToWhite failed:", e?.message || e);
-  }
-}
-
-async function generateTilesInBackground(opts: {
-  planId: string;
-  pdfPathOnDisk: string; // local tmp file path
-  dpi: number;
-  tileSize: number;
-  minZoom: number;
-  maxZoom: number;
-}) {
-  const supabase = getSupabaseAdminClient();
-
-  // osobny try/catch żeby nie wywalić handlera
-  (async () => {
-    const workDir = await fs.mkdtemp(path.join(os.tmpdir(), "tiles-"));
-    const pngBase = path.join(workDir, "page");
-
-    try {
-      // 1) PDF -> PNG (pierwsza strona)
-      await execFileAsync("pdftoppm", ["-png", "-r", String(opts.dpi), opts.pdfPathOnDisk, pngBase]);
-
-      const page1 = `${pngBase}-1.png`;
-      const planPng = path.join(workDir, "plan.png");
-
-      // 1b) WAŻNE: spłaszcz do białego (usuń alpha) zanim zrobimy tiles
-      await flattenPngToWhite(page1, planPng);
-
-      // 2) Generuj tiles
-      const webRoot = process.cwd();
-      await execFileAsync("node", [
-        path.join(webRoot, "scripts", "generate-tiles.mjs"),
-        `--planId=${opts.planId}`,
-        `--input=${planPng}`,
-        `--tileSize=${opts.tileSize}`,
-        `--minZoom=${opts.minZoom}`,
-        `--maxZoom=${opts.maxZoom}`,
-      ]);
-
-      // 2b) WAŻNE: usuń alpha z wygenerowanych kafli (naprawa “siwe” + kratka)
-      const tilesDir = path.join(webRoot, "private_tiles", opts.planId);
-      if (fsSync.existsSync(tilesDir)) {
-        await flattenTilesDirToWhite(tilesDir);
-      }
-
-      // 3) Odczytaj meta.json i zaktualizuj wymiary obrazu w bazie
-      const metaPath = path.join(tilesDir, "meta.json");
-      if (fsSync.existsSync(metaPath)) {
-        try {
-          const metaContent = await fs.readFile(metaPath, "utf-8");
-          const meta = JSON.parse(metaContent);
-          if (meta.imageWidth && meta.imageHeight) {
-            await supabase.from("plans").update({
-              image_width: meta.imageWidth,
-              image_height: meta.imageHeight,
-              processing_error: null
-            }).eq("id", opts.planId);
-          }
-        } catch (e: any) {
-          console.error("[plans/upload] Failed to update image dimensions:", e?.message || e);
-          // Nie blokuj procesu - kafle są już wygenerowane
-          await supabase.from("plans").update({ processing_error: null }).eq("id", opts.planId);
-        }
-      } else {
-        // Brak meta.json - tylko wyczyść błąd
-        await supabase.from("plans").update({ processing_error: null }).eq("id", opts.planId);
-      }
-
-      // cleanup
-      await fs.rm(workDir, { recursive: true, force: true }).catch(() => { });
-    } catch (e: any) {
-      const msg = e?.message || String(e);
-      console.error("[plans/upload] tiles generation failed:", msg);
-
-      await supabase
-        .from("plans")
-        .update({ processing_error: `tiles generation failed: ${msg}` })
-        .eq("id", opts.planId);
-
-      await fs.rm(workDir, { recursive: true, force: true }).catch(() => { });
-    }
-  })().catch((e) => {
-    console.error("[plans/upload] background job crashed:", e?.message || e);
-  });
-}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader("Cache-Control", "no-store");
@@ -298,9 +161,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq("floor_id", floorId)
       .neq("id", planId);
 
-    // 4) Start tiles generation in background (does NOT block response)
+    // 4) Start tiles generation    // background tile generation
     generateTilesInBackground({
-      planId,
+      targetFolderId: planId,
+      planIdToUpdate: planId,
       pdfPathOnDisk: tmpPath,
       dpi: 150,
       tileSize: 256,

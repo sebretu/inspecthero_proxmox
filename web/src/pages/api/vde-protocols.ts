@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   const role = (profile.role || "").toUpperCase();
   const hasVdeAccess = !!profile.has_vde_access;
-  const isAdmin = role === "ADMIN" || role === "MODERATOR" || role === "MOD";
+  const isAdmin = role === "ADMIN";
   const isAuthorized = isAdmin || hasVdeAccess;
 
   if (!isAuthorized) {

@@ -1,8 +1,8 @@
 import MeasurementProtocolsClient from "./MeasurementProtocolsClient";
 
 export const metadata = {
-  title: "E-Check — InspectHero",
-  description: "E-Check",
+  title: "E-Check — ET⚡U.DE",
+  description: "Protokoły pomiarowe i E-Check",
 };
 
 export default function MeasurementProtocolsPage() {

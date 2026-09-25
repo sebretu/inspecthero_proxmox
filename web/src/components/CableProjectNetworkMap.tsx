@@ -115,7 +115,7 @@ export function CableProjectNetworkMap({ planId, token, nodes, buses }: Props) {
         maxZoom={meta.maxZoom} 
         style={{ height: "100%", width: "100%", background: "#000" }}
       >
-        <TileLayer url={`/api/tiles/${planId}/{z}/{x}/{y}.png?${token ? `token=${token}` : "public=true"}`} />
+        <TileLayer url={`/api/tiles/${planId}/{z}/{x}/{y}.png?${token ? `token=${token}` : "public=true"}&v=${meta?.activeVersionId || ''}`} />
         <AutoFit bounds={contentBounds} />
         
         {lines.map((line, i) => (

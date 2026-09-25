@@ -34,7 +34,8 @@ export default async function handler(
     });
   }
 
-  const isMod = isAdminRole(requester.role) || (requester.role || "").toUpperCase() === "MODERATOR";
+  const isAdmin = isAdminRole(requester.role);
+  const isMod = isAdmin;
 
   // ── GET /api/trommels?projectId=... ─────────────────────────────────────────
   if (req.method === "GET") {
@@ -48,7 +49,7 @@ export default async function handler(
           id, length, name, status, cable_type, index_number,
           cable_routes ( 
             id, name, point_a_label, point_b_label, plan_id, point_a_x, point_a_y, point_b_x, point_b_y, waypoints,
-            plan_id_2, point_c_x, point_c_y, point_d_x, point_d_y, waypoints_2
+            plan_id_2, point_c_x, point_c_y, point_d_x, point_d_y, waypoints_2, point_a_photo, point_b_photo
           ),
           reported_profile:profiles!cables_reported_by_fkey ( id, full_name )
         )
@@ -77,8 +78,11 @@ export default async function handler(
     return res.status(200).json({ ok: true, data: enriched });
   }
 
-  // ── POST /api/trommels ───────────────────────────────────────────────────────
+  // ── POST /api/trommels (admin only) ─────────────────────────────────────────
   if (req.method === "POST") {
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only administrators can create trommels" } });
+    }
     const body = readJsonBody(req);
     const name          = String(body?.name || "").trim();
     const total_length  = body?.total_length != null ? Number(body.total_length) : null;
@@ -155,10 +159,10 @@ export default async function handler(
     return res.status(200).json({ ok: true, data });
   }
 
-  // ── DELETE /api/trommels?id=... (mod/admin only) ─────────────────────────────
+  // ── DELETE /api/trommels?id=... (admin only) ─────────────────────────────────
   if (req.method === "DELETE") {
-    if (!isMod) {
-      return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only admins/mods can delete trommels" } });
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only administrators can delete trommels" } });
     }
     const id = typeof req.query.id === "string" ? req.query.id.trim() : "";
     if (!id) {
@@ -171,8 +175,11 @@ export default async function handler(
     return res.status(200).json({ ok: true, data: { deleted: id } });
   }
 
-  // ── PATCH /api/trommels — edit name/length/photo/company/serial (any authenticated user)
+  // ── PATCH /api/trommels (admin only) ─────────────────────────────────────────
   if (req.method === "PATCH") {
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only administrators can edit trommels" } });
+    }
     const body = readJsonBody(req);
     const id = String(body?.id || "").trim();
     if (!id) return res.status(400).json({ ok: false, error: { code: "BAD_REQUEST", message: "Missing id" } });

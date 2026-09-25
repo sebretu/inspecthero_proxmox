@@ -116,7 +116,7 @@ export default async function handler(
       .select(`
         *,
         index_number,
-        cable_routes ( id, name, point_a_label, point_b_label, plan_id, point_a_x, point_a_y, point_b_x, point_b_y, waypoints, plan_id_2, point_c_x, point_c_y, point_d_x, point_d_y, waypoints_2, scale, scale_2 ),
+        cable_routes ( id, name, point_a_label, point_b_label, plan_id, point_a_x, point_a_y, point_b_x, point_b_y, waypoints, plan_id_2, point_c_x, point_c_y, point_d_x, point_d_y, waypoints_2, scale, scale_2, point_a_photo, point_b_photo ),
         trommels ( id, name, index_number, total_length, cable_type, serial_number, company_name ),
         profiles!cables_created_by_fkey ( id, full_name ),
         reported_profile:profiles!cables_reported_by_fkey ( id, full_name )
@@ -155,6 +155,9 @@ export default async function handler(
   // Body: { project_id, name, length?, status?, route_id?, trommel_id? }
   // ────────────────────────────────────────────────────────────────────────────
   if (req.method === "POST") {
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only administrators can create cables" } });
+    }
     const body = readJsonBody(req);
 
     const project_id  = String(body?.project_id  || "").trim();
@@ -279,8 +282,24 @@ export default async function handler(
       .eq("id", id)
       .single();
 
-    if (prevErr || !prev) {
-      return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Cable not found" } });
+    if (!isAdmin) {
+      if (
+        body.name !== undefined ||
+        body.length !== undefined ||
+        body.route_id !== undefined ||
+        body.trommel_id !== undefined ||
+        body.cable_type !== undefined ||
+        body.category_id !== undefined ||
+        body.is_verified !== undefined
+      ) {
+        return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only administrators can modify cable properties" } });
+      }
+      if (body.status !== undefined) {
+        const s = String(body.status).trim().toLowerCase();
+        if (s !== "pending_approval" && s !== "in_progress") {
+          return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Users can only report cables for approval" } });
+        }
+      }
     }
 
     const patch: Record<string, any> = {};
@@ -302,12 +321,9 @@ export default async function handler(
     if (body.status !== undefined) {
       const s = String(body.status).trim().toLowerCase();
       if (!isCableStatus(s)) return res.status(400).json({ ok: false, error: { code: "BAD_REQUEST", message: `Invalid status: ${s}` } });
-      // Only mods/admins can set 'done'; regular users can only set in_progress or pending_approval
-      if (s === "done" && !isMod) {
-        return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only admins/moderators can mark a cable as done" } });
-      }
-      if (s === "pending" && !isMod) {
-        return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only admins/moderators can reset a cable to pending" } });
+      // Only admins can set 'done' or 'pending'; regular users can only set pending_approval (or revert to in_progress)
+      if ((s === "done" || s === "pending") && !isAdmin) {
+        return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only administrators can mark a cable as done or reset to pending" } });
       }
       patch.status = s;
       // Track who reported for approval
@@ -423,8 +439,8 @@ export default async function handler(
   // DELETE /api/cables?id=...  (admin/mod only)
   // ────────────────────────────────────────────────────────────────────────────
   if (req.method === "DELETE") {
-    if (!isMod) {
-      return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only admins/mods can delete cables" } });
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only administrators can delete cables" } });
     }
     const id = typeof req.query.id === "string" ? req.query.id.trim() : "";
     if (!id || !isUuid(id)) {

@@ -128,7 +128,7 @@ export function MapPinPicker({ planId, token, onPin, pinned, accentColor = "#06b
                 maxZoom={meta.maxZoom}
                 style={{ height: "100%", background: "#111" }}
             >
-                {token && <TileLayer url={`/api/tiles/${planId}/{z}/{x}/{y}.png?token=${token}`} />}
+                {token && <TileLayer url={`/api/tiles/${planId}/{z}/{x}/{y}.png?token=${token}&v=${meta?.activeVersionId || ''}`} />}
                 <ClickHandler />
                 {pinLatLng && <AutoCenter pos={pinLatLng} />}
                 {pinLatLng && <MarkerAny position={pinLatLng} icon={pinIcon} />}

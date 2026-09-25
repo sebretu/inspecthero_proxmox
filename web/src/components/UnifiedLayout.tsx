@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useNotification } from "@/contexts/NotificationContext";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -13,6 +13,7 @@ import { FehlerAlertPopup } from "@/components/FehlerAlertPopup";
 import { AIAssistant } from "@/components/AIAssistant";
 import { Sparkles } from "lucide-react";
 import { PrivacyModal } from "@/components/PrivacyModal";
+import { Et4uLogo } from "@/components/Et4uLogo";
 
 
 import { supabase } from "@/lib/supabase";
@@ -20,6 +21,7 @@ import { apiGet } from "@/lib/apiClient";
 
 export default function UnifiedLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { showNotification } = useNotification();
   const hideChrome = pathname?.startsWith("/task/") || pathname?.startsWith("/public/bma/");
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
@@ -30,6 +32,7 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
   const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
   const footerTagline = t("footer", "tagline", "Inspection and reporting platform");
+  const footerOwner = t("footer", "owner", "Owner: Marcin Slapinski");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userHasVdeAccess, setUserHasVdeAccess] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -178,13 +181,27 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
         setMainDropdownOpen(false);
       }
     }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMobileMenuOpen(false);
+        setAdminDropdownOpen(false);
+        setMainDropdownOpen(false);
+      }
+    }
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("touchstart", handleClickOutside as EventListener);
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside as EventListener);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
+
+  // Close mobile menu on pathname changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   // Admin notification on task approval
   useEffect(() => {
@@ -207,16 +224,20 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
     const base = [
       { href: "/", label: t("nav", "tasks", "Zadania") },
       { href: "/plans", label: t("nav", "plans", "Plany") },
-      { href: "/charger-install", label: t("nav", "chargerInstall", "Instalacja Ładowarek") },
       { href: "/cables", label: t("nav", "cables", "Kable") },
+      { href: "/stromkreise", label: t("nav", "stromkreise", "Stromkreise") },
+      { href: "/uv-plans", label: t("nav", "uvPlans", "Stromkreise von UV-Plan") },
       { href: "/bma-automation", label: t("bmaAutomation", "title", "BMA Automatyka") },
+      { href: "/maengelanzeige", label: t("nav", "maengelanzeige", "Mängelanzeige") },
     ];
 
     if (isAdmin) {
+      base.push({ href: "/charger-install", label: t("nav", "chargerInstall", "Instalacja Ładowarek") });
       base.push({ href: "/automation", label: t("nav", "automation", "Automatyka kabli") });
+      base.push({ href: "/pdf-editor", label: "Narzędzie PDF" });
     }
 
-    if (isAdmin || isMod || userHasVdeAccess) {
+    if (isAdmin || userHasVdeAccess) {
       base.push({ href: "/measurement-protocols", label: t("nav", "measurementProtocols", "E-Check") });
     }
 
@@ -240,6 +261,11 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
   const adminLinks = useMemo(() => {
     if (!isAdmin) return [];
     return [
+      { href: "/admin/symbol-annotator", label: "⚡ YOLO Annotator" },
+      { href: "/admin/symbol-detection", label: "🔍 Symbol Detection" },
+      { href: "/documentation", label: `📸 ${t("nav", "documentation", "Foto-Dokumentation")}` },
+      { href: "/maengelanzeige", label: "📑 Mängelanzeige" },
+      { href: "/progress", label: t("nav", "progress", "📈 Projektfortschritt") },
       { href: "/users", label: t("nav", "users", "Użytkownicy") },
       { href: "/companies", label: t("nav", "companies", "Firmy") },
       { href: "/reports", label: t("nav", "reports", "Raporty") },
@@ -263,48 +289,49 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
       <div className="relative w-full overflow-x-clip flex flex-col min-h-screen">
 
         {/* ── HEADER ── */}
-        <header className="sticky top-0 z-[9990] w-full bg-ui-nav-bg/95 backdrop-blur-[40px] border-b border-[var(--ui-border)] shadow-[0_15px_50px_-10px_rgba(0,0,0,0.7)]">
-          <div className="container mx-auto px-3 md:px-12 py-0 h-16 md:h-40 lg:h-[13rem] flex items-center justify-between">
+        <header className="sticky top-0 z-[100000] w-full bg-ui-nav-bg/95 backdrop-blur-[40px] border-b border-[var(--ui-border)] shadow-[0_15px_50px_-10px_rgba(0,0,0,0.7)]">
+          <div className="container mx-auto px-3 md:px-8 py-0 h-16 md:h-20 lg:h-24 flex items-center justify-between">
 
             {/* Logo — left */}
-            <div className="flex-shrink-0 flex items-center mr-auto pr-2 lg:pr-10">
+            <div className="flex-shrink-0 flex items-center mr-auto pr-2 lg:pr-8">
               <Link
                 href="/"
-                className="flex items-center transition-all duration-500 hover:scale-105 active:scale-95 hover:!bg-none focus:!bg-none !shadow-none hover:!shadow-none focus:!shadow-none !p-0 !m-0"
-                aria-label="InspectHero home"
+                className="flex items-center transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] focus:outline-none bg-transparent hover:bg-transparent"
+                aria-label="ET4U.DE Home"
               >
-                <img
-                  src="/inspecthero-logo.png"
-                  alt="InspectHero logo"
-                  className="!h-[44px] md:!h-[130px] lg:!h-[180px] !w-auto no-auto-scale brightness-0 invert opacity-100 contrast-200 grayscale drop-shadow-[0_0_15px_rgba(255,255,255,0.15)] object-contain"
-                />
+                <Et4uLogo size="md" animated />
               </Link>
             </div>
 
             {/* Right nav & tools */}
-            <div className="flex items-center justify-end gap-2 md:gap-8">
+            <div className="flex items-center justify-end gap-2 md:gap-6">
               {currentUserId && (
-                <nav className="hidden lg:flex items-center gap-6 xl:gap-8">
+                <nav className="hidden lg:flex items-center gap-5 xl:gap-7">
                 <div className="relative" ref={mainDropdownRef}>
                   <button
                     onClick={() => setMainDropdownOpen((o) => !o)}
-                    className={`text-[13px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-2 ${mainDropdownOpen ? "text-ui-accent" : "text-ui-muted hover:text-ui-text"}`}
+                    className={`text-[12px] font-black uppercase tracking-[0.22em] transition-all duration-300 flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${
+                      mainDropdownOpen
+                        ? "text-ui-accent border-ui-accent/40 bg-ui-accent/10"
+                        : "text-ui-muted border-transparent hover:text-ui-text hover:bg-white/5"
+                    }`}
                   >
                     Menu
-                    <span className={`text-[10px] transition-transform duration-300 ${mainDropdownOpen ? "rotate-180" : ""}`}>▼</span>
+                    <span className={`text-[9px] transition-transform duration-300 ${mainDropdownOpen ? "rotate-180" : ""}`}>▼</span>
                   </button>
                   {mainDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-6 w-56 bg-ui-card backdrop-blur-2xl border border-ui-border rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[9995]">
+                    <div className="absolute top-full left-0 mt-3 w-60 bg-ui-card backdrop-blur-2xl border border-ui-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[100005]">
                       <div className="flex flex-col py-2">
                         {navLinks.map((link) => (
                           <Link
                             key={`main-nav-${link.href}`}
                             href={link.href}
                             onClick={() => setMainDropdownOpen(false)}
-                            className={`px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-200 ${pathname === link.href
-                              ? "bg-ui-accent/10 text-ui-accent border-l-2 border-ui-accent"
-                              : "text-ui-muted hover:bg-white/5 hover:text-ui-text"
-                              }`}
+                            className={`px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.18em] transition-all duration-200 ${
+                              pathname === link.href
+                                ? "bg-ui-accent/15 text-ui-accent border-l-3 border-ui-accent font-black"
+                                : "text-ui-muted hover:bg-white/5 hover:text-ui-text"
+                            }`}
                           >
                             {link.label}
                           </Link>
@@ -318,24 +345,28 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
                   <div className="relative" ref={adminDropdownRef}>
                     <button
                       onClick={() => setAdminDropdownOpen((o) => !o)}
-                      className={`text-[13px] font-black uppercase tracking-[0.25em] transition-all duration-300 flex items-center gap-2 ${adminDropdownOpen ? "text-ui-accent" : "text-ui-muted hover:text-ui-text"
-                        }`}
+                      className={`text-[12px] font-black uppercase tracking-[0.22em] transition-all duration-300 flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${
+                        adminDropdownOpen
+                          ? "text-ui-accent border-ui-accent/40 bg-ui-accent/10"
+                          : "text-ui-muted border-transparent hover:text-ui-text hover:bg-white/5"
+                      }`}
                     >
                       Admin
-                      <span className={`text-[10px] transition-transform duration-300 ${adminDropdownOpen ? "rotate-180" : ""}`}>▼</span>
+                      <span className={`text-[9px] transition-transform duration-300 ${adminDropdownOpen ? "rotate-180" : ""}`}>▼</span>
                     </button>
                     {adminDropdownOpen && (
-                      <div className="absolute top-full right-0 mt-6 w-56 bg-ui-card backdrop-blur-2xl border border-ui-border rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[9995]">
+                      <div className="absolute top-full right-0 mt-3 w-64 bg-ui-card backdrop-blur-2xl border border-ui-border rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[100005]">
                         <div className="flex flex-col py-2">
                           {adminLinks.map((link) => (
                             <Link
                               key={`admin-${link.href}`}
                               href={link.href}
                               onClick={() => setAdminDropdownOpen(false)}
-                              className={`px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-200 ${pathname === link.href
-                                ? "bg-ui-accent/10 text-ui-accent border-l-2 border-ui-accent"
-                                : "text-ui-muted hover:bg-white/5 hover:text-ui-text"
-                                }`}
+                              className={`px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.18em] transition-all duration-200 ${
+                                pathname === link.href
+                                  ? "bg-ui-accent/15 text-ui-accent border-l-3 border-ui-accent font-black"
+                                  : "text-ui-muted hover:bg-white/5 hover:text-ui-text"
+                              }`}
                             >
                               {link.label}
                             </Link>
@@ -348,22 +379,22 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
               </nav>
               )}
 
-              <div className="flex items-center gap-1.5 md:gap-4">
+              <div className="flex items-center gap-1.5 md:gap-3">
                 {/* New Task button */}
                 {currentUserId && (
                   <>
                     <button
-                      className="flex items-center justify-center w-9 h-9 md:w-14 md:h-14 rounded-lg md:rounded-xl bg-gradient-to-br from-[#3b82f6] via-[#0ea5e9] to-[#2dd4bf] transition-all hover:scale-110 hover:shadow-[0_0_40px_rgba(14,165,233,0.7)] active:scale-95 border border-white/20 shadow-lg group"
+                      className="flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-xl bg-gradient-to-br from-[#FFD000] via-[#F59E0B] to-[#D97706] text-black font-black transition-all hover:scale-110 hover:shadow-[0_0_25px_rgba(255,208,0,0.6)] active:scale-95 border border-white/25 shadow-md group"
                       onClick={() => window.dispatchEvent(new CustomEvent("open-new-task"))}
                       title={t("home", "createNewTask")}
                       aria-label={t("home", "createNewTask")}
                     >
-                      <span className="text-lg md:text-3xl font-black text-white drop-shadow-md transition-transform group-hover:scale-110">✓</span>
+                      <span className="text-base md:text-xl font-extrabold text-black drop-shadow-sm transition-transform group-hover:scale-110">✓</span>
                     </button>
 
                     {/* New Question button */}
                     <button
-                      className="flex items-center justify-center w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-gradient-to-br from-fuchsia-500 to-purple-600 transition-all hover:scale-110 hover:shadow-[0_0_30px_rgba(217,70,239,0.5)] active:scale-95 border border-white/20 shadow-md text-white text-base md:text-lg font-bold"
+                      className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 transition-all hover:scale-110 hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] active:scale-95 border border-white/20 shadow-sm text-white text-sm md:text-base font-bold"
                       onClick={() => window.dispatchEvent(new CustomEvent("open-new-question"))}
                       title={t("home", "newQuestion", "Zadaj pytanie")}
                     >
@@ -375,7 +406,7 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
                 {/* New Revision button */}
                 {isAdmin && (
                   <button
-                    className="flex items-center justify-center w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-gradient-to-br from-cyan-500 to-violet-600 transition-all hover:scale-110 hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] active:scale-95 border border-white/20 shadow-md text-white text-base md:text-lg font-bold"
+                    className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 transition-all hover:scale-110 hover:shadow-[0_0_20px_rgba(20,184,166,0.5)] active:scale-95 border border-white/20 shadow-sm text-white text-sm md:text-base font-bold"
                     onClick={() => window.dispatchEvent(new CustomEvent("open-new-revision"))}
                     title={t("revision", "title", "New Revision")}
                     aria-label={t("revision", "title", "New Revision")}
@@ -387,7 +418,7 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
                 {/* New Fehler button */}
                 {isAdmin && (
                   <button
-                    className="flex items-center justify-center w-9 h-9 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-gradient-to-br from-amber-500 to-red-500 transition-all hover:scale-110 hover:shadow-[0_0_30px_rgba(239,68,68,0.5)] active:scale-95 border border-white/20 shadow-md text-white text-base md:text-lg font-bold"
+                    className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-amber-500 to-rose-600 transition-all hover:scale-110 hover:shadow-[0_0_20px_rgba(244,63,94,0.5)] active:scale-95 border border-white/20 shadow-sm text-white text-sm md:text-base font-bold"
                     onClick={() => window.dispatchEvent(new CustomEvent("open-new-fehler"))}
                     title={t("fehler", "title", "Error")}
                     aria-label={t("fehler", "title", "Error")}
@@ -396,48 +427,121 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
                   </button>
                 )}
 
+                <div className="h-6 w-px bg-ui-border/30 hidden md:block" />
 
-                <div className="h-8 w-px bg-ui-border/20 hidden md:block" />
-
-                {/* Theme/lang/logout: hidden on mobile (accessible from drawer) */}
+                {/* Theme/lang/logout */}
                 <div className="hidden md:flex items-center gap-1 md:gap-2">
                   <ThemeSwitcher />
                   <LanguageSwitcher />
                   {isAdmin && (
                     <button
-                      className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 transition-all hover:scale-110 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] active:scale-95 border border-white/10 shadow-sm p-1.5 mx-1 group"
+                      className="flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 transition-all hover:scale-110 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] active:scale-95 border border-white/10 shadow-sm p-1.5 mx-1 group"
                       onClick={() => setIsAIAssistantOpen(true)}
                       title="AI Assistant"
                     >
-                      <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-white drop-shadow-sm" />
+                      <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-white drop-shadow-sm" />
                     </button>
                   )}
-
 
                   <LogoutButton className="p-1.5 md:p-2 rounded-full hover:bg-white/5 transition-colors" />
                 </div>
 
                 {/* Hamburger — mobile only */}
                 <button
-                  className="lg:hidden flex flex-col justify-center items-center w-10 h-10 rounded-lg gap-[5px] hover:bg-white/5 transition-colors"
-                  onClick={() => setMobileMenuOpen(true)}
-                  aria-label="Otwórz menu"
+                  className="lg:hidden flex flex-col justify-center items-center w-10 h-10 rounded-xl gap-[5px] hover:bg-white/5 border border-ui-border/30 transition-colors cursor-pointer"
+                  onClick={() => setMobileMenuOpen((o) => !o)}
+                  aria-label={mobileMenuOpen ? "Zamknij menu" : "Otwórz menu"}
+                  aria-expanded={mobileMenuOpen}
                 >
-                  <span className="block w-6 h-0.5 bg-ui-text rounded-full" />
-                  <span className="block w-6 h-0.5 bg-ui-text rounded-full" />
-                  <span className="block w-6 h-0.5 bg-ui-text rounded-full" />
+                  <span className="block w-5 h-0.5 bg-ui-text rounded-full" />
+                  <span className="block w-5 h-0.5 bg-ui-accent rounded-full" />
+                  <span className="block w-5 h-0.5 bg-ui-text rounded-full" />
                 </button>
               </div>
             </div>
           </div>
         </header>
 
-        <main className="flex-grow animate-in fade-in duration-500">{children}</main>
+        <main className="flex-grow pb-20 lg:pb-0 animate-in fade-in duration-500">{children}</main>
 
-        <footer className="py-12 border-t border-ui-border/50 text-center text-sm text-ui-muted">
-          <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
-            <span>InspectHero © {currentYear} — {footerTagline}</span>
-            <span className="hidden sm:inline text-ui-border/30">|</span>
+        {/* ── MOBILE BOTTOM NAVIGATION BAR (Ergonomic Touch Bar) ── */}
+        {currentUserId && (
+          <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[99990] bg-ui-nav-bg/95 backdrop-blur-xl border-t border-ui-border px-2 py-1.5 flex items-center justify-around shadow-[0_-10px_30px_rgba(0,0,0,0.6)]">
+            <Link
+              href="/"
+              className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] px-2 py-1 rounded-xl transition-all ${
+                pathname === "/" ? "text-ui-accent font-black" : "text-ui-muted hover:text-ui-text font-bold"
+              }`}
+            >
+              <span className="text-base">⚡</span>
+              <span className="text-[10px] uppercase tracking-wider">Home</span>
+            </Link>
+            <Link
+              href="/plans"
+              onClick={(e) => {
+                e.preventDefault();
+                if (typeof window !== "undefined") {
+                  try {
+                    const rawFavs = localStorage.getItem("et4u_favorite_plans");
+                    if (rawFavs) {
+                      const favs = JSON.parse(rawFavs);
+                      if (Array.isArray(favs) && favs.length > 0 && favs[0].id) {
+                        router.push(`/plan/${favs[0].id}`);
+                        return;
+                      }
+                    }
+                    const lastPlanId = localStorage.getItem("et4u_active_plan_id") || localStorage.getItem("et4u_last_plan_id");
+                    if (lastPlanId) {
+                      router.push(`/plan/${lastPlanId}`);
+                      return;
+                    }
+                  } catch {}
+                }
+                router.push("/plans?direct=1");
+              }}
+              className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] px-2 py-1 rounded-xl transition-all ${
+                (pathname || "").startsWith("/plans") || (pathname || "").startsWith("/plan/") ? "text-ui-accent font-black" : "text-ui-muted hover:text-ui-text font-bold"
+              }`}
+            >
+              <span className="text-base">🗺️</span>
+              <span className="text-[10px] uppercase tracking-wider">Pläne</span>
+            </Link>
+            <Link
+              href="/stromkreise"
+              className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] px-2 py-1 rounded-xl transition-all ${
+                (pathname || "").startsWith("/stromkreise") ? "text-ui-accent font-black" : "text-ui-muted hover:text-ui-text font-bold"
+              }`}
+            >
+              <span className="text-base">⚡</span>
+              <span className="text-[10px] uppercase tracking-wider">Stromkreise</span>
+            </Link>
+            <Link
+              href="/cables"
+              className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] px-2 py-1 rounded-xl transition-all ${
+                (pathname || "").startsWith("/cables") ? "text-ui-accent font-black" : "text-ui-muted hover:text-ui-text font-bold"
+              }`}
+            >
+              <span className="text-base">🔌</span>
+              <span className="text-[10px] uppercase tracking-wider">Kabel</span>
+            </Link>
+            <button
+              onClick={() => setMobileMenuOpen((o) => !o)}
+              className={`flex flex-col items-center justify-center min-w-[56px] min-h-[44px] px-2 py-1 rounded-xl transition-all cursor-pointer ${
+                mobileMenuOpen ? "text-ui-accent font-black" : "text-ui-muted hover:text-ui-text font-bold"
+              }`}
+            >
+              <span className="text-base">{mobileMenuOpen ? "✕" : "☰"}</span>
+              <span className="text-[10px] uppercase tracking-wider">Menu</span>
+            </button>
+          </nav>
+        )}
+
+        <footer className="py-10 border-t border-ui-border/30 text-center text-sm text-ui-muted bg-ui-bg/50 backdrop-blur-md">
+          <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 flex-wrap">
+            <span className="font-medium">ET⚡U.DE © {currentYear} — {footerTagline}</span>
+            <span className="hidden sm:inline text-ui-border/40">|</span>
+            <span className="font-medium">{footerOwner}</span>
+            <span className="hidden sm:inline text-ui-border/40">|</span>
             <button
               onClick={() => setShowPrivacyModal(true)}
               className="hover:text-ui-accent transition-colors duration-300 font-semibold underline decoration-dotted underline-offset-4"
@@ -451,27 +555,24 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
       {/* ── MOBILE MENU DRAWER ── */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-[20000] lg:hidden"
+          className="fixed inset-0 z-[200000] lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
         >
           {/* Dark background */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm cursor-pointer" />
 
           {/* Side drawer */}
           <div
-            className="absolute top-0 right-0 h-full w-[80vw] max-w-xs bg-ui-nav-bg border-l border-ui-border shadow-2xl flex flex-col"
+            className="absolute top-0 right-0 h-full w-[85vw] max-w-xs bg-ui-nav-bg border-l border-ui-border shadow-2xl flex flex-col z-[200001]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Drawer header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-ui-border">
-              <img
-                src="/inspecthero-logo.png"
-                alt="logo"
-                className="h-10 w-auto brightness-0 invert grayscale"
-              />
+            <div className="flex items-center justify-between px-5 py-4 border-b border-ui-border bg-ui-nav-bg shrink-0">
+              <Et4uLogo size="sm" animated />
               <button
+                type="button"
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-ui-muted hover:text-ui-text text-2xl leading-none"
+                className="text-ui-muted hover:text-ui-text text-xl w-9 h-9 flex items-center justify-center rounded-lg hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
                 aria-label="Zamknij menu"
               >
                 ✕
@@ -480,7 +581,7 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
 
             {/* Nav links */}
             {currentUserId && (
-              <nav className="flex flex-col gap-1 px-4 pt-4 flex-grow overflow-y-auto">
+              <nav className="flex flex-col gap-1 px-4 pt-4 flex-grow overflow-y-auto overscroll-contain">
                 {navLinks.map((link) => (
                   <Link
                     key={`mob-${link.href}`}
@@ -529,7 +630,7 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
             )}
 
             {/* Drawer footer: theme + lang + logout */}
-            <div className="flex items-center justify-center gap-3 px-6 py-5 border-t border-ui-border">
+            <div className="flex items-center justify-center gap-3 px-6 py-5 border-t border-ui-border shrink-0">
               <ThemeSwitcher />
               <LanguageSwitcher />
               <LogoutButton className="p-2 rounded-full hover:bg-white/5 transition-colors" />
@@ -544,7 +645,7 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 10001,
+            zIndex: 100050,
             background: "rgba(0,0,0,0.65)",
             display: "flex",
             alignItems: "center",

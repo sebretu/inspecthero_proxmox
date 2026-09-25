@@ -114,6 +114,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         });
       }
 
+      // Handle subprojects creation if provided
+      const rawSubprojects = req.body?.subprojects;
+      const subprojectsList: Array<{ name: string; parent_group?: string }> = [];
+
+      // Default General subproject
+      subprojectsList.push({ name: "General" });
+
+      if (Array.isArray(rawSubprojects)) {
+        for (const item of rawSubprojects) {
+          if (typeof item === 'string' && item.trim() && item.trim().toLowerCase() !== 'general') {
+            subprojectsList.push({ name: item.trim() });
+          } else if (item && typeof item === 'object' && item.name && String(item.name).trim().toLowerCase() !== 'general') {
+            subprojectsList.push({ name: String(item.name).trim(), parent_group: item.parent_group ? String(item.parent_group).trim() : undefined });
+          }
+        }
+      } else if (typeof rawSubprojects === 'string' && rawSubprojects.trim()) {
+        const parts = rawSubprojects.split(/[,;\n]+/).map(s => s.trim()).filter(s => s && s.toLowerCase() !== 'general');
+        for (const p of parts) {
+          subprojectsList.push({ name: p });
+        }
+      }
+
+      for (const sp of subprojectsList) {
+        try {
+          await serviceClient.from('project_subprojects').upsert(
+            {
+              project_id: data.id,
+              company_id: companyIdToUse,
+              name: sp.name,
+              parent_group: sp.parent_group || null,
+              created_by: requester.id,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'project_id,name' }
+          );
+        } catch (spErr) {
+          console.error("Error creating initial subproject:", spErr);
+        }
+      }
+
       return res.status(201).json({ ok: true, data });
     }
 

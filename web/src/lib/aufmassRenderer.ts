@@ -1,5 +1,5 @@
 
-export async function renderAnnotatedImage(photoUrl: string, shapes: any[]): Promise<string> {
+export async function renderAnnotatedImage(photoUrl: string, shapes: any[], timestamp?: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -37,6 +37,19 @@ export async function renderAnnotatedImage(photoUrl: string, shapes: any[]): Pro
           if (shape.points && shape.points.length >= 4) {
             const [x1, y1, x2, y2] = shape.points;
             drawArrow(ctx, x1, y1, x2, y2, shape.strokeWidth || 2);
+          }
+        } else if (shape.type === 'double-arrow') {
+          if (shape.points && shape.points.length >= 4) {
+            const [x1, y1, x2, y2] = shape.points;
+            drawArrow(ctx, x1, y1, x2, y2, shape.strokeWidth || 2);
+            drawArrow(ctx, x2, y2, x1, y1, shape.strokeWidth || 2);
+            if (shape.text) {
+               ctx.fillStyle = '#ffffff';
+               ctx.font = '20px Inter, sans-serif';
+               ctx.textAlign = 'center';
+               ctx.textBaseline = 'middle';
+               ctx.fillText(shape.text, (x1+x2)/2, (y1+y2)/2 - 15);
+            }
           }
         } else if (shape.type === 'rect') {
           ctx.strokeRect(shape.x, shape.y, shape.width || 0, shape.height || 0);
@@ -79,6 +92,33 @@ export async function renderAnnotatedImage(photoUrl: string, shapes: any[]): Pro
            }
         }
       });
+
+      // Draw timestamp if provided
+      if (timestamp) {
+        try {
+          const date = new Date(timestamp);
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          const dateStr = `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+          
+          const fontSize = Math.max(14, Math.round(canvas.height * 0.025));
+          ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+          
+          const textWidth = ctx.measureText(dateStr).width;
+          const padding = fontSize * 0.5;
+          const rectHeight = fontSize + padding * 2;
+          const rectWidth = textWidth + padding * 2;
+          
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+          ctx.fillRect(canvas.width - rectWidth - padding, canvas.height - rectHeight - padding, rectWidth, rectHeight);
+          
+          ctx.fillStyle = '#f97316';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillText(dateStr, canvas.width - rectWidth - padding + padding, canvas.height - rectHeight - padding + padding);
+        } catch (e) {
+          console.error("Failed to draw timestamp", e);
+        }
+      }
 
       resolve(canvas.toDataURL('image/jpeg', 0.8));
     };

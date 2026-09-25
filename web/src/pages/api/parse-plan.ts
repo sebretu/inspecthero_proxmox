@@ -1,23 +1,12 @@
+import "@/lib/pdfPolyfill";
+import fs from "fs";
+import path from "path";
 import { NextApiRequest, NextApiResponse } from "next";
 import { createServerSupabaseClient } from "@/lib/supabaseServer";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
 // Force @vercel/nft to bundle pdfjs-dist but hide it from Turbopack early execution
-
-// DOMMatrix Polyfill for Node.js (required by pdfjs-dist in Node environment)
-if (typeof global.DOMMatrix === 'undefined') {
-  (global as any).DOMMatrix = class DOMMatrix {
-    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
-    constructor(arg: any) {
-      if (typeof arg === 'string') return;
-      if (Array.isArray(arg)) {
-        this.a = arg[0]; this.b = arg[1]; this.c = arg[2];
-        this.d = arg[3]; this.e = arg[4]; this.f = arg[5];
-      }
-    }
-  };
-}
 
 export const config = {
   api: {
@@ -50,9 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const buffer = Buffer.from(fileData, 'base64');
     try {
-      const scratchDir = "/home/sebretu/building-task-manager/web/scratch";
-      const fs = require('fs');
-      const path = require('path');
+      const scratchDir = path.join(process.cwd(), "scratch");
       if (!fs.existsSync(scratchDir)) {
         fs.mkdirSync(scratchDir, { recursive: true });
       }
@@ -133,9 +120,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     fullText = fullText.slice(0, 40000);
 
     try {
-      const scratchDir = "/home/sebretu/building-task-manager/web/scratch";
-      const fs = require('fs');
-      const path = require('path');
+      const scratchDir = path.join(process.cwd(), "scratch");
       if (!fs.existsSync(scratchDir)) {
         fs.mkdirSync(scratchDir, { recursive: true });
       }
@@ -218,6 +203,45 @@ Ensure all keys match exactly. Do not include markdown code block formatting in 
 Extracted Text:
 ${fullText}`;
 
+    // 1. Try Local AI first
+    const localAiUrl = process.env.LOCAL_AI_URL || "http://192.168.178.4:8000";
+    const localAiKey = process.env.LOCAL_AI_KEY || "e06be799d068c8c841338aaf7808bb84e6b4444e9aa813174a5681c00f931631";
+
+    if (localAiUrl) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+        const localRes = await fetch(`${localAiUrl}/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": localAiKey,
+          },
+          body: JSON.stringify({
+            message: prompt,
+            temperature: 0.0,
+            max_tokens: 3000,
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (localRes.ok) {
+          const localData = await localRes.json();
+          let rawText = localData?.response || "";
+          rawText = rawText.replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim();
+          const localJson = JSON.parse(rawText);
+          if (localJson && (localJson.results || Array.isArray(localJson))) {
+            return res.status(200).json({ ok: true, data: localJson, source: "local_ai" });
+          }
+        }
+      } catch (localErr: any) {
+        console.warn("[Parse Plan API] Local AI failed, falling back to OpenAI:", localErr.message);
+      }
+    }
+
+    // 2. Fallback to OpenAI
     const { text } = await generateText({
       model: openai('gpt-4o'),
       prompt: prompt,
@@ -233,7 +257,7 @@ ${fullText}`;
       throw new Error("Failed to parse AI response into structured JSON");
     }
 
-    return res.status(200).json({ ok: true, data: resultJson });
+    return res.status(200).json({ ok: true, data: resultJson, source: "openai" });
   } catch (err: any) {
     console.error('[Parse Plan API] Error:', err);
     return res.status(500).json({ ok: false, error: { message: err.message } });

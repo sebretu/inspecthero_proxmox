@@ -30,7 +30,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { session_id, x, y, category, color, status, priority, icon, internal_notes, customer_visible_notes, linked_task_id, linked_map_x, linked_map_y, created_by } = body;
+    const { session_id, photo_id, x, y, category, color, status, priority, icon, internal_notes, customer_visible_notes, linked_task_id, linked_map_x, linked_map_y, created_by } = body;
 
     if (!session_id || x === undefined || y === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -38,6 +38,7 @@ export async function POST(req: Request) {
 
     const { data, error } = await supabase.from('aufmass_markers').insert([{
       session_id,
+      photo_id,
       x,
       y,
       category,
@@ -64,11 +65,12 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
     try {
         const body = await req.json();
-        const { id, x, y, category, color, status, priority, icon, internal_notes, customer_visible_notes, linked_task_id, linked_map_x, linked_map_y } = body;
+        const { id, photo_id, x, y, category, color, status, priority, icon, internal_notes, customer_visible_notes, linked_task_id, linked_map_x, linked_map_y } = body;
 
         if (!id) return NextResponse.json({ error: 'Missing marker ID' }, { status: 400 });
 
         const updates: any = {};
+        if (photo_id !== undefined) updates.photo_id = photo_id;
         if (x !== undefined) updates.x = x;
         if (y !== undefined) updates.y = y;
         if (category !== undefined) updates.category = category;

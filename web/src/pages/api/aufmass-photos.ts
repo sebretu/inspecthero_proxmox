@@ -289,32 +289,75 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (!id) return bad(res, "Missing id");
 
     const admin = getSupabaseAdminClient();
+    
+    // 1. Try finding in aufmass_photos
     const { data: photo, error: fetchErr } = await admin
       .from("aufmass_photos")
       .select("session_id")
       .eq("id", id)
       .single();
 
-    if (fetchErr) return supaErr(res, fetchErr);
-    if (!photo) return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Photo not found" } });
+    if (!fetchErr && photo) {
+      try {
+        await assertCanManagePhotos(photo.session_id);
+      } catch (err: any) {
+        const status = err?.status || 400;
+        return res.status(status).json({ ok: false, error: { code: err?.code || "FORBIDDEN", message: err?.message || "Access denied", meta: err?.meta } });
+      }
 
-    try {
-      await assertCanManagePhotos(photo.session_id);
-    } catch (err: any) {
-      const status = err?.status || 400;
-      return res.status(status).json({ ok: false, error: { code: err?.code || "FORBIDDEN", message: err?.message || "Access denied", meta: err?.meta } });
+      const { data, error } = await admin
+        .from("aufmass_photos")
+        .update({ caption })
+        .eq("id", id)
+        .select("*")
+        .single();
+
+      if (error) return supaErr(res, error);
+      return res.status(200).json({ ok: true, data });
     }
 
-    const { data, error } = await admin
-      .from("aufmass_photos")
-      .update({ caption })
+    // 2. Fallback: Try finding in task_photos
+    const { data: taskPhoto, error: taskPhotoErr } = await admin
+      .from("task_photos")
+      .select("task_id, uploaded_by")
       .eq("id", id)
-      .select("*")
       .single();
 
-    if (error) return supaErr(res, error);
+    if (!taskPhotoErr && taskPhoto) {
+      // Permission check for task photos:
+      // For questions (is_question === true), any authenticated user can edit.
+      // For regular tasks, only creator, assignee, or admin.
+      if (!isAdmin) {
+        const { data: taskDetails } = await admin
+          .from("tasks")
+          .select("assigned_user_id, is_question, created_by")
+          .eq("id", taskPhoto.task_id)
+          .single();
 
-    return res.status(200).json({ ok: true, data });
+        if (taskDetails) {
+          const isAllowed = 
+            taskDetails.created_by === requester.id ||
+            taskDetails.is_question ||
+            (taskDetails.assigned_user_id && taskDetails.assigned_user_id === requester.id);
+            
+          if (!isAllowed) {
+            return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Only the assignee, creator, or an admin may modify task photos" } });
+          }
+        }
+      }
+
+      const { data, error } = await admin
+        .from("task_photos")
+        .update({ caption })
+        .eq("id", id)
+        .select("*")
+        .single();
+
+      if (error) return supaErr(res, error);
+      return res.status(200).json({ ok: true, data });
+    }
+
+    return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Photo not found in aufmass_photos or task_photos" } });
   }
 
   // DELETE /api/aufmass-photos?id=...

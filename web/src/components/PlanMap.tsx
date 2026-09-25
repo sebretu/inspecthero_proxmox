@@ -4,10 +4,20 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // Batch fetch
 import qs from "qs";
+import ReactDOM from "react-dom";
 import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import TaskDrawer from "./TaskDrawer";
+import PlanMeasurementModule from "./measurement/PlanMeasurementModule";
+import PlanPhotoPinsModule from "./photo-pins/PlanPhotoPinsModule";
+import PlanRevisionsKlappenModule from "./klappen/PlanRevisionsKlappenModule";
+import PlanBmaSymbolsModule from "./bma-symbols/PlanBmaSymbolsModule";
+import PlanLayersControl, {
+  PlanLayersVisibility,
+  DEFAULT_LAYERS_VISIBILITY,
+  LayerCounts,
+} from "./layers/PlanLayersControl";
 import { apiGet, getApiUrl } from "@/lib/apiClient";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getTaskNumericLabel } from "@/lib/taskNumber";
@@ -24,6 +34,9 @@ type TaskRow = {
   id: string;
   x_norm: number;
   y_norm: number;
+  render_x?: number;
+  render_y?: number;
+  render_contract_version?: number;
   title: string;
   status?: string;
   assigned_user_id?: string | null;
@@ -129,6 +142,8 @@ export default function PlanMap({
   onMapClick,
   onMarkerDragEnd,
   onMarkerDelete,
+  onMarkerClick,
+  onMarkerDoubleClick,
 }: {
   planId: string;
   projectId: string | null;
@@ -153,6 +168,8 @@ export default function PlanMap({
   onMapClick?: (x_norm: number, y_norm: number) => void;
   onMarkerDragEnd?: (id: string, x: number, y: number) => void;
   onMarkerDelete?: (id: string) => void;
+  onMarkerClick?: (id: string) => void;
+  onMarkerDoubleClick?: (id: string) => void;
 }) {
   const START_ZOOM = 2;
   const FALLBACK_UPLOADED_BY = "44444444-4444-4444-4444-444444444444";
@@ -169,6 +186,111 @@ export default function PlanMap({
 
   // ✅ create-mode: klik w mapę -> draft, a task tworzy się dopiero po "Zapisz" w TaskDrawer
   const [createDraft, setCreateDraft] = useState<any>(null);
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [taskToolbarSlot, setTaskToolbarSlot] = useState<HTMLElement | null>(null);
+
+  // 📑 Layer visibility state (persisted per plan in localStorage, default all hidden as requested)
+  const [layersVisibility, setLayersVisibility] = useState<PlanLayersVisibility>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(`inspecthero_plan_layers_vis_${planId}`);
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return DEFAULT_LAYERS_VISIBILITY;
+  });
+
+  const [layerCounts, setLayerCounts] = useState<LayerCounts>({});
+  const [isWhiteSchemaMode, setIsWhiteSchemaMode] = useState(false);
+
+  const handleMeasurementsCount = useCallback((c: number) => {
+    setLayerCounts((prev) => (prev.measurements === c ? prev : { ...prev, measurements: c }));
+  }, []);
+
+  const handlePhotoCounts = useCallback((c: { photoPins: number; montageDoku: number; damage?: number }) => {
+    setLayerCounts((prev) => (
+      prev.photoPins === c.photoPins && prev.montageDoku === c.montageDoku && prev.damage === c.damage
+        ? prev
+        : { ...prev, photoPins: c.photoPins, montageDoku: c.montageDoku, damage: c.damage }
+    ));
+  }, []);
+
+  const handleKlappenCount = useCallback((c: number) => {
+    setLayerCounts((prev) => (prev.klappen === c ? prev : { ...prev, klappen: c }));
+  }, []);
+
+  const handleBmaCounts = useCallback(
+    (c: { bma: number; lighting: number; notlicht: number; heating?: number; kabelbahn: number; kabelauslass: number; abdeckung?: number; anderungen?: number }) => {
+      setLayerCounts((prev) => {
+        if (
+          prev.bma === c.bma &&
+          prev.lighting === c.lighting &&
+          prev.notlicht === c.notlicht &&
+          prev.heating === c.heating &&
+          prev.kabelbahn === c.kabelbahn &&
+          prev.kabelauslass === c.kabelauslass &&
+          prev.abdeckung === c.abdeckung &&
+          prev.anderungen === c.anderungen
+        ) {
+          return prev;
+        }
+        return { ...prev, ...c };
+      });
+    },
+    []
+  );
+
+  const handleLayersChange = useCallback(
+    (newVis: PlanLayersVisibility) => {
+      setLayersVisibility(newVis);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(`inspecthero_plan_layers_vis_${planId}`, JSON.stringify(newVis));
+        } catch {}
+      }
+    },
+    [planId]
+  );
+
+  const ensureLayerVisible = useCallback(
+    (key: keyof PlanLayersVisibility) => {
+      setLayersVisibility((prev) => {
+        if (prev[key]) return prev;
+        const next = { ...prev, [key]: true };
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(`inspecthero_plan_layers_vis_${planId}`, JSON.stringify(next));
+          } catch {}
+        }
+        return next;
+      });
+    },
+    [planId]
+  );
+
+  useEffect(() => {
+    const updateSlot = () => {
+      const el = document.getElementById("plan-measurement-toolbar-left");
+      if (el) setTaskToolbarSlot(el);
+    };
+    updateSlot();
+    const timer = setTimeout(updateSlot, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // ESC key to cancel task placement mode, close tooltips and photo preview
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsAddingTask(false);
+        setCreateDraft(null);
+        setOpenTooltipId(null);
+        setPreviewUrl(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // ⭐ profile cache
   const [profiles, setProfiles] = useState<Record<string, string>>({});
@@ -240,17 +362,20 @@ export default function PlanMap({
     });
   }, []);
 
-  // ✅ Deep-linking: auto-open tooltip for focused Task, Fehler or Revision
+  // ✅ Deep-linking: auto-open tooltip for focused Task, Fehler or Revision & auto-enable task markers from Aufgaben
   useEffect(() => {
-    const isUserAdmin = (currentUserRole || "").toUpperCase() === "ADMIN" || (currentUserRole || "").toUpperCase() === "MODERATOR";
+    const isUserAdmin = (currentUserRole || "").toUpperCase() === "ADMIN";
     if (focusTaskId) {
       setOpenTooltipId(focusTaskId);
+      ensureLayerVisible("tasks");
     } else if (focusFehlerId) {
       setOpenTooltipId(focusFehlerId);
+      ensureLayerVisible("tasks");
     } else if (focusRevisionId && isUserAdmin) {
       setOpenTooltipId(focusRevisionId);
+      ensureLayerVisible("tasks");
     }
-  }, [focusTaskId, focusFehlerId, focusRevisionId, currentUserRole]);
+  }, [focusTaskId, focusFehlerId, focusRevisionId, currentUserRole, ensureLayerVisible]);
 
   // Batch fetch thumbs for all visible tasks and both phases
   const loadThumbsBatch = useCallback(async (tasks: TaskRow[]) => {
@@ -284,34 +409,46 @@ export default function PlanMap({
     const s = (status || "OPEN").toUpperCase();
     const phase = s === "APPROVED" ? "AFTER" : "BEFORE";
     const key = `${taskId}:${phase}`;
-    // Nie fetchuj pojedynczo – tylko cache lub batch na zmianę tasks
-    // Jeśli nie ma w cache, nie pokazuj miniatury, doładuje się przy batch fetch
     return;
   }
 
-  // ✅ create-mode: klik w mapę -> draft, a task tworzy się dopiero po "Zapisz" w TaskDrawer
+  // ✅ create-mode: klik w mapę wywołuje onMapClick lub tworzy draft gdy aktywny jest tryb isAddingTask
   function ClickToCreate({ projectId, createdBy, onMapClick }: { projectId: string; createdBy: string; onMapClick?: (x: number, y: number) => void }) {
+    const map = useMap();
     useMapEvents({
       click: (e: any) => {
+        if (
+          (map as any)?._isMeasuring ||
+          (typeof window !== "undefined" && (window as any)._isMeasurementActive) ||
+          (map as any)?._isPhotoPinActive ||
+          (typeof window !== "undefined" && (window as any)._isPhotoPinActive) ||
+          e?.originalEvent?._measurementHandled ||
+          e?._measurementHandled ||
+          e?.originalEvent?._photoPinHandled ||
+          e?._photoPinHandled
+        ) {
+          return;
+        }
         if (onMapClick) {
             const p = CRS.latLngToPoint(e.latlng, meta.maxZoom);
             onMapClick(p.x / worldPxW, p.y / worldPxH);
             return;
         }
-        if (!projectId || !createdBy) return;
-        const p = CRS.latLngToPoint(e.latlng, meta.maxZoom);
-
-        const draft = {
-          project_id: projectId,
-          plan_id: planId,
-          x_norm: p.x / worldPxW,
-          y_norm: p.y / worldPxH,
-          created_by: createdBy,
-          is_question: isQuestion,
-        };
-
-        setDrawerTaskId(null);
-        setCreateDraft(draft);
+        if (isAddingTask) {
+          if (!projectId || !createdBy) return;
+          const p = CRS.latLngToPoint(e.latlng, meta.maxZoom);
+          const draft = {
+            project_id: projectId,
+            plan_id: planId,
+            x_norm: p.x / worldPxW,
+            y_norm: p.y / worldPxH,
+            created_by: createdBy,
+            is_question: isQuestion,
+          };
+          setDrawerTaskId(null);
+          setCreateDraft(draft);
+          setIsAddingTask(false);
+        }
       },
     });
     return null;
@@ -320,7 +457,28 @@ export default function PlanMap({
   function MapInstanceCapture() {
     const map = useMap();
     useEffect(() => {
-      if (map) setMap(map);
+      if (!map) return;
+      setMap(map);
+
+      const updateZoomClass = () => {
+        const z = map.getZoom();
+        const container = map.getContainer();
+        if (!container) return;
+        container.classList.remove("map-zoom-low", "map-zoom-mid", "map-zoom-high");
+        if (z <= 2) {
+          container.classList.add("map-zoom-low");
+        } else if (z === 3) {
+          container.classList.add("map-zoom-mid");
+        } else {
+          container.classList.add("map-zoom-high");
+        }
+      };
+
+      updateZoomClass();
+      map.on("zoomend", updateZoomClass);
+      return () => {
+        map.off("zoomend", updateZoomClass);
+      };
     }, [map]);
     return null;
   }
@@ -419,24 +577,147 @@ export default function PlanMap({
         minZoom={effectiveMinZoom}
         maxZoom={effectiveMaxZoom}
         bounds={bounds}
-        maxBounds={bounds}
-        maxBoundsViscosity={1.0}
+        maxBounds={bounds.pad ? bounds.pad(0.5) : bounds}
+        maxBoundsViscosity={0.3}
         style={{ height: mapHeight, background: "#fff" }}
       >
-        {token && (
+        {token && !isWhiteSchemaMode && (
           <TileLayer 
-            url={getApiUrl(`/api/tiles/${planId}/{z}/{x}/{y}.png?token=${token}`)} 
+            url={getApiUrl(`/api/tiles/${planId}/{z}/{x}/{y}.png?token=${token}&v=${(meta as any)?.activeVersionId || ''}`)} 
             {...({ maxNativeZoom: meta.maxZoom } as any)}
           />
         )}
 
         <MapInstanceCapture />
+        <PlanLayersControl
+          visibility={layersVisibility}
+          onChange={handleLayersChange}
+          counts={{
+            ...layerCounts,
+            tasks: tasks.length,
+          }}
+        />
+
+        <PlanMeasurementModule
+          planId={planId}
+          meta={meta}
+          isVisible={layersVisibility.measurements}
+          onCountChange={handleMeasurementsCount}
+          onEnsureVisible={() => ensureLayerVisible("measurements")}
+        />
+        <PlanPhotoPinsModule
+          planId={planId}
+          meta={meta}
+          currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
+          isPhotoPinsVisible={layersVisibility.photoPins}
+          isMontageDokuVisible={layersVisibility.montageDoku}
+          isDamageVisible={layersVisibility.damage}
+          onCountsChange={handlePhotoCounts}
+          onEnsurePhotoPinsVisible={() => ensureLayerVisible("photoPins")}
+          onEnsureMontageDokuVisible={() => ensureLayerVisible("montageDoku")}
+          onEnsureDamageVisible={() => ensureLayerVisible("damage")}
+        />
+        <PlanRevisionsKlappenModule
+          planId={planId}
+          meta={meta}
+          currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
+          isVisible={layersVisibility.klappen}
+          onCountChange={handleKlappenCount}
+          onEnsureVisible={() => ensureLayerVisible("klappen")}
+        />
+        <PlanBmaSymbolsModule
+          planId={planId}
+          meta={meta}
+          currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
+          layersVisibility={layersVisibility}
+          onEnsureLayerVisible={(key) => ensureLayerVisible(key)}
+          onCountsChange={handleBmaCounts}
+          projectId={projectId || undefined}
+          isWhiteSchemaMode={isWhiteSchemaMode}
+          onToggleWhiteSchemaMode={() => setIsWhiteSchemaMode((prev) => !prev)}
+        />
+
+        {/* Task / Question creation button placed in the top-right toolbar */}
+        {allowCreate && projectId && currentUserId && taskToolbarSlot && typeof document !== "undefined" && (
+          ReactDOM.createPortal(
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddingTask((prev) => {
+                  if (!prev) ensureLayerVisible("tasks");
+                  return !prev;
+                });
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "5px 10px",
+                borderRadius: "8px",
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: "pointer",
+                border: isAddingTask ? "1px solid #16a34a" : "1px solid rgba(0, 0, 0, 0.1)",
+                background: isAddingTask ? "#16a34a" : "#ffffff",
+                color: isAddingTask ? "#ffffff" : "#1f2937",
+                transition: "all 0.15s ease",
+                whiteSpace: "nowrap",
+                userSelect: "none",
+                flexShrink: 0,
+                boxShadow: isAddingTask ? "0 0 8px rgba(22, 163, 74, 0.4)" : "0 1px 2px rgba(0, 0, 0, 0.05)",
+              }}
+              title={isQuestion ? t("home", "newQuestion", "Zadaj pytanie") : t("home", "createNewTask", "Nowe zadanie")}
+            >
+              ✓ {isQuestion ? t("home", "newQuestion", "Pytanie") : t("home", "newTask", "Zadanie")}
+            </button>,
+            taskToolbarSlot
+          )
+        )}
+
+        {/* Hint banner when Task placement mode is active */}
+        {isAddingTask && (
+          <div style={{ position: "absolute", top: 62, right: 16, zIndex: 9999, pointerEvents: "none" }}>
+            <div style={{
+              background: "rgba(15, 23, 42, 0.92)",
+              color: "#ffffff",
+              fontSize: 12,
+              fontWeight: 600,
+              padding: "6px 12px",
+              borderRadius: 8,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              pointerEvents: "auto",
+            }}>
+              <span>ℹ️ {t("planMap", "clickToPlaceTaskHint", "Kliknij na planie, aby wstawić zadanie (ESC anuluje)")}</span>
+              <button
+                type="button"
+                onClick={() => setIsAddingTask(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#94a3b8",
+                  fontSize: 14,
+                  cursor: "pointer",
+                  marginLeft: 4,
+                  padding: "0 2px",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
 
         {allowCreate && projectId && currentUserId && <ClickToCreate projectId={projectId} createdBy={currentUserId} onMapClick={onMapClick} />}
 
         <FocusOnTask target={focusLatLng} />
 
-        {tasks
+        {(layersVisibility.tasks || isAddingTask) && tasks
           .filter((task) => {
             // If isQuestion is true, show ONLY questions
             if (isQuestion) {
@@ -452,7 +733,9 @@ export default function PlanMap({
             return true;
           })
           .map((task) => {
-            const ll = CRS.pointToLatLng(L.point(task.x_norm * worldPxW, task.y_norm * worldPxH), meta.maxZoom);
+            const rx = task.render_x ?? task.x_norm;
+            const ry = task.render_y ?? task.y_norm;
+            const ll = CRS.pointToLatLng(L.point(rx * worldPxW, ry * worldPxH), meta.maxZoom);
             const status = (task.status || "OPEN").toUpperCase();
             const phase = status === "APPROVED" ? "AFTER" : "BEFORE";
             const thumb = thumbByTask[`${task.id}:${phase}`];
@@ -627,7 +910,7 @@ export default function PlanMap({
           })}
 
         {/* Revisions */}
-        {((currentUserRole || "").toUpperCase() === "ADMIN" || (currentUserRole || "").toUpperCase() === "MODERATOR") && (revisions || []).filter(r => r.x_norm !== null && r.y_norm !== null).map(r => {
+        {(layersVisibility.tasks || isAddingTask) && (currentUserRole || "").toUpperCase() === "ADMIN" && (revisions || []).filter(r => r.x_norm !== null && r.y_norm !== null).map(r => {
           const ll = CRS.pointToLatLng(L.point(r.x_norm! * worldPxW, r.y_norm! * worldPxH), meta.maxZoom);
           return (
             <Marker key={r.id} position={ll}
@@ -730,14 +1013,14 @@ export default function PlanMap({
         {/* Aufmass Markers */}
         {(aufmassMarkers || []).filter(am => am.x_norm !== null && am.y_norm !== null).map((am) => {
           const ll = CRS.pointToLatLng(L.point(am.x_norm * worldPxW, am.y_norm * worldPxH), meta.maxZoom);
-          const color = am.color || (am.session_type === 'zusatz' ? '#f59e0b' : '#3b82f6');
+          const color = am.color || (am.session_type === 'baubehinderung' ? '#ef4444' : am.session_type === 'zusatz' ? '#f59e0b' : am.session_type === 'bestellung' ? '#8b5cf6' : am.session_type === 'fragen' ? '#ec4899' : '#3b82f6');
           
           // Calculate sequential number for A1, A2, Z1, Z2
           const sameTypeMarkers = (aufmassMarkers || [])
             .filter(m => m.session_type === am.session_type && m.x_norm !== null && m.y_norm !== null)
             .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
           const idx = sameTypeMarkers.findIndex(m => m.id === am.id);
-          const prefix = am.session_type === 'zusatz' ? 'Z' : 'A';
+          const prefix = am.session_type === 'zusatz' ? 'Z' : am.session_type === 'baubehinderung' ? 'B' : am.session_type === 'bestellung' ? 'Bs' : am.session_type === 'fragen' ? 'F' : 'A';
           const label = am.label || `${prefix}${idx + 1}`;
           
           const iconHtml = `
@@ -759,8 +1042,15 @@ export default function PlanMap({
                   }
                 },
                 click: () => {
-                  if (onMarkerDelete) {
+                  if (onMarkerClick) {
+                    onMarkerClick(am.id);
+                  } else if (onMarkerDelete) {
                     onMarkerDelete(am.id);
+                  }
+                },
+                dblclick: () => {
+                  if (onMarkerDoubleClick) {
+                    onMarkerDoubleClick(am.id);
                   }
                 }
               }}

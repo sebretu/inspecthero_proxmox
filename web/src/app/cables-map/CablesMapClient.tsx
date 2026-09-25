@@ -23,6 +23,14 @@ interface Route {
   point_b_x?: number | null;
   point_b_y?: number | null;
   waypoints?: { x: number; y: number }[] | null;
+  plan_id_2?: string | null;
+  point_c_x?: number | null;
+  point_c_y?: number | null;
+  point_d_x?: number | null;
+  point_d_y?: number | null;
+  waypoints_2?: { x: number; y: number }[] | null;
+  point_a_photo?: string | null;
+  point_b_photo?: string | null;
 }
 
 interface Cable {
@@ -121,14 +129,23 @@ export default function CablesMapClient() {
   }, [token, projectId]);
 
   const cablesWithMap = useMemo(() => {
-    return cables.filter(c => c.cable_routes?.plan_id && c.cable_routes.point_a_x != null);
+    return cables.filter(c => c.cable_routes && (
+      (c.cable_routes.plan_id && c.cable_routes.point_a_x != null) ||
+      (c.cable_routes.plan_id_2 && c.cable_routes.point_c_x != null)
+    ));
   }, [cables]);
 
   const plans = useMemo(() => {
     const p = new Map<string, { id: string; count: number }>();
     cablesWithMap.forEach(c => {
-      const pid = c.cable_routes!.plan_id!;
-      p.set(pid, { id: pid, count: (p.get(pid)?.count || 0) + 1 });
+      const pid = c.cable_routes!.plan_id;
+      if (pid) {
+        p.set(pid, { id: pid, count: (p.get(pid)?.count || 0) + 1 });
+      }
+      const pid2 = c.cable_routes!.plan_id_2;
+      if (pid2) {
+        p.set(pid2, { id: pid2, count: (p.get(pid2)?.count || 0) + 1 });
+      }
     });
     return Array.from(p.values()).sort((a, b) => b.count - a.count);
   }, [cablesWithMap]);
@@ -142,26 +159,37 @@ export default function CablesMapClient() {
   const mapRoutes = useMemo(() => {
     if (!activePlanId) return [];
     return cablesWithMap
-      .filter(c => c.cable_routes?.plan_id === activePlanId)
+      .filter(c => c.cable_routes?.plan_id === activePlanId || c.cable_routes?.plan_id_2 === activePlanId)
       .map((c, i) => {
         const r = c.cable_routes!;
         const tr = trommels.find(t => t.id === c.trommel_id);
         const trNum = tr?.serial_number || tr?.index_number;
         const trommelName = tr ? (trNum != null ? `#${trNum} ${tr.name}` : tr.name) : null;
 
+        const isPlan1 = r.plan_id === activePlanId;
+
         return {
           id: c.id,
+          routeId: r.id,
           name: c.index_number != null ? `#${c.index_number} ${c.name}` : c.name,
           trommelName,
           trommelId: c.trommel_id,
           color: COLORS[i % COLORS.length],
           status: c.status,
           isVerified: c.is_verified,
-          pinA: { x: r.point_a_x!, y: r.point_a_y! },
-          pinB: { x: r.point_b_x!, y: r.point_b_y! },
-          labelA: r.point_a_label,
-          labelB: r.point_b_label,
-          waypoints: Array.isArray(r.waypoints) ? r.waypoints : []
+          pinA: isPlan1 
+            ? { x: r.point_a_x!, y: r.point_a_y! }
+            : { x: r.point_c_x!, y: r.point_c_y! },
+          pinB: isPlan1 
+            ? { x: r.point_b_x!, y: r.point_b_y! }
+            : { x: r.point_d_x!, y: r.point_d_y! },
+          labelA: isPlan1 ? r.point_a_label : "C",
+          labelB: isPlan1 ? r.point_b_label : r.point_b_label,
+          waypoints: isPlan1 
+            ? (Array.isArray(r.waypoints) ? r.waypoints : [])
+            : (Array.isArray(r.waypoints_2) ? r.waypoints_2 : []),
+          pointAPhoto: isPlan1 ? r.point_a_photo : null,
+          pointBPhoto: isPlan1 ? r.point_b_photo : r.point_b_photo
         };
       });
   }, [activePlanId, cablesWithMap, trommels]);
@@ -335,6 +363,7 @@ export default function CablesMapClient() {
               const tr = trommels.find(t => t.id === id);
               if (tr) setSelectedTrommel(tr);
             }}
+            onRouteUpdated={loadData}
           />
         ) : (
           <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, color: "#475569" }}>

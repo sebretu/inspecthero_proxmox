@@ -32,8 +32,12 @@ interface Props {
     waypoints_2?: Pin[];
     scale?: number | null;
     scale_2?: number | null;
+    point_a_photo?: string | null;
+    point_b_photo?: string | null;
   }) => void;
   onClose: () => void;
+  initialPointAPhoto?: string | null;
+  initialPointBPhoto?: string | null;
   initialPlanId2?: string | null;
   initialPinC?: Pin | null;
   initialPinD?: Pin | null;
@@ -67,7 +71,8 @@ export function CableRouteMapPicker({
   initialPlanId = "", initialPinA = null, initialPinB = null, initialLabelA = "", initialLabelB = "", initialWaypoints = [],
   onChange, onClose,
   initialPlanId2 = "", initialPinC = null, initialPinD = null, initialWaypoints2 = [],
-  initialScale = null, initialScale2 = null
+  initialScale = null, initialScale2 = null,
+  initialPointAPhoto = "", initialPointBPhoto = ""
 }: Props) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [planId, setPlanId] = useState(initialPlanId);
@@ -77,7 +82,40 @@ export function CableRouteMapPicker({
   const [labelB, setLabelB] = useState(initialLabelB || "Punkt B");
   const [picking, setPicking] = useState<"A" | "B" | "C" | "D">("A");
   const [waypoints, setWaypoints] = useState<Pin[]>(initialWaypoints);
-  
+
+  const [photoUrlA, setPhotoUrlA] = useState(initialPointAPhoto || "");
+  const [photoUrlB, setPhotoUrlB] = useState(initialPointBPhoto || "");
+  const [uploadingA, setUploadingA] = useState(false);
+  const [uploadingB, setUploadingB] = useState(false);
+
+  const handleUploadPhoto = async (file: File, point: "A" | "B") => {
+    const setUploading = point === "A" ? setUploadingA : setUploadingB;
+    const setPhotoUrl = point === "A" ? setPhotoUrlA : setPhotoUrlB;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData
+      });
+      const data = await res.json();
+      if (data?.ok && data?.data?.url) {
+        setPhotoUrl(data.data.url);
+      } else {
+        alert("Błąd uploadu: " + (data?.error?.message || "Nieznany błąd"));
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Błąd podczas wgrywania zdjęcia.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const [routes, setRoutes] = useState<any[]>([]);
+
   // Second Plan States
   const [showPlan2, setShowPlan2] = useState(!!initialPlanId2);
   const [planId2, setPlanId2] = useState(initialPlanId2 || "");
@@ -90,6 +128,119 @@ export function CableRouteMapPicker({
   const [imgAspect2, setImgAspect2] = useState<number | null>(null);
   const [activePlanView, setActivePlanView] = useState<1 | 2>(initialPlanId2 ? 2 : 1);
   const [mounted, setMounted] = useState(false);
+
+  // Unique Point A & B labels from existing routes for suggestions
+  const existingPointNames = useMemo(() => {
+    const names = new Set<string>();
+    routes.forEach(r => {
+      const a = (r.point_a_label || "").trim();
+      const b = (r.point_b_label || "").trim();
+      if (a) names.add(a);
+      if (b) names.add(b);
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  }, [routes]);
+
+  const pointBOptions = useMemo(() => {
+    const cleanA = (labelA || "").trim().toLowerCase();
+    return existingPointNames.filter(name => {
+      const cleanName = name.toLowerCase();
+      if (cleanName === cleanA) return false;
+      if (cleanName === "b" || cleanName === "punkt b") return false;
+      return true;
+    });
+  }, [existingPointNames, labelA]);
+
+  const isLockedA = useMemo(() => {
+    const cleanA = (labelA || "").trim().toLowerCase();
+    if (!cleanA || cleanA === "punkt a") return false;
+    return existingPointNames.some(name => name.toLowerCase() === cleanA);
+  }, [labelA, existingPointNames]);
+
+  const isLockedB = useMemo(() => {
+    const cleanB = (labelB || "").trim().toLowerCase();
+    if (!cleanB || cleanB === "punkt b") return false;
+    return existingPointNames.some(name => name.toLowerCase() === cleanB);
+  }, [labelB, existingPointNames]);
+
+  // Auto-set pin A coordinates when labelA matches
+  useEffect(() => {
+    const cleanA = (labelA || "").trim().toLowerCase();
+    if (!cleanA || cleanA === "punkt a") return;
+    const match = routes.find(r => 
+      (r.point_a_label && r.point_a_label.trim().toLowerCase() === cleanA) ||
+      (r.point_b_label && r.point_b_label.trim().toLowerCase() === cleanA)
+    );
+    if (match) {
+      const isA = match.point_a_label && match.point_a_label.trim().toLowerCase() === cleanA;
+      const x = isA ? match.point_a_x : match.point_b_x;
+      const y = isA ? match.point_a_y : match.point_b_y;
+      if (x != null && y != null && match.plan_id) {
+        if (!pinA || pinA.x !== x || pinA.y !== y || planId !== match.plan_id) {
+          setPinA({ x, y });
+          setPlanId(match.plan_id);
+          setActivePlanView(1);
+          setPicking("B");
+        }
+      }
+      const photo = isA ? match.point_a_photo : match.point_b_photo;
+      if (photo) setPhotoUrlA(photo);
+    }
+  }, [labelA, routes]);
+
+  // Auto-set coordinates when labelB matches
+  useEffect(() => {
+    const cleanB = (labelB || "").trim().toLowerCase();
+    if (!cleanB || cleanB === "punkt b") return;
+    const match = routes.find(r => 
+      (r.point_a_label && r.point_a_label.trim().toLowerCase() === cleanB) ||
+      (r.point_b_label && r.point_b_label.trim().toLowerCase() === cleanB)
+    );
+    if (match) {
+      const isA = match.point_a_label && match.point_a_label.trim().toLowerCase() === cleanB;
+      
+      let x: number | null = null;
+      let y: number | null = null;
+      let pid: string | null = null;
+
+      if (isA) {
+        x = match.point_a_x;
+        y = match.point_a_y;
+        pid = match.plan_id;
+      } else {
+        if (match.plan_id_2 && match.point_d_x != null && match.point_d_y != null) {
+          x = match.point_d_x;
+          y = match.point_d_y;
+          pid = match.plan_id_2;
+        } else {
+          x = match.point_b_x;
+          y = match.point_b_y;
+          pid = match.plan_id;
+        }
+      }
+
+      if (x != null && y != null && pid) {
+        if (showPlan2) {
+          if (!pinD || pinD.x !== x || pinD.y !== y || planId2 !== pid) {
+            setPinD({ x, y });
+            setPlanId2(pid);
+            setActivePlanView(2);
+            setPicking("D");
+          }
+        } else {
+          if (!pinB || pinB.x !== x || pinB.y !== y || planId !== pid) {
+            setPinB({ x, y });
+            setPlanId(pid);
+            setActivePlanView(1);
+          }
+        }
+      }
+      const photo = isA ? match.point_a_photo : match.point_b_photo;
+      if (photo) setPhotoUrlB(photo);
+    }
+  }, [labelB, routes, showPlan2]);
+  
+  // Declarations moved to top
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -108,6 +259,14 @@ export function CableRouteMapPicker({
         setPlans(list);
         if (!planId && list.length > 0) setPlanId(list[0].id);
       })
+      .catch(() => {});
+  }, [projectId]);
+
+  // Load existing routes for autocomplete suggestions
+  useEffect(() => {
+    if (!projectId) return;
+    apiGet<any[]>(`/api/cable-routes?projectId=${projectId}`)
+      .then(rts => setRoutes(rts || []))
       .catch(() => {});
   }, [projectId]);
 
@@ -234,6 +393,8 @@ export function CableRouteMapPicker({
       waypoints_2: showPlan2 ? waypoints2 : [],
       scale: parseFloat(planWidthM) || null,
       scale_2: showPlan2 ? parseFloat(planWidthM2) || null : null,
+      point_a_photo: photoUrlA || null,
+      point_b_photo: photoUrlB || null,
     });
     onClose();
   }
@@ -357,6 +518,8 @@ export function CableRouteMapPicker({
                 }}
                 waypoints={activePlanView === 1 ? waypoints : waypoints2} 
                 setWaypoints={p => { if (activePlanView === 1) setWaypoints(p); else setWaypoints2(p); }}
+                lockA={activePlanView === 1 ? isLockedA : false}
+                lockB={activePlanView === 1 ? (showPlan2 ? false : isLockedB) : isLockedB}
               />
             ) : (
               <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#444", fontSize: 14, fontWeight: 700 }}>
@@ -368,13 +531,105 @@ export function CableRouteMapPicker({
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: "#86efac" }}>Nazwa Punktu A</span>
-              <input value={labelA} onChange={e => setLabelA(e.target.value)} placeholder="np. Rozdzielnia główna"
-                style={{ padding: "9px 12px", borderRadius: 10, border: "1px solid rgba(34,197,94,0.3)", background: "#000", color: "#fff", fontSize: 13, fontWeight: 600 }} />
+              <input 
+                value={labelA} 
+                onChange={e => {
+                  setLabelA(e.target.value);
+                  setPicking("A");
+                  setActivePlanView(1);
+                }} 
+                placeholder="np. Rozdzielnia główna" 
+                list="picker-pointA-names"
+                style={{ padding: "9px 12px", borderRadius: 10, border: "1px solid rgba(34,197,94,0.3)", background: "#000", color: "#fff", fontSize: 13, fontWeight: 600 }} 
+              />
+              <datalist id="picker-pointA-names">
+                {existingPointNames.map(name => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+              {/* Photo Upload/Preview for Point A */}
+              <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  id="picker-photo-a" 
+                  style={{ display: "none" }} 
+                  disabled={isLockedA}
+                  onChange={e => e.target.files?.[0] && handleUploadPhoto(e.target.files[0], "A")} 
+                />
+                {!isLockedA ? (
+                  <label htmlFor="picker-photo-a" style={{ padding: "5px 10px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 10, cursor: "pointer", color: "#ccc", fontWeight: 700 }}>
+                    {uploadingA ? "Wgrywanie..." : (photoUrlA ? "📷 Zmień zdjęcie A" : "📷 Dodaj zdjęcie A")}
+                  </label>
+                ) : (
+                  photoUrlA && <span style={{ fontSize: 9, color: "#86efac", fontWeight: 800 }}>🔒 Zdjęcie z bazy</span>
+                )}
+                {photoUrlA && (
+                  <div style={{ position: "relative", width: 40, height: 30, borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,255,255,0.2)" }}>
+                    <img src={photoUrlA} alt="A" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    {!isLockedA && (
+                      <button 
+                        type="button"
+                        onClick={() => setPhotoUrlA("")} 
+                        style={{ position: "absolute", top: 0, right: 0, background: "rgba(0,0,0,0.7)", border: "none", color: "#ff4d4d", fontSize: 9, cursor: "pointer", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: "#fdba74" }}>Nazwa Punktu B</span>
-              <input value={labelB} onChange={e => setLabelB(e.target.value)} placeholder="np. Piętro 3 – obwód 12"
-                style={{ padding: "9px 12px", borderRadius: 10, border: "1px solid rgba(249,115,22,0.3)", background: "#000", color: "#fff", fontSize: 13, fontWeight: 600 }} />
+              <input 
+                value={labelB} 
+                onChange={e => {
+                  setLabelB(e.target.value);
+                  setPicking("B");
+                  setActivePlanView(1);
+                }} 
+                placeholder="np. Piętro 3 – obwód 12" 
+                list="picker-pointB-names"
+                style={{ padding: "9px 12px", borderRadius: 10, border: "1px solid rgba(249,115,22,0.3)", background: "#000", color: "#fff", fontSize: 13, fontWeight: 600 }} 
+              />
+              <datalist id="picker-pointB-names">
+                {pointBOptions.map(name => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+              {/* Photo Upload/Preview for Point B */}
+              <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8 }}>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  id="picker-photo-b" 
+                  style={{ display: "none" }} 
+                  disabled={isLockedB}
+                  onChange={e => e.target.files?.[0] && handleUploadPhoto(e.target.files[0], "B")} 
+                />
+                {!isLockedB ? (
+                  <label htmlFor="picker-photo-b" style={{ padding: "5px 10px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 10, cursor: "pointer", color: "#ccc", fontWeight: 700 }}>
+                    {uploadingB ? "Wgrywanie..." : (photoUrlB ? "📷 Zmień zdjęcie B" : "📷 Dodaj zdjęcie B")}
+                  </label>
+                ) : (
+                  photoUrlB && <span style={{ fontSize: 9, color: "#fdba74", fontWeight: 800 }}>🔒 Zdjęcie z bazy</span>
+                )}
+                {photoUrlB && (
+                  <div style={{ position: "relative", width: 40, height: 30, borderRadius: 6, overflow: "hidden", border: "1px solid rgba(255,255,255,0.2)" }}>
+                    <img src={photoUrlB} alt="B" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    {!isLockedB && (
+                      <button 
+                        type="button"
+                        onClick={() => setPhotoUrlB("")} 
+                        style={{ position: "absolute", top: 0, right: 0, background: "rgba(0,0,0,0.7)", border: "none", color: "#ff4d4d", fontSize: 9, cursor: "pointer", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </label>
           </div>
         </div>

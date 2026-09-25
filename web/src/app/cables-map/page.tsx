@@ -1,7 +1,7 @@
 import CablesMapClient from "./CablesMapClient";
 
 export const metadata = {
-  title: "Kabel Map | InspectHero",
+  title: "Kabel Map | ET⚡U.DE",
   description: "Unified cable map for all project infrastructure",
 };
 

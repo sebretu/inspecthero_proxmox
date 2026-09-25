@@ -1,12 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: any = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
+
   allowedDevOrigins: [
     "188.245.42.178",
     "188.245.42.178:3000",

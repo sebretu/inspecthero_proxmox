@@ -140,9 +140,11 @@ const styles = StyleSheet.create({
         marginTop: 2
     },
     photo: {
-        width: 100,
-        height: 100,
-        objectFit: 'cover',
+        width: 130,
+        height: 120,
+        objectFit: 'contain',
+        backgroundColor: '#f8fafc',
+        borderRadius: 2,
         marginBottom: 2
     }
 });
@@ -171,11 +173,14 @@ export default function ReportPdf({ projectId, projectName, projectCompanyName, 
         <Document>
             {/* Title Page */}
             <Page size="A4" orientation="landscape" style={styles.page}>
+                <View style={{ position: 'absolute', top: 20, right: 30 }}>
+                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#0284c7' }}>et4u.de</Text>
+                </View>
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                     <Text style={styles.header}>{t("title")}</Text>
                     <Text style={{ fontSize: 16, marginBottom: projectCompanyName ? 5 : 10 }}>{t("project")}: {projectName || projectId}</Text>
                     {projectCompanyName && <Text style={{ fontSize: 14, marginBottom: 10 }}>{t("company")}: {projectCompanyName}</Text>}
-                    <Text style={{ marginBottom: 5 }}>{t("generatedOn")}: {new Date().toLocaleString()}</Text>
+                    <Text style={{ marginBottom: 5 }}>{t("generatedOn")}: {new Date().toLocaleString()} • et4u.de</Text>
                     <Text>{t("statuses")}: {statuses.map((s: string) => getStatusLabel(s)).join(", ")}</Text>
                     {dateFrom && <Text>{t("from")}: {dateFrom}</Text>}
                     {dateTo && <Text>{t("to")}: {dateTo}</Text>}
@@ -194,6 +199,11 @@ export default function ReportPdf({ projectId, projectName, projectCompanyName, 
                             <Text>{count}</Text>
                         </View>
                     ))}
+                </View>
+
+                <View style={{ position: 'absolute', bottom: 15, left: 30, right: 30, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 6 }}>
+                    <Text style={{ fontSize: 8, color: '#999' }}>et4u.de — Digital Construction & Electrical Engineering</Text>
+                    <Text style={{ fontSize: 8, color: '#999' }}>Dokumentation</Text>
                 </View>
             </Page>
 

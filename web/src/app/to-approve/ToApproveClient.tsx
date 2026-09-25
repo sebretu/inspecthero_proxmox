@@ -15,6 +15,10 @@ import PhotoLightbox from "@/components/PhotoLightbox";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 
+const AufmassCanvas = dynamic(() => import("@/components/aufmass/AufmassCanvas"), {
+  ssr: false,
+});
+
 const PlanSnippet = dynamic(() => import("@/components/PlanSnippet"), { ssr: false });
 
 const STATUS_COLORS: Record<string, string> = {
@@ -103,6 +107,7 @@ type TaskThumb = {
   url: string | null;
   thumb_url?: string | null;
   type: "BEFORE" | "AFTER" | null;
+  id?: string;
 };
 
 export default function ToApproveClient() {
@@ -140,6 +145,7 @@ export default function ToApproveClient() {
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"tasks" | "orders" | "questions" | "fehlers" | "cables">("tasks");
   const [thumbByTask, setThumbByTask] = useState<Record<string, TaskThumb>>({});
+  const [shapesByPhoto, setShapesByPhoto] = useState<Record<string, any[]>>({});
 
   const [isFehlerModalOpen, setIsFehlerModalOpen] = useState(false);
   const [editFehlerItem, setEditFehlerItem] = useState<any | null>(null);
@@ -515,6 +521,7 @@ export default function ToApproveClient() {
               fetchedThumbs[t.id] = {
                 url: selected.url ? fixStorageUrl(selected.url) : null,
                 type: selected.photo_type,
+                id: selected.id,
               };
             }
           });
@@ -560,7 +567,43 @@ export default function ToApproveClient() {
       window.removeEventListener("task-created", handleTaskCreated as EventListener);
     };
   }, [loadThumb]);
-
+  useEffect(() => {
+    if (!projectId || [...tasks, ...questions].length === 0) return;
+    
+    let active = true;
+    (async () => {
+      try {
+        const sessions = await apiGet<any[]>(`/api/aufmass/sessions?projectId=${projectId}`);
+        if (!active) return;
+        if (sessions && Array.isArray(sessions)) {
+          const allVisibleTasks = [...tasks, ...questions];
+          const relevantSessions = sessions.filter(s => s.photo_id && allVisibleTasks.some(t => t.id === s.task_id));
+          const shapesMap: Record<string, any[]> = {};
+          await Promise.all(
+            relevantSessions.map(async (sess) => {
+              try {
+                const res = await apiGet<any>(`/api/aufmass/versions?sessionId=${sess.id}&photoId=${sess.photo_id}`);
+                const versions = res.data || res;
+                if (versions && versions.length > 0) {
+                  shapesMap[sess.photo_id] = versions[0].data || [];
+                }
+              } catch (e) {
+                console.error("Failed to load version for session", sess.id, e);
+              }
+            })
+          );
+          if (active) {
+            setShapesByPhoto(shapesMap);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load aufmass sessions in ToApproveClient:", e);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [projectId, tasks, questions]);
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
@@ -828,7 +871,17 @@ export default function ToApproveClient() {
                           >
                             <div className="relative h-64 overflow-hidden cursor-pointer" onClick={() => router.push(`/task/${task.id}`)}>
                               {thumbUrl ? (
-                                <img src={getApiUrl(thumbUrl)} alt="task" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                thumb.id && shapesByPhoto[thumb.id] && shapesByPhoto[thumb.id].length > 0 ? (
+                                  <div className="w-full h-full pointer-events-none absolute inset-0">
+                                    <AufmassCanvas
+                                      imageUrl={getApiUrl(thumbUrl)}
+                                      shapes={shapesByPhoto[thumb.id]}
+                                      readOnly={true}
+                                    />
+                                  </div>
+                                ) : (
+                                  <img src={getApiUrl(thumbUrl)} alt="task" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                )
                               ) : (
                                 <div className="w-full h-full bg-black/40 flex flex-col items-center justify-center gap-3">
                                   <span className="text-4xl opacity-10">📷</span>

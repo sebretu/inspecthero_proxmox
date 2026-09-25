@@ -38,11 +38,102 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`[public-plan API] Found plan: ${plan.id}, project: ${plan.project_id}`);
 
-    // 2. Fetch Devices
-    const { data: devices, error: devErr } = await supabase
+    // 2. Fetch Devices from bma_devices
+    const { data: rawDevices, error: devErr } = await supabase
       .from("bma_devices")
       .select("*")
       .eq("plan_id", planId);
+
+    // 2b. Fetch manual symbols from plan_bma_symbols to combine with devices
+    const { data: manualSymbols } = await supabase
+      .from("plan_bma_symbols")
+      .select("*")
+      .eq("plan_id", planId);
+
+    const BMA_SYMBOL_TYPES = new Set([
+      "detector_blue",
+      "detector_red",
+      "sirene",
+      "dis_signalgeber",
+      "bma_melder"
+    ]);
+
+    const isBmaSymbolWithNumber = (s: any) => {
+      if (!s) return false;
+      const isBmaType =
+        BMA_SYMBOL_TYPES.has(s.symbol_type) ||
+        (typeof s.symbol_type === "string" && (s.symbol_type.startsWith("detector_") || s.symbol_type.includes("bma")));
+      if (!isBmaType) return false;
+
+      const loop = (s.loop_number || "").trim();
+      const addr = (s.address || "").trim();
+      const label = (s.label || "").trim();
+      return (loop !== "" && addr !== "") || loop !== "" || addr !== "" || /\d/.test(label);
+    };
+
+    const devices = [...(rawDevices || [])];
+    const existingKeys = new Set(
+      devices.map(d => `${(d.loop_number || "").trim()}_${(d.address || "").trim()}`.toLowerCase())
+    );
+
+    (manualSymbols || []).filter(isBmaSymbolWithNumber).forEach((s: any) => {
+      const loop = (s.loop_number || "").trim();
+      const addr = (s.address || "").trim();
+      const key = `${loop}_${addr}`.toLowerCase();
+
+      let parsedDesc: any = {};
+      try {
+        if (typeof s.description === "string" && s.description.startsWith("{")) {
+          parsedDesc = JSON.parse(s.description);
+        } else if (s.description) {
+          parsedDesc = { desc: s.description };
+        }
+      } catch {}
+
+      const serial = parsedDesc.serial_number || parsedDesc.serialNumber || null;
+      const photos = Array.isArray(parsedDesc.photos) ? parsedDesc.photos : [];
+
+      if (loop && addr && existingKeys.has(key)) {
+        // If device already exists in bma_devices, augment metadata if missing
+        const existingIdx = devices.findIndex(
+          d => `${(d.loop_number || "").trim()}_${(d.address || "").trim()}`.toLowerCase() === key
+        );
+        if (existingIdx !== -1) {
+          const d = devices[existingIdx];
+          const currMeta = d.metadata || {};
+          devices[existingIdx] = {
+            ...d,
+            metadata: {
+              ...currMeta,
+              serial_number: currMeta.serial_number || serial || null,
+              photos: currMeta.photos && currMeta.photos.length > 0 ? currMeta.photos : photos,
+              symbol_type: currMeta.symbol_type || s.symbol_type,
+            }
+          };
+        }
+      } else {
+        // Add manual symbol as a device
+        const name = loop && addr ? `${loop}/${addr}` : s.label || s.symbol_type;
+        devices.push({
+          id: `manual-${s.id}`,
+          project_id: plan.project_id,
+          plan_id: planId,
+          loop_number: loop || null,
+          address: addr || null,
+          name,
+          type: s.symbol_type === "detector_blue" ? "DETECTOR_BLUE" : s.symbol_type === "sirene" ? "SIREN" : s.symbol_type === "dis_signalgeber" ? "SIGNAL" : "DETECTOR",
+          x: s.x_norm,
+          y: s.y_norm,
+          metadata: {
+            serial_number: serial,
+            photos,
+            symbol_type: s.symbol_type,
+            description: parsedDesc.desc || s.description || null,
+            is_manual_symbol: true
+          }
+        });
+      }
+    });
 
     // 3. Fetch Connections and Routes for this project
     const { data: connections, error: connErr } = await supabase
@@ -56,10 +147,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select("*")
       .eq("project_id", plan.project_id);
 
-    const deviceIds = new Set((devices || []).map(d => d.id));
+    const deviceIds = new Set(devices.map(d => d.id));
     const routes = (allRoutes || []).filter(r => deviceIds.has(r.source_device_id));
 
-    console.log(`[public-plan API] Stats: devices=${devices?.length || 0}, connections=${connections?.length || 0}, routes=${routes?.length || 0}`);
+    console.log(`[public-plan API] Stats: devices=${devices.length}, connections=${connections?.length || 0}, routes=${routes?.length || 0}`);
 
     return res.status(200).json({
       ok: true,

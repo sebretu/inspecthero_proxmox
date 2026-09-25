@@ -3,7 +3,7 @@ import React from "react";
 import AufmassClient from "./AufmassClient";
 
 export const metadata = {
-  title: "Aufmaß & Zusatzplanung | InspectHero",
+  title: "Aufmaß & Zusatzplanung | ET⚡U.DE",
   description: "Manage measurement and additional planning documentation",
 };
 

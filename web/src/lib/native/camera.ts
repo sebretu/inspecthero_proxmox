@@ -61,15 +61,32 @@ export class CameraService {
 
             const photo: Photo = await Camera.getPhoto({
                 quality: 90,
+                width: 2560,
+                height: 2560,
+                correctOrientation: true,
                 allowEditing: false,
-                resultType: CameraResultType.DataUrl,
+                resultType: CameraResultType.Uri,
                 source: CameraSource.Camera,
-                saveToGallery: true,
+                saveToGallery: false,
             });
 
+            const webPath = photo.webPath || photo.path;
+            if (!webPath && !photo.dataUrl) {
+                return null;
+            }
+
+            let blob: Blob;
+            if (webPath) {
+                const response = await fetch(webPath);
+                blob = await response.blob();
+            } else {
+                blob = await this.dataUrlToBlob(photo.dataUrl!);
+            }
+
             return {
-                dataUrl: photo.dataUrl!,
+                dataUrl: webPath || photo.dataUrl!,
                 format: photo.format,
+                blob,
             };
         } catch (error) {
             console.error('Failed to take photo:', error);
@@ -93,14 +110,32 @@ export class CameraService {
 
             const photo: Photo = await Camera.getPhoto({
                 quality: 90,
+                width: 2560,
+                height: 2560,
+                correctOrientation: true,
                 allowEditing: false,
-                resultType: CameraResultType.DataUrl,
+                resultType: CameraResultType.Uri,
                 source: CameraSource.Photos,
+                saveToGallery: false,
             });
 
+            const webPath = photo.webPath || photo.path;
+            if (!webPath && !photo.dataUrl) {
+                return null;
+            }
+
+            let blob: Blob;
+            if (webPath) {
+                const response = await fetch(webPath);
+                blob = await response.blob();
+            } else {
+                blob = await this.dataUrlToBlob(photo.dataUrl!);
+            }
+
             return {
-                dataUrl: photo.dataUrl!,
+                dataUrl: webPath || photo.dataUrl!,
                 format: photo.format,
+                blob,
             };
         } catch (error) {
             console.error('Failed to select photo:', error);
@@ -120,17 +155,8 @@ export class CameraService {
      * Get photo with blob data ready for upload
      */
     static async getPhotoForUpload(source: 'camera' | 'gallery'): Promise<CapturedPhoto | null> {
-        const photo = source === 'camera'
+        return source === 'camera'
             ? await this.takePhoto()
             : await this.selectFromGallery();
-
-        if (!photo) return null;
-
-        // Convert to blob for upload
-        const blob = await this.dataUrlToBlob(photo.dataUrl);
-        return {
-            ...photo,
-            blob,
-        };
     }
 }

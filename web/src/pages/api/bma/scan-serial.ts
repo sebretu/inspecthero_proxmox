@@ -1,10 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import OpenAI from "openai";
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export const config = {
-  api: { bodyParser: { sizeLimit: "10mb" } },
+  api: { bodyParser: { sizeLimit: "25mb" } },
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -16,60 +13,63 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "No image provided" });
   }
 
+  const localAiUrl = process.env.LOCAL_AI_URL || "http://192.168.178.4:8000";
+  const localAiKey = process.env.LOCAL_AI_KEY || "e06be799d068c8c841338aaf7808bb84e6b4444e9aa813174a5681c00f931631";
+
   try {
-    const imageContent: OpenAI.Chat.ChatCompletionContentPartImage = imageBase64
-      ? {
-          type: "image_url",
-          image_url: { url: `data:image/jpeg;base64,${imageBase64}`, detail: "high" },
-        }
-      : {
-          type: "image_url",
-          image_url: { url: imageUrl, detail: "high" },
-        };
+    // 60-second timeout for local AI OCR deep inference
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "user",
-          content: [
-            imageContent,
-            {
-              type: "text",
-              text: `You are an expert at reading device labels and extracting serial numbers.
-
-Look at this device label image carefully and extract the SERIAL NUMBER.
-
-Rules:
-- The serial number is typically a long numeric or alphanumeric string printed prominently on the label
-- It may be labeled as: "Serial", "S/N", "SN", "Ser.Nr.", "Seriennummer", or appear as a standalone number under a barcode/QR code
-- Do NOT return model numbers, article numbers, order numbers, or part numbers
-- In BMA/fire alarm devices, the serial number is usually the long number printed below the 2D barcode/QR code
-- Return ONLY the serial number, nothing else - no labels, no explanation
-- If you cannot find a clear serial number, return: UNKNOWN
-
-Serial number:`,
-            },
-          ],
-        },
-      ],
-      max_tokens: 50,
-      temperature: 0,
+    const localRes = await fetch(`${localAiUrl.replace(/\/+$/, "")}/vision/scan-serial`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(localAiKey ? { "X-API-Key": localAiKey } : {}),
+      },
+      body: JSON.stringify({ imageBase64, imageUrl }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
-    const raw = response.choices[0]?.message?.content?.trim() || "UNKNOWN";
-    // Clean up: remove common prefixes, whitespace, newlines
-    const serialNumber = raw
-      .replace(/^(serial\s*(number)?|s\/n|sn|ser\.?\s*nr\.?):?\s*/i, "")
+    if (!localRes.ok) {
+      const errText = await localRes.text().catch(() => "");
+      return res.status(localRes.status).json({
+        error: `Local AI OCR returned status ${localRes.status}: ${errText || localRes.statusText}`,
+      });
+    }
+
+    const localData = await localRes.json();
+    const raw = localData?.serialNumber || localData?.raw || "";
+
+    // Clean up prefixes (S/N, Serial:, Seriennummer:, whitespace, markdown)
+    let serialNumber = (raw || "")
+      .replace(/```[a-z]*\n?|```/gi, "")
+      .replace(/^[\"\'`]+|[\"\'`]+$/g, "")
+      .replace(/^(serial\s*(number)?|seriennummer|s\/n|sn|ser\.?\s*nr\.?|fabr\.?\s*nr\.?|prod\.?\s*nr\.?):?\s*/i, "")
       .replace(/\s+/g, "")
       .trim();
 
-    return res.status(200).json({ 
-      serialNumber: serialNumber === "UNKNOWN" ? null : serialNumber,
-      raw 
+    if (serialNumber.toUpperCase() === "UNKNOWN" || serialNumber.length < 2) {
+      serialNumber = "";
+    }
+
+    return res.status(200).json({
+      serialNumber: serialNumber || null,
+      raw: localData?.raw || raw,
+      source: "local_ai",
+      method: localData?.method || "vision_ocr",
+      inference_time_ms: localData?.inference_time_ms,
     });
   } catch (err: any) {
-    console.error("scan-serial error:", err);
-    return res.status(500).json({ error: err.message || "Failed to scan serial number" });
+    console.error("[scan-serial] Local AI OCR error:", err);
+    const isTimeout = err.name === "AbortError" || err.message?.includes("aborted");
+    return res.status(500).json({
+      error: isTimeout
+        ? "Local AI OCR przekroczył limit czasu (60s). Spróbuj ponownie lub zrób wyraźniejsze zdjęcie."
+        : `Błąd lokalnego AI: ${err.message || "Nieznany błąd"}`,
+    });
   }
 }
+
+

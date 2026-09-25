@@ -9,6 +9,14 @@ import { GeolocationService } from "@/lib/native";
 import PhotoLightbox from "@/components/PhotoLightbox";
 import dynamic from 'next/dynamic';
 
+const AufmassEditor = dynamic(() => import('@/components/aufmass/AufmassEditor'), {
+  ssr: false,
+});
+
+const AufmassCanvas = dynamic(() => import('@/components/aufmass/AufmassCanvas'), {
+  ssr: false,
+});
+
 
 
 import { useNotification } from "@/contexts/NotificationContext";
@@ -193,6 +201,9 @@ export default function TaskDrawer({
   const [showMaterialSearch, setShowMaterialSearch] = useState(false);
   const [lastOrder, setLastOrder] = useState<any | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [aufmassPhoto, setAufmassPhoto] = useState<{ url: string; id: string; sessionId?: string } | null>(null);
+  const [shapesByPhoto, setShapesByPhoto] = useState<Record<string, any[]>>({});
+  const [previewPhotoShapes, setPreviewPhotoShapes] = useState<any[] | null>(null);
 
   // ⭐ lista profili do dropdown
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
@@ -206,7 +217,7 @@ export default function TaskDrawer({
   };
 
   const normalizedRole = (currentUserRole || "").toUpperCase();
-  const isAdmin = normalizedRole === "ADMIN" || normalizedRole === "MODERATOR";
+  const isAdmin = normalizedRole === "ADMIN";
   const isAssignedToCurrentUser = !!currentUserId && !!task && task.assigned_user_id === currentUserId;
   const isCreator = !!currentUserId && !!task && (task as any).created_by === currentUserId;
   const isUnassigned = !!task && !task.assigned_user_id;
@@ -279,6 +290,32 @@ export default function TaskDrawer({
 
       const photoData = await apiGet<TaskPhoto[]>(`/api/task-photos?taskId=${encodeURIComponent(id)}&t=${Date.now()}`);
       setPhotos(photoData || []);
+
+      // Fetch shapes/versions for question photos edited in Aufmaß
+      try {
+        const sessions = await apiGet<any[]>(`/api/aufmass/sessions?taskId=${encodeURIComponent(id)}`);
+        const shapesMap: Record<string, any[]> = {};
+        if (sessions && Array.isArray(sessions)) {
+          await Promise.all(
+            sessions.map(async (sess) => {
+              if (sess.photo_id) {
+                try {
+                  const res = await apiGet<any>(`/api/aufmass/versions?sessionId=${sess.id}&photoId=${sess.photo_id}`);
+                  const versions = res.data || res;
+                  if (versions && versions.length > 0) {
+                    shapesMap[sess.photo_id] = versions[0].data || [];
+                  }
+                } catch (e) {
+                  console.error("Failed to load version for session", sess.id, e);
+                }
+              }
+            })
+          );
+        }
+        setShapesByPhoto(shapesMap);
+      } catch (e) {
+        console.error("Failed to load aufmass sessions for task", e);
+      }
 
       const commentData = await apiGet<TaskComment[]>(`/api/task-comments?taskId=${encodeURIComponent(id)}`);
       setComments(commentData || []);
@@ -376,6 +413,8 @@ export default function TaskDrawer({
       setCaption("");
       setSelectedMaterials([]);
       setLastOrder(null);
+      setShapesByPhoto({});
+      setPreviewPhotoShapes(null);
       setPhotosLoaded(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -621,6 +660,24 @@ export default function TaskDrawer({
       }
       return prev.filter((p) => p.id !== id);
     });
+  }
+
+  async function handleEditPhoto(photo: TaskPhoto) {
+    try {
+      const sessions = await apiGet<any[]>(`/api/aufmass/sessions?photoId=${photo.id}`);
+      const existingSession = sessions?.find((s) => s.photo_id === photo.id);
+      setAufmassPhoto({
+        url: getApiUrl(photo.url),
+        id: photo.id,
+        sessionId: existingSession?.id,
+      });
+    } catch (e) {
+      console.error("Failed to check existing session:", e);
+      setAufmassPhoto({
+        url: getApiUrl(photo.url),
+        id: photo.id,
+      });
+    }
   }
 
   async function uploadOne(task_id: string, file: File, cap: string | null, photoType: PhotoType, token?: string | null) {
@@ -1636,31 +1693,56 @@ export default function TaskDrawer({
                         }`}>
                         {(p.photo_type || "BEFORE") === "AFTER" ? t("taskDrawer", "photoPhaseAfter") : t("taskDrawer", "photoPhaseBefore")}
                       </div>
-                      <div onClick={() => setPreviewUrl(getApiUrl(p.url))} className="w-full h-full block">
-                        <img src={getApiUrl(p.url)} alt={p.caption || ""} className="w-full h-full object-cover grayscale-[0.2] group-hover/img:grayscale-0 group-hover/img:scale-110 transition-all duration-700" loading="lazy" />
+                      <div
+                        onClick={() => {
+                          setPreviewUrl(getApiUrl(p.url));
+                          setPreviewPhotoShapes(shapesByPhoto[p.id] || null);
+                        }}
+                        className="w-full h-full block"
+                      >
+                        {shapesByPhoto[p.id] && shapesByPhoto[p.id].length > 0 ? (
+                          <div className="w-full h-full pointer-events-none">
+                            <AufmassCanvas
+                              imageUrl={getApiUrl(p.url)}
+                              shapes={shapesByPhoto[p.id]}
+                              readOnly={true}
+                            />
+                          </div>
+                        ) : (
+                          <img src={getApiUrl(p.url)} alt={p.caption || ""} className="w-full h-full object-cover grayscale-[0.2] group-hover/img:grayscale-0 group-hover/img:scale-110 transition-all duration-700" loading="lazy" />
+                        )}
                       </div>
                       
-                      {canManagePhotos && (() => {
-                        const isPhotoByAdmin = (p as any).profiles?.role === "ADMIN";
-                        if (isPhotoByAdmin && !isAdmin) return null;
-                        return (
-                          <button
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (!confirm(t("common", "confirmDelete"))) return;
-                              try {
-                                setUploading(true);
-                                await apiDelete(`/api/task-photos?id=${p.id}`);
-                                setPhotos((prev) => prev.filter((x) => x.id !== p.id));
-                                apiGet<TaskHistoryRow[]>(`/api/task-history?taskId=${encodeURIComponent(taskId!)}`).then(h => setHistory(h || [])).catch(() => { });
-                                window.dispatchEvent(new CustomEvent("task-photo-deleted", { detail: { photoId: p.id, taskId } }));
-                              } catch (err: any) { setErr(err.message || String(err)); } finally { setUploading(false); }
-                            }}
-                            className="absolute top-2 right-2 z-20 w-8 h-8 rounded-full bg-black/60 backdrop-blur-xl text-white flex items-center justify-center transition-all hover:bg-danger border border-white/10 active:scale-90"
-                          >✕</button>
-                        );
-                      })()}
+                      {isAdmin && (
+                        <button
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (!confirm(t("common", "confirmDelete"))) return;
+                            try {
+                              setUploading(true);
+                              await apiDelete(`/api/task-photos?id=${p.id}`);
+                              setPhotos((prev) => prev.filter((x) => x.id !== p.id));
+                              apiGet<TaskHistoryRow[]>(`/api/task-history?taskId=${encodeURIComponent(taskId!)}`).then(h => setHistory(h || [])).catch(() => { });
+                              window.dispatchEvent(new CustomEvent("task-photo-deleted", { detail: { photoId: p.id, taskId } }));
+                            } catch (err: any) { setErr(err.message || String(err)); } finally { setUploading(false); }
+                          }}
+                          className="absolute top-2 right-2 z-20 w-8 h-8 rounded-full bg-black/60 backdrop-blur-xl text-white flex items-center justify-center transition-all hover:bg-danger border border-white/10 active:scale-90"
+                        >✕</button>
+                      )}
+
+                      {isQuestionMode && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditPhoto(p).catch(() => {});
+                          }}
+                          className="absolute bottom-2 left-2 right-2 px-2 py-2 bg-indigo-600/90 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 group-hover/img:opacity-100 transition-all hover:bg-indigo-500 shadow-xl z-20"
+                        >
+                          {t("aufmass", "editInAufmassBtn", "Edit in Aufmaß")}
+                        </button>
+                      )}
+
                       <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
                         <div className="text-[9px] text-white font-bold line-clamp-2 leading-tight">{p.caption || t("common", "noPhoto")}</div>
                       </div>
@@ -1797,9 +1879,31 @@ export default function TaskDrawer({
             )}
           </div>
         </div>
-        <PhotoLightbox url={previewUrl} onClose={() => setPreviewUrl(null)} />
+        <PhotoLightbox
+          url={previewUrl}
+          shapes={previewPhotoShapes}
+          onClose={() => {
+            setPreviewUrl(null);
+            setPreviewPhotoShapes(null);
+          }}
+        />
         
-
+        {aufmassPhoto && (
+          <AufmassEditor
+            photoUrl={aufmassPhoto.url}
+            photoId={aufmassPhoto.id}
+            taskId={task?.id || taskId || undefined}
+            projectId={task?.project_id || createDraft?.project_id || ""}
+            existingSessionId={aufmassPhoto.sessionId}
+            sessionType="aufmass"
+            onClose={() => {
+              setAufmassPhoto(null);
+              if (taskId) {
+                loadAll(taskId).catch(() => {});
+              }
+            }}
+          />
+        )}
       </div>
     </>
   );

@@ -72,6 +72,7 @@ export default function CompaniesPage() {
 
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectSubprojects, setNewProjectSubprojects] = useState("");
   const [projectCreationError, setProjectCreationError] = useState<string | null>(null);
 
   const isAdmin = (currentUserRole || "").toUpperCase() === "ADMIN";
@@ -105,8 +106,10 @@ export default function CompaniesPage() {
       await apiPost("/api/projects", {
         name: newProjectName.trim(),
         company_id: selectedCompanyId,
+        subprojects: newProjectSubprojects.trim() || undefined,
       });
       setNewProjectName("");
+      setNewProjectSubprojects("");
       setIsCreatingProject(false);
       await loadData();
     } catch (err: any) {
@@ -687,28 +690,43 @@ export default function CompaniesPage() {
                             {projectCreationError}
                           </div>
                         )}
-                        <div className="flex flex-col sm:flex-row gap-4">
-                          <input
-                            type="text"
-                            value={newProjectName}
-                            onChange={(e) => setNewProjectName(e.target.value)}
-                            placeholder={t("companies", "projectNamePlaceholder", "e.g. Gewerbepark Duisburg")}
-                            className="flex-1 bg-black/40 border border-ui-border rounded-lg px-4 py-3 text-xs font-bold text-ui-text outline-none focus:border-ui-accent/50 transition-all placeholder:text-ui-muted/50"
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleCreateNewProject();
-                              }
-                            }}
-                          />
-                          <button
-                            onClick={handleCreateNewProject}
-                            disabled={!newProjectName.trim()}
-                            className="px-6 py-3 rounded-lg bg-ui-accent text-ui-bg text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all whitespace-nowrap"
-                          >
-                            {t("companies", "createProjectButton", "CREATE & ASSIGN")}
-                          </button>
+                        <div className="space-y-3">
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <input
+                              type="text"
+                              value={newProjectName}
+                              onChange={(e) => setNewProjectName(e.target.value)}
+                              placeholder={t("companies", "projectNamePlaceholder", "Nazwa projektu (np. Gewerbepark Duisburg)")}
+                              className="flex-1 bg-black/40 border border-ui-border rounded-lg px-4 py-2.5 text-xs font-bold text-ui-text outline-none focus:border-ui-accent/50 transition-all placeholder:text-ui-muted/50"
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleCreateNewProject();
+                                }
+                              }}
+                            />
+                            <button
+                              onClick={handleCreateNewProject}
+                              disabled={!newProjectName.trim()}
+                              className="px-6 py-2.5 rounded-lg bg-ui-accent text-ui-bg text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all whitespace-nowrap"
+                            >
+                              {t("companies", "createProjectButton", "CREATE & ASSIGN")}
+                            </button>
+                          </div>
+
+                          <div>
+                            <input
+                              type="text"
+                              value={newProjectSubprojects}
+                              onChange={(e) => setNewProjectSubprojects(e.target.value)}
+                              placeholder="Opcjonalne podprojekty / Mieter-Ausbau po przecinku (np. Grundfos (Główny), Grundfos EG, Grundfos 1.OG)"
+                              className="w-full bg-black/30 border border-ui-border/70 rounded-lg px-3.5 py-2 text-xs text-ui-text outline-none focus:border-ui-accent/50 transition-all placeholder:text-ui-muted/50"
+                            />
+                            <span className="text-[10px] text-ui-muted mt-1 block">
+                              Oddziel podprojekty przecinkami. Domyślny zakres "General" zostanie utworzony automatycznie.
+                            </span>
+                          </div>
                         </div>
                       </motion.div>
                     )}
