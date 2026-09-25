@@ -64,6 +64,14 @@ interface CablePin {
 interface CircuitPin {
   id: string;
   circuit_name: string;
+  circuit_code?: string;
+  short_label?: string;
+  full_name?: string;
+  type?: string;
+  marker_shape?: string;
+  color?: string;
+  phase?: number;
+  breaker_current?: number;
   fuse_type?: string;
   pos_x: number;
   pos_y: number;
@@ -115,6 +123,9 @@ export default function InteractivePlanScreen() {
     try {
       setLoading(true);
       const db = await getDatabase();
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
+      const token = session?.access_token;
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
       // 1. Fetch Plan from SQLite
       let planRow: PlanInfo | null = null;
@@ -137,10 +148,9 @@ export default function InteractivePlanScreen() {
       // 2. Fetch real metadata from server if online
       let fetchedWidth = planRow?.width || 1920;
       let fetchedHeight = planRow?.height || 1080;
+      let activeProjectId = planRow?.project_id || '';
 
       try {
-        const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
-        const token = session?.access_token;
         const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
         const metaRes = await fetch(`${apiUrl}/api/tiles/${activePlanId}/meta${tokenParam}`);
         if (metaRes.ok) {
@@ -157,10 +167,26 @@ export default function InteractivePlanScreen() {
         // offline fallback
       }
 
+      // If activeProjectId is missing locally, attempt to fetch plan info from backend
+      if (!activeProjectId && token) {
+        try {
+          const pRes = await fetch(`${apiUrl}/api/plans?id=${activePlanId}`, { headers });
+          if (pRes.ok) {
+            const pJson = await pRes.json();
+            const pData = Array.isArray(pJson) ? pJson[0] : (pJson?.data?.[0] || pJson?.data || pJson);
+            if (pData?.project_id) {
+              activeProjectId = pData.project_id;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       const activePlan: PlanInfo = {
         id: activePlanId,
         name: planRow?.name || `Plan architektoniczny (${activePlanId.slice(0, 8)})`,
-        project_id: planRow?.project_id,
+        project_id: activeProjectId || planRow?.project_id,
         floor_id: planRow?.floor_id,
         width: fetchedWidth,
         height: fetchedHeight,
@@ -175,33 +201,132 @@ export default function InteractivePlanScreen() {
       const isCached = await TileCacheService.isPlanCachedLocally(activePlanId);
       setIsLocalTileCached(isCached);
 
-      // 3. Fetch Tasks on Plan
-      const taskRows = await db.getAllAsync<TaskPin>(
+      // 3. Fetch Tasks on Plan (SQLite fallback + live API sync)
+      let loadedTasks: TaskPin[] = [];
+      const localTaskRows = await db.getAllAsync<TaskPin>(
         'SELECT id, title, description, pos_x, pos_y, status, priority, version FROM tasks WHERE plan_id = ? AND deleted_at IS NULL;',
         [activePlanId]
       );
-      setTasks(taskRows);
+      loadedTasks = localTaskRows || [];
 
-      // 4. Fetch BMA Devices
-      const bmaRows = await db.getAllAsync<BmaPin>(
+      if (token) {
+        try {
+          const taskUrl = `${apiUrl}/api/tasks?planId=${activePlanId}${activeProjectId ? `&projectId=${activeProjectId}` : ''}&limit=500`;
+          const tRes = await fetch(taskUrl, { headers });
+          if (tRes.ok) {
+            const tJson = await tRes.json();
+            const taskData = Array.isArray(tJson) ? tJson : (tJson?.data || []);
+            if (Array.isArray(taskData) && taskData.length > 0) {
+              loadedTasks = taskData.map((t: any) => {
+                const normX = t.render_x ?? t.x_norm;
+                const normY = t.render_y ?? t.y_norm;
+                const px = normX != null ? Math.round(normX * fetchedWidth) : (t.pos_x || 100);
+                const py = normY != null ? Math.round(normY * fetchedHeight) : (t.pos_y || 100);
+                return {
+                  id: t.id,
+                  title: t.title || 'Zadanie',
+                  description: t.description || undefined,
+                  pos_x: px,
+                  pos_y: py,
+                  status: t.status || 'open',
+                  priority: t.priority || 'normal',
+                  version: t.version || 1,
+                };
+              });
+            }
+          }
+        } catch (taskErr) {
+          console.warn('[InteractivePlan] Tasks API sync error:', taskErr);
+        }
+      }
+      setTasks(loadedTasks);
+
+      // 4. Fetch Stromkreise (Circuits) on Plan (Live API + SQLite)
+      let loadedCircuits: CircuitPin[] = [];
+      const localCircuitRows = await db.getAllAsync<CircuitPin>(
+        'SELECT id, circuit_name, fuse_type, pos_x, pos_y FROM stromkreise WHERE plan_id = ? AND deleted_at IS NULL;',
+        [activePlanId]
+      );
+      loadedCircuits = localCircuitRows || [];
+
+      if (token && activeProjectId) {
+        try {
+          const circUrl = `${apiUrl}/api/stromkreise?projectId=${activeProjectId}&planId=${activePlanId}`;
+          const cRes = await fetch(circUrl, { headers });
+          if (cRes.ok) {
+            const cJson = await cRes.json();
+            const circData = Array.isArray(cJson) ? cJson : (cJson?.data || []);
+            if (Array.isArray(circData) && circData.length > 0) {
+              loadedCircuits = circData.map((c: any) => {
+                const px = c.x_norm != null ? Math.round(c.x_norm * fetchedWidth) : (c.pos_x || 200);
+                const py = c.y_norm != null ? Math.round(c.y_norm * fetchedHeight) : (c.pos_y || 200);
+                return {
+                  id: c.id,
+                  circuit_name: c.circuit_code || c.short_label || c.full_name || 'Obwód',
+                  circuit_code: c.circuit_code || c.short_label,
+                  short_label: c.short_label,
+                  full_name: c.full_name,
+                  type: c.type || 'socket',
+                  marker_shape: c.marker_shape || 'circle',
+                  color: c.color,
+                  phase: c.phase,
+                  breaker_current: c.breaker_current,
+                  fuse_type: c.breaker_current ? `${c.breaker_curve || 'B'}${c.breaker_current}A` : (c.fuse_type || 'B16'),
+                  pos_x: px,
+                  pos_y: py,
+                };
+              });
+            }
+          }
+        } catch (circErr) {
+          console.warn('[InteractivePlan] Circuits API sync error:', circErr);
+        }
+      }
+      setCircuits(loadedCircuits);
+
+      // 5. Fetch BMA Devices (Live API + SQLite)
+      let loadedBma: BmaPin[] = [];
+      const localBmaRows = await db.getAllAsync<BmaPin>(
         'SELECT id, device_number, device_type, pos_x, pos_y, status FROM bma_devices WHERE plan_id = ? AND deleted_at IS NULL;',
         [activePlanId]
       );
-      setBmaDevices(bmaRows);
+      loadedBma = localBmaRows || [];
 
-      // 5. Fetch Cables
+      if (token && activeProjectId) {
+        try {
+          const bmaUrl = `${apiUrl}/api/bma/devices?projectId=${activeProjectId}&planId=${activePlanId}`;
+          const bRes = await fetch(bmaUrl, { headers });
+          if (bRes.ok) {
+            const bJson = await bRes.json();
+            const bmaData = Array.isArray(bJson) ? bJson : (bJson?.data || []);
+            if (Array.isArray(bmaData) && bmaData.length > 0) {
+              loadedBma = bmaData.map((b: any) => {
+                const px = b.x_norm != null ? Math.round(b.x_norm * fetchedWidth) : (b.pos_x || 150);
+                const py = b.y_norm != null ? Math.round(b.y_norm * fetchedHeight) : (b.pos_y || 150);
+                const label = b.device_number || (b.loop_number && b.address ? `${b.loop_number}/${b.address}` : (b.label || 'BMA'));
+                return {
+                  id: b.id || `bma-${Math.random()}`,
+                  device_number: label,
+                  device_type: b.device_type || b.symbol_type || 'Melder',
+                  pos_x: px,
+                  pos_y: py,
+                  status: b.status || 'OK',
+                };
+              });
+            }
+          }
+        } catch (bmaErr) {
+          console.warn('[InteractivePlan] BMA API sync error:', bmaErr);
+        }
+      }
+      setBmaDevices(loadedBma);
+
+      // 6. Fetch Cables
       const cableRows = await db.getAllAsync<CablePin>(
         'SELECT id, cable_number, cable_type, length, status, points_json FROM cables WHERE plan_id = ? AND deleted_at IS NULL;',
         [activePlanId]
       );
-      setCables(cableRows);
-
-      // 6. Fetch Circuits
-      const circuitRows = await db.getAllAsync<CircuitPin>(
-        'SELECT id, circuit_name, fuse_type, pos_x, pos_y FROM stromkreise WHERE plan_id = ? AND deleted_at IS NULL;',
-        [activePlanId]
-      );
-      setCircuits(circuitRows);
+      setCables(cableRows || []);
 
       // 7. Fetch Sibling Floors
       if (activePlan.project_id) {
@@ -622,11 +747,26 @@ export default function InteractivePlanScreen() {
             if (!c) return;
             const lat = -(c.pos_y || 500) / Math.pow(2, maxZoom);
             const lng = (c.pos_x || 500) / Math.pow(2, maxZoom);
-            const safeName = escapeHtml(c.circuit_name || 'Obwód').substring(0, 15);
+            const safeName = escapeHtml(c.circuit_code || c.short_label || c.circuit_name || 'Obwód').substring(0, 15);
+
+            let iconEmoji = '⚡';
+            let bgCol = '#A855F7';
+            const cType = (c.type || '').toLowerCase();
+            if (cType === 'socket') { iconEmoji = '🔌'; bgCol = '#3B82F6'; }
+            else if (cType === 'light') { iconEmoji = '💡'; bgCol = '#EAB308'; }
+            else if (cType === 'cee') { iconEmoji = '⚡'; bgCol = '#EF4444'; }
+            else if (cType === 'edv') { iconEmoji = '🌐'; bgCol = '#10B981'; }
+            else if (cType === 'special') { iconEmoji = '⚙️'; bgCol = '#8B5CF6'; }
+            else if (cType === 'reserve') { iconEmoji = '🔒'; bgCol = '#64748B'; }
+            else if (cType === 'arrow') { iconEmoji = '➡️'; bgCol = '#F97316'; }
+            else if (cType === 'line') { iconEmoji = '〰️'; bgCol = '#06B6D4'; }
+            else if (cType === 'text') { iconEmoji = '📝'; bgCol = '#6366F1'; }
+
+            if (c.color) bgCol = c.color;
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="custom-pin pin-circuit" style="width: 26px; height: 26px;">⚡<span class="pin-label">' + safeName + '</span></div>',
+              html: '<div class="custom-pin" style="width: 26px; height: 26px; background-color: ' + bgCol + '; border-color: #ffffff;">' + iconEmoji + '<span class="pin-label">' + safeName + '</span></div>',
               iconSize: [26, 26],
               iconAnchor: [13, 13],
             });
@@ -940,8 +1080,15 @@ export default function InteractivePlanScreen() {
           <View style={styles.drawerHandle} />
           <View style={styles.drawerHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.drawerTitle, { color: '#A855F7' }]}>⚡ Obwód: {selectedCircuit.circuit_name}</Text>
-              <Text style={styles.drawerDesc}>Zabezpieczenie: {selectedCircuit.fuse_type || 'B16'}</Text>
+              <Text style={[styles.drawerTitle, { color: '#A855F7' }]}>
+                ⚡ {selectedCircuit.circuit_code || selectedCircuit.circuit_name}
+              </Text>
+              {selectedCircuit.full_name ? (
+                <Text style={styles.drawerDesc}>{selectedCircuit.full_name}</Text>
+              ) : null}
+              <Text style={[styles.drawerDesc, { marginTop: 4, color: '#94A3B8' }]}>
+                Typ: {selectedCircuit.type || 'Gniazdo'} • Zabezpieczenie: {selectedCircuit.fuse_type || 'B16'} {selectedCircuit.phase ? `• Faza: L${selectedCircuit.phase}` : ''}
+              </Text>
             </View>
             <TouchableOpacity onPress={() => setSelectedCircuit(null)} style={styles.drawerClose}>
               <Text style={styles.drawerCloseText}>✕</Text>

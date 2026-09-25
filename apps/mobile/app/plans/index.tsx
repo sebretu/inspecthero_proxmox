@@ -7,42 +7,42 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDatabase } from '../../src/db/database';
-
 import { authSupabase } from '../../src/auth/authClient';
-import { ScrollView, RefreshControl } from 'react-native';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
 
 interface PlanItem {
   id: string;
   name: string;
-  project_id?: string;
-  project_name?: string;
+  project_id: string;
   building_name?: string;
   floor_name?: string;
   task_count?: number;
   bma_count?: number;
+  circuit_count?: number;
 }
 
-interface ProjectOption {
+interface ProjectGroup {
   id: string;
   name: string;
+  plans: PlanItem[];
 }
 
 export default function PlansListScreen() {
   const router = useRouter();
-  const [plans, setPlans] = useState<PlanItem[]>([]);
-  const [projects, setProjects] = useState<ProjectOption[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
+  const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
+  const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const syncPlansFromApi = async (db: any) => {
+  const syncPlansAndProjectsFromApi = async (db: any) => {
     try {
       const { data: { session } } = await authSupabase.auth.getSession();
       const headers: Record<string, string> = {};
@@ -50,71 +50,99 @@ export default function PlansListScreen() {
         headers['Authorization'] = `Bearer ${session.access_token}`;
       }
 
-      // 1. Fetch live projects
+      // 1. Fetch user's active company projects (matching web)
       const pRes = await fetch(`${API_BASE_URL}/api/projects`, { headers });
-      let projs: ProjectOption[] = [];
-      if (pRes.ok) {
-        const pJson = await pRes.json();
-        const rawProjs = Array.isArray(pJson) ? pJson : (pJson?.data || []);
-        projs = rawProjs.map((p: any) => ({ id: p.id, name: p.name }));
-        setProjects(projs);
-      }
+      if (!pRes.ok) return;
 
-      // 2. Fetch plans for projects
+      const pJson = await pRes.json();
+      const apiProjects = Array.isArray(pJson) ? pJson : (pJson?.data || []);
+      if (apiProjects.length === 0) return;
+
       const now = new Date().toISOString();
-      for (const pr of projs.slice(0, 10)) {
-        const planRes = await fetch(`${API_BASE_URL}/api/plans?projectId=${encodeURIComponent(pr.id)}`, { headers });
+      const validProjectIds: string[] = [];
+      const validPlanIds: string[] = [];
+
+      for (const p of apiProjects) {
+        validProjectIds.push(p.id);
+        await db.runAsync(
+          `INSERT INTO projects (id, name, status, created_at, updated_at, version)
+           VALUES (?, ?, ?, ?, ?, 1)
+           ON CONFLICT(id) DO UPDATE SET name = excluded.name, status = excluded.status, updated_at = excluded.updated_at;`,
+          [p.id, p.name, p.status || 'ACTIVE', p.created_at || now, p.updated_at || now]
+        );
+
+        // 2. Fetch only ACTIVE/CURRENT plans for this project (current=true)
+        const planRes = await fetch(`${API_BASE_URL}/api/plans?projectId=${encodeURIComponent(p.id)}&current=true`, { headers });
         if (planRes.ok) {
           const planJson = await planRes.json();
           const plansList = Array.isArray(planJson) ? planJson : (planJson?.data || []);
           for (const pl of plansList) {
-            const planName = pl.name || pl.pdf_path?.split('/')?.pop() || 'Plan architektoniczny';
+            validPlanIds.push(pl.id);
+            const planName = pl.name || pl.floors?.name || pl.pdf_path?.split('/')?.pop() || 'Plan architektoniczny';
             await db.runAsync(
               `INSERT INTO plans (id, project_id, floor_id, name, width, height, created_at, updated_at, version)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
                ON CONFLICT(id) DO UPDATE SET name = excluded.name, project_id = excluded.project_id, updated_at = excluded.updated_at;`,
-              [pl.id, pr.id, pl.floor_id || null, planName, pl.image_width || 1920, pl.image_height || 1080, pl.created_at || now, pl.updated_at || now]
+              [pl.id, p.id, pl.floor_id || null, planName, pl.image_width || 1920, pl.image_height || 1080, pl.created_at || now, pl.updated_at || now]
             );
           }
         }
       }
+
+      // 3. Prune old stale projects and old stale plans
+      if (validProjectIds.length > 0) {
+        const pIdStr = validProjectIds.map((id) => `'${id}'`).join(',');
+        await db.runAsync(`DELETE FROM projects WHERE id NOT IN (${pIdStr});`).catch(() => {});
+      }
+      if (validPlanIds.length > 0) {
+        const plIdStr = validPlanIds.map((id) => `'${id}'`).join(',');
+        await db.runAsync(`DELETE FROM plans WHERE id NOT IN (${plIdStr});`).catch(() => {});
+      }
     } catch (apiErr) {
-      console.warn('[PlansList] Live API sync skipped or failed:', apiErr);
+      console.warn('[PlansList] Live sync error:', apiErr);
     }
   };
 
-  const loadPlans = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
       const db = await getDatabase();
-      await syncPlansFromApi(db);
+      await syncPlansAndProjectsFromApi(db);
 
-      const rows = await db.getAllAsync<PlanItem>(`
+      // Query projects and their current plans
+      const projs = await db.getAllAsync<{ id: string; name: string }>(
+        "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC;"
+      );
+
+      const allPlans = await db.getAllAsync<PlanItem>(`
         SELECT 
           p.id, 
           p.name, 
           p.project_id,
-          COALESCE(pr.name, 'Projekt ogólny') as project_name,
           COALESCE(b.name, '') as building_name,
           COALESCE(f.name, '') as floor_name,
           (SELECT COUNT(*) FROM tasks t WHERE t.plan_id = p.id AND t.deleted_at IS NULL) as task_count,
-          (SELECT COUNT(*) FROM bma_devices bd WHERE bd.plan_id = p.id AND bd.deleted_at IS NULL) as bma_count
+          (SELECT COUNT(*) FROM bma_devices bd WHERE bd.plan_id = p.id AND bd.deleted_at IS NULL) as bma_count,
+          (SELECT COUNT(*) FROM stromkreise s WHERE s.plan_id = p.id AND s.deleted_at IS NULL) as circuit_count
         FROM plans p
-        LEFT JOIN projects pr ON p.project_id = pr.id
         LEFT JOIN floors f ON p.floor_id = f.id
         LEFT JOIN buildings b ON f.building_id = b.id
-        WHERE p.deleted_at IS NULL AND p.id != 'pln-sample-001'
-        ORDER BY pr.name ASC, p.name ASC;
+        WHERE p.deleted_at IS NULL
+        ORDER BY p.name ASC;
       `);
 
-      setPlans(rows);
+      const groups: ProjectGroup[] = projs.map((pr) => ({
+        id: pr.id,
+        name: pr.name,
+        plans: allPlans.filter((pl) => pl.project_id === pr.id),
+      }));
 
-      // Extract unique projects from local DB if not yet set
-      const dbProjs = await db.getAllAsync<ProjectOption>(
-        "SELECT id, name FROM projects WHERE deleted_at IS NULL AND id != 'proj-sample-001' ORDER BY name ASC;"
-      );
-      if (dbProjs.length > 0) {
-        setProjects(dbProjs);
-      }
+      setProjectGroups(groups);
+
+      // Auto expand all projects with plans or first project
+      setExpandedProjectIds((prev) => {
+        if (prev.size > 0) return prev;
+        return new Set(groups.slice(0, 3).map((g) => g.id));
+      });
     } catch (err) {
       console.error('[PlansList] Load error:', err);
     } finally {
@@ -124,29 +152,53 @@ export default function PlansListScreen() {
   }, []);
 
   useEffect(() => {
-    loadPlans();
-  }, [loadPlans]);
+    loadData();
+  }, [loadData]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadPlans();
+    loadData();
   };
 
-  const filteredPlans = plans.filter((p) => {
-    const q = search.toLowerCase();
-    const matchesProject = selectedProjectId === 'all' || p.project_id === selectedProjectId;
-    const matchesSearch =
-      p.name.toLowerCase().includes(q) ||
-      (p.project_name && p.project_name.toLowerCase().includes(q)) ||
-      (p.floor_name && p.floor_name.toLowerCase().includes(q));
-    return matchesProject && matchesSearch;
-  });
+  const toggleProjectExpand = (projectId: string) => {
+    setExpandedProjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(projectId)) {
+        next.delete(projectId);
+      } else {
+        next.add(projectId);
+      }
+      return next;
+    });
+  };
+
+  // Filter groups based on search
+  const q = search.toLowerCase().trim();
+  const filteredGroups = projectGroups
+    .map((g) => {
+      const matchesProjectName = g.name.toLowerCase().includes(q);
+      const matchingPlans = g.plans.filter(
+        (p) =>
+          matchesProjectName ||
+          p.name.toLowerCase().includes(q) ||
+          (p.floor_name && p.floor_name.toLowerCase().includes(q)) ||
+          (p.building_name && p.building_name.toLowerCase().includes(q))
+      );
+      return {
+        ...g,
+        plans: q ? matchingPlans : g.plans,
+        hasMatch: matchesProjectName || matchingPlans.length > 0,
+      };
+    })
+    .filter((g) => (q ? g.hasMatch : true));
+
+  const totalPlansCount = projectGroups.reduce((acc, g) => acc + g.plans.length, 0);
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <Stack.Screen
         options={{
-          title: 'Przeglądarka Planów (Leaflet)',
+          title: 'Plany Budowlane (et4u)',
           headerShown: true,
           headerBackTitle: 'Wróć',
           headerStyle: { backgroundColor: '#0B0F19' },
@@ -155,52 +207,31 @@ export default function PlansListScreen() {
         }}
       />
 
+      {/* Search Header */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Szukaj rzutu, projektu lub kondygnacji..."
+          placeholder="Szukaj projektu, kondygnacji lub rzutu..."
           placeholderTextColor="#64748B"
           value={search}
           onChangeText={setSearch}
+          clearButtonMode="while-editing"
         />
-
-        {/* Project Selector Horizontal Scroll */}
-        {projects.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.projectFilterRow}>
-            <TouchableOpacity
-              style={[styles.filterChip, selectedProjectId === 'all' && styles.filterChipActive]}
-              onPress={() => setSelectedProjectId('all')}
-            >
-              <Text style={[styles.filterChipText, selectedProjectId === 'all' && styles.filterChipTextActive]}>
-                Wszystkie ({plans.length})
-              </Text>
-            </TouchableOpacity>
-            {projects.map((pr) => {
-              const count = plans.filter((p) => p.project_id === pr.id).length;
-              return (
-                <TouchableOpacity
-                  key={pr.id}
-                  style={[styles.filterChip, selectedProjectId === pr.id && styles.filterChipActive]}
-                  onPress={() => setSelectedProjectId(pr.id)}
-                >
-                  <Text style={[styles.filterChipText, selectedProjectId === pr.id && styles.filterChipTextActive]}>
-                    🏢 {pr.name} ({count})
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        )}
+        <View style={styles.summaryInfoRow}>
+          <Text style={styles.summaryInfoText}>
+            🏢 {projectGroups.length} projektów • 📐 {totalPlansCount} aktywnych rzutów
+          </Text>
+        </View>
       </View>
 
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#38BDF8" />
-          <Text style={styles.loadingText}>Ładowanie rzutów kondygnacji...</Text>
+          <Text style={styles.loadingText}>Synchronizacja planów z serwisem...</Text>
         </View>
       ) : (
         <FlatList
-          data={filteredPlans}
+          data={filteredGroups}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           refreshControl={
@@ -213,45 +244,92 @@ export default function PlansListScreen() {
           }
           ListEmptyComponent={
             <View style={styles.center}>
-              <Text style={styles.emptyTitle}>Brak rzutów</Text>
-              <Text style={styles.emptySubtitle}>Nie znaleziono planów pasujących do kryteriów wyszukiwania.</Text>
+              <Text style={styles.emptyTitle}>Brak projektów lub planów</Text>
+              <Text style={styles.emptySubtitle}>
+                Nie znaleziono aktywnych rzutów pasujących do wyszukiwania.
+              </Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.card}
-              activeOpacity={0.8}
-              onPress={() => router.push({ pathname: '/plans/[id]', params: { id: item.id } } as any)}
-            >
-              <View style={styles.cardHeader}>
-                <Text style={styles.icon}>📐</Text>
-                <View style={styles.titleCol}>
-                  <Text style={styles.planName}>{item.name}</Text>
-                  <Text style={styles.projectName}>
-                    🏢 {item.project_name} {item.floor_name ? `• ${item.floor_name}` : ''}
-                  </Text>
-                </View>
-              </View>
+          renderItem={({ item: group }) => {
+            const isExpanded = expandedProjectIds.has(group.id) || q.length > 0;
+            return (
+              <View style={styles.projectCard}>
+                {/* Accordion Header */}
+                <TouchableOpacity
+                  style={styles.accordionHeader}
+                  activeOpacity={0.7}
+                  onPress={() => toggleProjectExpand(group.id)}
+                >
+                  <View style={styles.accordionLeft}>
+                    <Text style={styles.projectIcon}>🏢</Text>
+                    <View>
+                      <Text style={styles.projectName}>{group.name}</Text>
+                      <Text style={styles.projectSubtext}>
+                        {group.plans.length} {group.plans.length === 1 ? 'rzut' : group.plans.length < 5 ? 'rzuty' : 'rzutów'} kondygnacji
+                      </Text>
+                    </View>
+                  </View>
 
-              <View style={styles.badgeRow}>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>📌 {item.task_count || 0} zadań</Text>
-                </View>
-                <View style={styles.badgeBma}>
-                  <Text style={styles.badgeBmaText}>🚨 {item.bma_count || 0} czujek BMA</Text>
-                </View>
-                <View style={styles.arrowBadge}>
-                  <Text style={styles.arrowText}>Otwórz plan 2D →</Text>
-                </View>
+                  <View style={styles.accordionRight}>
+                    <View style={styles.planCountBadge}>
+                      <Text style={styles.planCountText}>{group.plans.length}</Text>
+                    </View>
+                    <Text style={styles.chevron}>{isExpanded ? '▲' : '▼'}</Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Accordion Body (Collapsible Plans List) */}
+                {isExpanded && (
+                  <View style={styles.accordionBody}>
+                    {group.plans.length === 0 ? (
+                      <View style={styles.emptyPlansBox}>
+                        <Text style={styles.emptyPlansText}>Brak wgranych rzutów dla tego projektu.</Text>
+                      </View>
+                    ) : (
+                      group.plans.map((plan) => (
+                        <TouchableOpacity
+                          key={plan.id}
+                          style={styles.planItemCard}
+                          activeOpacity={0.8}
+                          onPress={() => router.push({ pathname: '/plans/[id]', params: { id: plan.id } } as any)}
+                        >
+                          <View style={styles.planMainRow}>
+                            <Text style={styles.planIcon}>📐</Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.planTitle}>{plan.name}</Text>
+                              {plan.floor_name ? (
+                                <Text style={styles.floorTitle}>Kondygnacja: {plan.floor_name}</Text>
+                              ) : null}
+                            </View>
+                            <Text style={styles.arrowIcon}>➔</Text>
+                          </View>
+
+                          <View style={styles.badgeRow}>
+                            <View style={styles.badgeTask}>
+                              <Text style={styles.badgeTaskText}>📌 {plan.task_count || 0} zadań</Text>
+                            </View>
+                            <View style={styles.badgeBma}>
+                              <Text style={styles.badgeBmaText}>🚨 {plan.bma_count || 0} BMA</Text>
+                            </View>
+                            {plan.circuit_count ? (
+                              <View style={styles.badgeCircuit}>
+                                <Text style={styles.badgeCircuitText}>⚡ {plan.circuit_count} obwodów</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </View>
+                )}
               </View>
-            </TouchableOpacity>
-          )}
+            );
+          }}
         />
       )}
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -259,7 +337,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#030712',
   },
   searchContainer: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 10,
     backgroundColor: '#0B0F19',
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
@@ -274,104 +354,158 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1E293B',
   },
-  projectFilterRow: {
-    marginTop: 12,
-    flexDirection: 'row',
+  summaryInfoRow: {
+    marginTop: 8,
   },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#1E293B',
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  filterChipActive: {
-    backgroundColor: 'rgba(56, 189, 248, 0.2)',
-    borderColor: '#38BDF8',
-  },
-  filterChipText: {
+  summaryInfoText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#94A3B8',
   },
-  filterChipTextActive: {
-    color: '#38BDF8',
-    fontWeight: '700',
-  },
-
   list: {
-    padding: 16,
+    padding: 14,
+    paddingBottom: 40,
   },
-  card: {
+  projectCard: {
     backgroundColor: '#0F172A',
     borderRadius: 14,
-    padding: 16,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#1E293B',
+    overflow: 'hidden',
   },
-  cardHeader: {
+  accordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 14,
+    backgroundColor: '#0F172A',
+  },
+  accordionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  icon: {
-    fontSize: 28,
-    marginRight: 12,
-  },
-  titleCol: {
     flex: 1,
   },
-  planName: {
+  projectIcon: {
+    fontSize: 22,
+    marginRight: 10,
+  },
+  projectName: {
     fontSize: 16,
     fontWeight: '700',
     color: '#F8FAFC',
     marginBottom: 2,
   },
-  projectName: {
+  projectSubtext: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: '#64748B',
   },
-  badgeRow: {
+  accordionRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
     gap: 8,
   },
-  badge: {
+  planCountBadge: {
     backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: 'rgba(56, 189, 248, 0.3)',
   },
-  badgeText: {
+  planCountText: {
     color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  chevron: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  accordionBody: {
+    padding: 10,
+    backgroundColor: '#070D1A',
+    borderTopWidth: 1,
+    borderTopColor: '#1E293B',
+    gap: 8,
+  },
+  emptyPlansBox: {
+    padding: 12,
+    alignItems: 'center',
+  },
+  emptyPlansText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  planItemCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  planMainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  planIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  planTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#F8FAFC',
+  },
+  floorTitle: {
     fontSize: 11,
-    fontWeight: '600',
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  arrowIcon: {
+    fontSize: 14,
+    color: '#38BDF8',
+    fontWeight: '800',
+    marginLeft: 8,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  badgeTask: {
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
+  },
+  badgeTaskText: {
+    color: '#38BDF8',
+    fontSize: 10,
+    fontWeight: '700',
   },
   badgeBma: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
   },
   badgeBmaText: {
     color: '#EF4444',
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
   },
-  arrowBadge: {
-    marginLeft: 'auto',
+  badgeCircuit: {
+    backgroundColor: 'rgba(168, 85, 247, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
   },
-  arrowText: {
-    color: '#38BDF8',
-    fontSize: 12,
+  badgeCircuitText: {
+    color: '#C084FC',
+    fontSize: 10,
     fontWeight: '700',
   },
   center: {
@@ -387,12 +521,12 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '700',
     color: '#F8FAFC',
+    fontWeight: '700',
     marginBottom: 6,
   },
   emptySubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
   },

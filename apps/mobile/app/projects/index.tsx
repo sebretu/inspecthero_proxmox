@@ -54,14 +54,16 @@ export default function ProjectsScreen() {
               [p.id, p.name, p.status || 'ACTIVE', p.created_at || now, p.updated_at || now]
             );
           }
-          // Remove legacy sample project
-          await db.runAsync("DELETE FROM projects WHERE id = 'proj-sample-001';").catch(() => {});
+          // Prune all stale/unassigned projects not in the user's active projects list
+          const validIds = apiProjects.map((p: any) => `'${p.id}'`).join(',');
+          await db.runAsync(`DELETE FROM projects WHERE id NOT IN (${validIds});`).catch(() => {});
         }
       }
     } catch (apiErr) {
       console.warn('[ProjectsScreen] API sync skipped or failed:', apiErr);
     }
   };
+
 
   const loadProjects = useCallback(async () => {
     try {

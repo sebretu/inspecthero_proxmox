@@ -54,7 +54,7 @@ async function main() {
   ensureDir(outBase);
 
   // wczytaj źródło (plan jako PNG/JPG itp.)
-  const src = sharp(input, { failOn: "none" });
+  const src = sharp(input, { failOn: "none" }).rotate();
   const meta0 = await src.metadata();
   const srcW = meta0.width;
   const srcH = meta0.height;
@@ -80,7 +80,7 @@ async function main() {
     limits[String(z)] = { maxX, maxY };
 
     // ✅ klucz: spłaszcz na białe tło BEFORE cięcie kafli (koniec z przezroczystością)
-    const zImg = sharp(input, { failOn: "none" })
+    const zImg = sharp(input, { failOn: "none" }).rotate()
       .resize(zW, zH, { fit: "fill", kernel: sharp.kernel.lanczos3 })
       .flatten({ background: { r: 255, g: 255, b: 255 } })
       .ensureAlpha(); // alpha będzie 255 po flatten (opaque)

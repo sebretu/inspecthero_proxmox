@@ -19,8 +19,15 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl'
 interface StromkreisRow {
   id: string;
   plan_id: string;
+  project_id?: string;
   circuit_name: string;
+  circuit_code?: string;
+  short_label?: string;
+  full_name?: string;
+  type?: string;
   fuse_type: string | null;
+  phase?: number;
+  breaker_current?: number;
   pos_x?: number;
   pos_y?: number;
   version: number;
@@ -29,6 +36,7 @@ interface StromkreisRow {
 interface BmaDeviceRow {
   id: string;
   plan_id: string;
+  project_id?: string;
   device_number: string;
   device_type: string;
   status: string | null;
@@ -40,6 +48,7 @@ interface BmaDeviceRow {
 interface PlanOption {
   id: string;
   name: string;
+  project_id?: string;
   project_name?: string;
 }
 
@@ -61,17 +70,82 @@ export default function CircuitsScreen() {
         headers['Authorization'] = `Bearer ${session.access_token}`;
       }
 
-      // Fetch plans list
+      // 1. Fetch user's projects
+      const pRes = await fetch(`${API_BASE_URL}/api/projects`, { headers });
+      if (pRes.ok) {
+        const pJson = await pRes.json();
+        const apiProjects = Array.isArray(pJson) ? pJson : (pJson?.data || []);
+        const now = new Date().toISOString();
+
+        for (const p of apiProjects) {
+          await db.runAsync(
+            `INSERT INTO projects (id, name, status, created_at, updated_at, version)
+             VALUES (?, ?, ?, ?, ?, 1)
+             ON CONFLICT(id) DO UPDATE SET name = excluded.name, status = excluded.status, updated_at = excluded.updated_at;`,
+            [p.id, p.name, p.status || 'ACTIVE', p.created_at || now, p.updated_at || now]
+          );
+
+          // 2. Fetch active/current plans for each project
+          const planRes = await fetch(`${API_BASE_URL}/api/plans?projectId=${encodeURIComponent(p.id)}&current=true`, { headers });
+          if (planRes.ok) {
+            const planJson = await planRes.json();
+            const plansList = Array.isArray(planJson) ? planJson : (planJson?.data || []);
+            for (const pl of plansList) {
+              const planName = pl.name || pl.floors?.name || pl.pdf_path?.split('/')?.pop() || 'Plan architektoniczny';
+              await db.runAsync(
+                `INSERT INTO plans (id, project_id, floor_id, name, width, height, created_at, updated_at, version)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+                 ON CONFLICT(id) DO UPDATE SET name = excluded.name, project_id = excluded.project_id, updated_at = excluded.updated_at;`,
+                [pl.id, p.id, pl.floor_id || null, planName, pl.image_width || 1920, pl.image_height || 1080, pl.created_at || now, pl.updated_at || now]
+              );
+
+              // 3. Fetch live stromkreise for this plan
+              const cRes = await fetch(`${API_BASE_URL}/api/stromkreise?projectId=${p.id}&planId=${pl.id}`, { headers });
+              if (cRes.ok) {
+                const cJson = await cRes.json();
+                const circs = Array.isArray(cJson) ? cJson : (cJson?.data || []);
+                for (const c of circs) {
+                  const fuseStr = c.breaker_current ? `${c.breaker_curve || 'B'}${c.breaker_current}A` : 'B16';
+                  await db.runAsync(
+                    `INSERT INTO stromkreise (id, plan_id, circuit_name, fuse_type, pos_x, pos_y, version)
+                     VALUES (?, ?, ?, ?, ?, ?, 1)
+                     ON CONFLICT(id) DO UPDATE SET circuit_name = excluded.circuit_name, fuse_type = excluded.fuse_type;`,
+                    [c.id, pl.id, c.circuit_code || c.short_label || c.full_name || 'Obwód', fuseStr, c.x_norm ? Math.round(c.x_norm * 1920) : 100, c.y_norm ? Math.round(c.y_norm * 1080) : 100]
+                  ).catch(() => {});
+                }
+              }
+
+              // 4. Fetch live BMA devices for this plan
+              const bRes = await fetch(`${API_BASE_URL}/api/bma/devices?projectId=${p.id}&planId=${pl.id}`, { headers });
+              if (bRes.ok) {
+                const bJson = await bRes.json();
+                const bmas = Array.isArray(bJson) ? bJson : (bJson?.data || []);
+                for (const b of bmas) {
+                  const label = b.device_number || (b.loop_number && b.address ? `${b.loop_number}/${b.address}` : (b.label || 'BMA'));
+                  await db.runAsync(
+                    `INSERT INTO bma_devices (id, plan_id, device_number, device_type, pos_x, pos_y, status, version)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                     ON CONFLICT(id) DO UPDATE SET device_number = excluded.device_number, device_type = excluded.device_type, status = excluded.status;`,
+                    [b.id || `bma-${Math.random()}`, pl.id, label, b.device_type || 'Melder', b.x_norm ? Math.round(b.x_norm * 1920) : 100, b.y_norm ? Math.round(b.y_norm * 1080) : 100, b.status || 'OK']
+                  ).catch(() => {});
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Fetch active current plans list
       const planRows = await db.getAllAsync<PlanOption>(`
-        SELECT p.id, p.name, COALESCE(pr.name, '') as project_name 
+        SELECT p.id, p.name, p.project_id, COALESCE(pr.name, '') as project_name 
         FROM plans p 
         LEFT JOIN projects pr ON p.project_id = pr.id 
         WHERE p.deleted_at IS NULL AND p.id != 'pln-sample-001'
-        ORDER BY p.name ASC;
+        ORDER BY pr.name ASC, p.name ASC;
       `);
       setPlans(planRows);
       if (planRows.length > 0 && selectedPlanId === 'all') {
-        setSelectedPlanId(planRows[0].id);
+        setSelectedPlanId('all');
       }
     } catch (e) {
       console.warn('[Circuits] Sync error:', e);
@@ -154,7 +228,7 @@ export default function CircuitsScreen() {
                 onPress={() => setSelectedPlanId(pl.id)}
               >
                 <Text style={[styles.planChipText, selectedPlanId === pl.id && styles.planChipTextActive]}>
-                  📐 {pl.name}
+                  📐 {pl.project_name ? `${pl.project_name} ▸ ` : ''}{pl.name}
                 </Text>
               </TouchableOpacity>
             ))}
