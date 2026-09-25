@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+function getSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://dummy.supabase.co";
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "dummy";
+  return createClient(supabaseUrl, supabaseServiceKey);
+}
 
 export async function GET(req: Request) {
   try {
+    const supabase = getSupabase();
     const { searchParams } = new URL(req.url);
     const projectId = searchParams.get("projectId");
     const taskId = searchParams.get("taskId");
@@ -32,6 +34,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const supabase = getSupabase();
     const body = await req.json();
     const { project_id, task_id, photo_id, plan_id, x_norm, y_norm, session_type, name, description, status, created_by, client_name, client_phone, client_email } = body;
 
@@ -67,6 +70,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
     try {
+        const supabase = getSupabase();
         const body = await req.json();
         const { id, name, description, status, plan_id, x_norm, y_norm, session_type, updated_by, is_active, client_name, client_phone, client_email } = body;
 
@@ -100,6 +104,7 @@ export async function PATCH(req: Request) {
 
 export async function DELETE(req: Request) {
     try {
+        const supabase = getSupabase();
         const { searchParams } = new URL(req.url);
         const id = searchParams.get("id");
 
