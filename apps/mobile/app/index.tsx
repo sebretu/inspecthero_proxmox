@@ -82,6 +82,18 @@ export default function HomeScreen() {
     loadStats();
   }, [loadStats]);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      import('../src/sync/SyncEngine').then(({ SyncEngine }) => {
+        SyncEngine.syncAll()
+          .then(() => {
+            loadStats();
+          })
+          .catch((e) => console.log('[HomeScreen] Auto-sync background notice:', e?.message));
+      });
+    }
+  }, [isAuthenticated, loadStats]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar style="light" />

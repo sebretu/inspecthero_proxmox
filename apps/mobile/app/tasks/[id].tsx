@@ -78,6 +78,7 @@ export default function TaskDetailScreen() {
   // Rejection modal
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [rejectionReasonInput, setRejectionReasonInput] = useState('');
+  const [previewPhotoUri, setPreviewPhotoUri] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -85,35 +86,55 @@ export default function TaskDetailScreen() {
       const db = await getDatabase();
 
       // 1. Task info with joined breadcrumbs and assignee profile
-      const taskRow = await db.getFirstAsync<TaskDetail>(`
-        SELECT 
-          t.*,
-          p.name as plan_name,
-          f.name as floor_name,
-          b.name as building_name,
-          COALESCE(pr.full_name, pr.email) as assigned_user_name
-        FROM tasks t
-        LEFT JOIN plans p ON t.plan_id = p.id
-        LEFT JOIN floors f ON p.floor_id = f.id
-        LEFT JOIN buildings b ON f.building_id = b.id
-        LEFT JOIN profiles pr ON t.assigned_user_id = pr.id
-        WHERE t.id = ?;
-      `, [id]);
+      let taskRow: TaskDetail | null = null;
+      try {
+        taskRow = await db.getFirstAsync<TaskDetail>(`
+          SELECT 
+            t.*,
+            p.name as plan_name,
+            f.name as floor_name,
+            b.name as building_name,
+            COALESCE(pr.full_name, pr.email, t.assigned_to) as assigned_user_name
+          FROM tasks t
+          LEFT JOIN plans p ON t.plan_id = p.id
+          LEFT JOIN floors f ON p.floor_id = f.id
+          LEFT JOIN buildings b ON f.building_id = b.id
+          LEFT JOIN profiles pr ON (t.assigned_user_id = pr.id OR t.assigned_to = pr.id)
+          WHERE t.id = ?;
+        `, [id]);
+      } catch (queryErr) {
+        console.warn('[TaskDetailScreen] Joined task query fallback:', queryErr);
+        taskRow = await db.getFirstAsync<TaskDetail>(`SELECT * FROM tasks WHERE id = ?;`, [id]);
+      }
       setTask(taskRow ?? null);
 
-      // 2. Photos
+      // 2. Photos from local SQLite
       const photoRows = await db.getAllAsync<TaskPhotoRow>(
         'SELECT * FROM task_photos WHERE task_id = ? AND deleted_at IS NULL ORDER BY created_at DESC;',
         [id]
       );
-      setPhotos(photoRows);
+      setPhotos(photoRows || []);
 
-      // 3. Comments
+      // 3. Comments from local SQLite
       const commentRows = await db.getAllAsync<TaskComment>(
         'SELECT * FROM task_comments WHERE task_id = ? AND deleted_at IS NULL ORDER BY created_at ASC;',
         [id]
       );
-      setComments(commentRows);
+      setComments(commentRows || []);
+
+      // 4. Online Photo Hydration (non-blocking fallback to download photos created on web)
+      if (id) {
+        PhotoService.fetchOnlineTaskPhotos(id as string).then((freshPhotos) => {
+          if (freshPhotos && freshPhotos.length > 0) {
+            setPhotos((prev) => {
+              const map = new Map<string, TaskPhotoRow>();
+              freshPhotos.forEach((p) => map.set(p.id, p));
+              prev.forEach((p) => map.set(p.id, p));
+              return Array.from(map.values());
+            });
+          }
+        }).catch((e) => console.warn('[TaskDetailScreen] Photo hydration err:', e));
+      }
     } catch (err) {
       console.error('[TaskDetailScreen] Error loading task data:', err);
     } finally {
@@ -489,10 +510,15 @@ export default function TaskDetailScreen() {
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosScroll}>
                 {filteredPhotos.map((p) => {
-                  const imageSource = p.local_uri || p.url || '';
+                  const imageSource = PhotoService.resolvePhotoUrl(p);
                   const phaseLabel = (p.photo_type || 'STANDARD').toUpperCase();
                   return (
-                    <View key={p.id} style={styles.photoWrapper}>
+                    <TouchableOpacity
+                      key={p.id}
+                      style={styles.photoWrapper}
+                      activeOpacity={0.8}
+                      onPress={() => imageSource && setPreviewPhotoUri(imageSource)}
+                    >
                       <Image
                         source={{ uri: imageSource }}
                         style={styles.photoThumb}
@@ -516,7 +542,7 @@ export default function TaskDetailScreen() {
                           {p.upload_status === 'uploaded' ? '🟢 Wgrane' : '🟡 Offline'}
                         </Text>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </ScrollView>
@@ -640,6 +666,25 @@ export default function TaskDetailScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Fullscreen Photo Preview Modal */}
+      <Modal visible={!!previewPhotoUri} transparent animationType="fade">
+        <View style={styles.photoPreviewOverlay}>
+          <TouchableOpacity
+            style={styles.photoPreviewCloseBtn}
+            onPress={() => setPreviewPhotoUri(null)}
+          >
+            <Text style={styles.photoPreviewCloseText}>✕ Zamknij</Text>
+          </TouchableOpacity>
+          {previewPhotoUri && (
+            <Image
+              source={{ uri: previewPhotoUri }}
+              style={styles.photoPreviewImage}
+              contentFit="contain"
+            />
+          )}
         </View>
       </Modal>
     </SafeAreaView>
@@ -1059,4 +1104,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  photoPreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  photoPreviewCloseBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  photoPreviewCloseText: {
+    color: '#F8FAFC',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  photoPreviewImage: {
+    width: '100%',
+    height: '80%',
+  },
 });
+

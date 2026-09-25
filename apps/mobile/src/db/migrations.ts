@@ -271,6 +271,49 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 4,
+    up: async (db: SQLiteDatabase) => {
+      // 1. profiles table for user display names and avatars
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS profiles (
+          id TEXT PRIMARY KEY,
+          email TEXT,
+          full_name TEXT,
+          role TEXT,
+          company_id TEXT,
+          avatar_url TEXT,
+          created_at TEXT,
+          updated_at TEXT,
+          version INTEGER NOT NULL DEFAULT 1,
+          deleted_at TEXT
+        );
+      `);
+
+      // 2. Safely add missing columns to tasks and task_photos if not already present
+      const addColumnSafe = async (table: string, col: string, def: string) => {
+        try {
+          await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${col} ${def};`);
+        } catch (_) {
+          // Column might already exist
+        }
+      };
+
+      await addColumnSafe('tasks', 'assigned_user_id', 'TEXT');
+      await addColumnSafe('tasks', 'rejection_reason', 'TEXT');
+      await addColumnSafe('tasks', 'is_question', 'INTEGER DEFAULT 0');
+      await addColumnSafe('tasks', 'category', 'TEXT');
+      await addColumnSafe('tasks', 'trade', 'TEXT');
+      await addColumnSafe('tasks', 'priority', 'TEXT');
+
+      await addColumnSafe('task_photos', 'storage_path', 'TEXT');
+      await addColumnSafe('task_photos', 'storage_bucket', 'TEXT');
+      await addColumnSafe('task_photos', 'thumb_url', 'TEXT');
+      await addColumnSafe('task_photos', 'thumb_url_webp', 'TEXT');
+      await addColumnSafe('task_photos', 'caption', 'TEXT');
+      await addColumnSafe('task_photos', 'uploaded_by', 'TEXT');
+    },
+  },
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {

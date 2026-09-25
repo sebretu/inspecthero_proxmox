@@ -8,6 +8,7 @@ export interface TaskPhotoRow {
   task_id: string;
   url: string | null;
   local_uri: string | null;
+  storage_path?: string | null;
   photo_type: string;
   upload_status: 'pending_upload' | 'uploaded' | 'failed';
   created_at: string;
@@ -24,6 +25,90 @@ async function ensurePhotosDirExists(): Promise<void> {
 }
 
 export class PhotoService {
+  /**
+   * Resolve displayable URI from local URI, storage path, or public URL
+   */
+  static resolvePhotoUrl(photo: Partial<TaskPhotoRow>): string {
+    if (photo.local_uri) return photo.local_uri;
+    if (photo.url) {
+      if (photo.url.startsWith('http://') || photo.url.startsWith('https://') || photo.url.startsWith('file://')) {
+        return photo.url;
+      }
+      const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://api.inspecthero.pl';
+      return `${baseUrl}/storage/v1/object/public/task-photos/${photo.url.replace(/^\/+/, '')}`;
+    }
+    if (photo.storage_path) {
+      const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://api.inspecthero.pl';
+      return `${baseUrl}/storage/v1/object/public/task-photos/${photo.storage_path.replace(/^\/+/, '')}`;
+    }
+    return '';
+  }
+
+  /**
+   * Fetch online photos for task and cache them into SQLite
+   */
+  static async fetchOnlineTaskPhotos(taskId: string): Promise<TaskPhotoRow[]> {
+    try {
+      const { data: { session } } = await authSupabase.auth.getSession();
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch(`${apiUrl}/api/task-photos?taskId=${encodeURIComponent(taskId)}`, {
+        headers,
+      });
+
+      if (!res.ok) return [];
+      const json = await res.json();
+      if (!json.ok || !Array.isArray(json.data)) return [];
+
+      const db = await getDatabase();
+      const savedPhotos: TaskPhotoRow[] = [];
+
+      for (const item of json.data) {
+        const resolvedUrl = item.url || (item.storage_path ? PhotoService.resolvePhotoUrl({ storage_path: item.storage_path }) : null);
+        await db.runAsync(`
+          INSERT INTO task_photos (
+            id, task_id, url, storage_path, photo_type, upload_status, created_at, version
+          ) VALUES (?, ?, ?, ?, ?, 'uploaded', ?, 1)
+          ON CONFLICT(id) DO UPDATE SET 
+            url = excluded.url,
+            storage_path = excluded.storage_path,
+            photo_type = excluded.photo_type,
+            upload_status = 'uploaded';
+        `, [
+          item.id,
+          taskId,
+          resolvedUrl,
+          item.storage_path || null,
+          item.photo_type || 'STANDARD',
+          item.created_at || new Date().toISOString(),
+        ]).catch(() => {});
+
+        savedPhotos.push({
+          id: item.id,
+          task_id: taskId,
+          url: resolvedUrl,
+          local_uri: null,
+          storage_path: item.storage_path || null,
+          photo_type: item.photo_type || 'STANDARD',
+          upload_status: 'uploaded',
+          created_at: item.created_at || new Date().toISOString(),
+          version: 1,
+        });
+      }
+
+      return savedPhotos;
+    } catch (e) {
+      console.warn('[PhotoService] Failed to fetch online photos for task:', taskId, e);
+      return [];
+    }
+  }
+
   /**
    * Capture photo with camera and store in persistent local storage & SQLite
    */
