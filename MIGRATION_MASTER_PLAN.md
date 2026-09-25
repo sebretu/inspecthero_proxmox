@@ -1252,6 +1252,23 @@ Ten dział stanowi oficjalny, chronologiczny rejestr wszystkich decyzji technicz
   4. **Przeładowanie Schematu PostgREST:** Wywołano `NOTIFY pgrst, 'reload schema'` bez restartu klastra bazy danych, zachowując 100% uptime serwisu produkcyjnego.
 * **Status:** 🟩 Rozwiązane, wdrożone i w 100% bezpieczne dla danych produkcyjnych.
 
+---
+
+### 📌 Zdarzenie 26: Naprawa renderowania planów PDF w Leaflet CRS.Simple, usunięcie kwadratowych markerów na iOS i dodanie offline tile cache
+* **Data:** 2026-09-25
+* **Symptom / Błąd:**
+  Na iPhone w aplikacji mobilnej zamiast prawidłowych planów PDF i okrągłych markerów pojawiały się kwadraty/prostokąty lub czarny ekran.
+* **Przyczyna:**
+  1. Odwrócony układ współrzędnych i dodatnie szerokości geograficzne `bounds = [[0, 0], [height, width]]` w `L.CRS.Simple`, powodujące wysyłanie przez Leaflet żądań z ujemnym `y`, na co backend odpowiadał 1x1 przezroczystym PNG.
+  2. Brak przekazywania tokena autoryzacji JWT w zapytaniach `L.tileLayer` do endpointu `/api/tiles/...`.
+  3. Błąd kolejności JavaScript: funkcja `window.addTaskMarker` była wywoływana przed jej przypisaniem.
+  4. Nadpisanie `border-radius: 6px` w stylach czujek BMA i obwodów oraz brak WebKit composite prefixów dla iOS WKWebView.
+* **Zastosowane rozwiązanie:**
+  1. W pliku [apps/mobile/app/plans/[id].tsx](file:///home/ubuntu/building-task-manager/apps/mobile/app/plans/[id].tsx) skorygowano geometrię `L.CRS.Simple` (`[0, 0]` do `[-worldPxH / 2^maxZoom, worldPxW / 2^maxZoom]`), podpięto token autoryzacji z aktywnej sesji użytkownika, naprawiono kolejność deklaracji funkcji oraz zabezpieczono tekst markerów przed XSS funkcją `escapeHtml`.
+  2. Poprawiono style CSS `.custom-pin`, `.pin-bma` i `.pin-circuit` (`border-radius: 50% !important`, `box-sizing: border-box`, `-webkit-transform: translateZ(0)`).
+  3. Utworzono [TileCacheService.ts](file:///home/ubuntu/building-task-manager/apps/mobile/src/features/tiles/TileCacheService.ts) z automatycznym wykrywaniem i obsługą kafelków pobranych do pamięci urządzenia w trybie offline.
+* **Status:** 🟩 Rozwiązane, przetestowane i wysłane do `main`.
+
 
 
 
