@@ -35,6 +35,7 @@ export function HeaderNav() {
     { key: 'circuits', label: t('circuits', 'STROMKREISE'), route: '/circuits', icon: '⚡' },
     { key: 'bma_automatik', label: t('bma_automatik', 'BMA AUTOMATIK'), route: '/bma', icon: '🚨' },
     { key: 'maengelanzeige', label: t('maengelanzeige', 'MÄNGELANZEIGE'), route: '/maengelanzeige', icon: '📝' },
+    { key: 'aufmass', label: t('aufmass', 'AUFMASS / PROTOKOŁY'), route: '/aufmass', icon: '📏' },
     ...(hasVdeAccess || isAdmin
       ? [{ key: 'echeck', label: t('echeck', 'E-CHECK (VDE)'), route: '/echeck', icon: '⚡' }]
       : []),
@@ -43,11 +44,10 @@ export function HeaderNav() {
           { key: 'chargers', label: t('chargers', 'LADEGERÄT-INSTALLATION'), route: '/circuits', icon: '🔋' },
           { key: 'cable_auto', label: t('cable_auto', 'KABEL-AUTOMATISIERUNG'), route: '/cables', icon: '🔄' },
           { key: 'pdf_tool', label: t('pdf_tool', 'NARZĘDZIE PDF'), route: '/plans', icon: '📄' },
-          { key: 'aufmass', label: t('aufmass', 'AUFMASS'), route: '/plans', icon: '📏' },
         ]
       : []),
-    { key: 'materials_orders', label: t('materials_orders', 'ANFORDERUNGEN'), route: '/orders', icon: '📦' },
-    { key: 'questions', label: t('questions', 'FRAGEN'), route: '/tasks/create', icon: '❓' },
+    { key: 'materials_orders', label: t('materials_orders', 'MATERIALIEN'), route: '/orders', icon: '📦' },
+    { key: 'questions', label: t('questions', 'FRAGEN'), route: '/tasks/create?type=question', icon: '❓' },
     ...(isMod || isAdmin
       ? [{ key: 'employees', label: t('employees', 'MITARBEITER / ZEITERFASSUNG'), route: '/attendance', icon: '👥' }]
       : []),
@@ -59,6 +59,7 @@ export function HeaderNav() {
     { key: 'symbol_detection', label: '🔍 SYMBOL DETECTION', route: '/plans' },
     { key: 'photo_doc', label: '📸 FOTO-DOKUMENTATION', route: '/projects' },
     { key: 'maengelanzeige', label: '📝 MÄNGELANZEIGE', route: '/maengelanzeige' },
+    { key: 'aufmass_admin', label: '📏 AUFMASS SESSIONS', route: '/aufmass' },
     { key: 'project_progress', label: '📊 PROJEKTFORTSCHRITT', route: '/projects' },
     { key: 'users', label: '👤 BENUTZER', route: '/attendance' },
     { key: 'companies', label: '🏢 UNTERNEHMEN', route: '/projects' },
@@ -68,11 +69,10 @@ export function HeaderNav() {
     { key: 'completed_work', label: '🏆 FERTIGE ARBEITEN', route: '/projects' },
     { key: 'materials_admin', label: '📦 MATERIALIEN (ADMIN)', route: '/orders' },
     { key: 'attendance_list', label: '⏱️ ANWESENHEITSLISTE', route: '/attendance' },
-    { key: 'revisions', label: '🔄 REVISIONEN', route: '/plans' },
-    { key: 'errors', label: '⚠️ FEHLER', route: '/tasks/create' },
+    { key: 'revisions', label: '🔄 REVISIONEN', route: '/tasks/create?type=revision' },
+    { key: 'errors', label: '⚠️ FEHLER', route: '/tasks/create?type=fehler' },
     { key: 'upload_plan', label: '⬆️ PLAN HOCHLADEN', route: '/plans' },
   ];
-
 
   const currentFlag = LANGUAGES.find((l) => l.code === language)?.flag || '🇩🇪';
 
@@ -88,8 +88,52 @@ export function HeaderNav() {
         <Text style={styles.brandName}>et4u</Text>
       </TouchableOpacity>
 
-      {/* Navigation Buttons */}
+      {/* Navigation & Action Buttons Row */}
       <View style={styles.navRow}>
+        {/* Quick Action: New Task ✓ */}
+        <TouchableOpacity
+          style={styles.actionTaskBtn}
+          onPress={() => router.push('/tasks/create?type=task' as any)}
+          activeOpacity={0.8}
+          accessibilityLabel="Nowe Zadanie"
+        >
+          <Text style={styles.actionTaskBtnText}>✓</Text>
+        </TouchableOpacity>
+
+        {/* Quick Action: New Question ? */}
+        <TouchableOpacity
+          style={styles.actionQuestionBtn}
+          onPress={() => router.push('/tasks/create?type=question' as any)}
+          activeOpacity={0.8}
+          accessibilityLabel="Zadaj pytanie"
+        >
+          <Text style={styles.actionQuestionBtnText}>?</Text>
+        </TouchableOpacity>
+
+        {/* Quick Action: New Revision 📋 (Admin only) */}
+        {isAdmin && (
+          <TouchableOpacity
+            style={styles.actionRevisionBtn}
+            onPress={() => router.push('/tasks/create?type=revision' as any)}
+            activeOpacity={0.8}
+            accessibilityLabel="Nowa Rewizja"
+          >
+            <Text style={styles.actionAdminBtnText}>📋</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Quick Action: New Fehler ⚠️ (Admin only) */}
+        {isAdmin && (
+          <TouchableOpacity
+            style={styles.actionFehlerBtn}
+            onPress={() => router.push('/tasks/create?type=fehler' as any)}
+            activeOpacity={0.8}
+            accessibilityLabel="Nowy Błąd"
+          >
+            <Text style={styles.actionAdminBtnText}>⚠️</Text>
+          </TouchableOpacity>
+        )}
+
         {/* MENU ▾ */}
         <TouchableOpacity
           style={styles.menuBtn}
@@ -99,7 +143,7 @@ export function HeaderNav() {
           <Text style={styles.menuBtnText}>{t('menu', 'MENU ▾')}</Text>
         </TouchableOpacity>
 
-        {/* ADMIN ▾ (Only visible if authenticated and role is ADMIN/MOD) */}
+        {/* ADMIN ▾ (Only visible if authenticated and role is ADMIN) */}
         {isAuthenticated && isAdmin && (
           <TouchableOpacity
             style={styles.adminBtn}
@@ -247,11 +291,69 @@ const styles = StyleSheet.create({
   navRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
+  },
+  actionTaskBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#F59E0B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionTaskBtnText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  actionQuestionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#A5B4FC',
+  },
+  actionQuestionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  actionRevisionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#0D9488',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+  },
+  actionFehlerBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  actionAdminBtnText: {
+    fontSize: 14,
   },
   menuBtn: {
     backgroundColor: '#1E293B',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
