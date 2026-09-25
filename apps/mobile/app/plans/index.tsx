@@ -213,12 +213,9 @@ export default function PlansListScreen() {
 
       setProjectGroups(groups);
 
-      // Auto expand all projects & buildings by default
-      const pSet = new Set<string>(groups.map((g) => g.id));
-      const bSet = new Set<string>();
-      groups.forEach((g) => g.buildings.forEach((b) => bSet.add(b.id)));
-      setExpandedProjectIds(pSet);
-      setExpandedBuildingIds(bSet);
+      // Projects are COLLAPSED by default as requested by user
+      setExpandedProjectIds(new Set());
+      setExpandedBuildingIds(new Set());
     } catch (err) {
       console.error('[PlansList] Load error:', err);
     } finally {
@@ -291,9 +288,9 @@ export default function PlansListScreen() {
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <Stack.Screen
         options={{
-          title: 'Plany Budowlane (et4u)',
+          title: 'Baupläne (et4u)',
           headerShown: true,
-          headerBackTitle: 'Wróć',
+          headerBackTitle: 'Zurück',
           headerStyle: { backgroundColor: '#0B0F19' },
           headerTintColor: '#38BDF8',
           headerTitleStyle: { color: '#F8FAFC', fontWeight: '700' },
@@ -304,7 +301,7 @@ export default function PlansListScreen() {
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Szukaj projektu, budynku lub rzutu..."
+          placeholder="Projekt, Gebäude oder Plan suchen..."
           placeholderTextColor="#64748B"
           value={search}
           onChangeText={setSearch}
@@ -312,20 +309,19 @@ export default function PlansListScreen() {
         />
         <View style={styles.summaryInfoRow}>
           <Text style={styles.summaryInfoText}>
-            🏢 {projectGroups.length} projektów • 📐 {totalPlansCount} aktywnych rzutów
+            🏢 {projectGroups.length} Projekte • 📐 {totalPlansCount} Pläne
           </Text>
           <View style={styles.expandToggleRow}>
             <TouchableOpacity
               style={styles.expandBtn}
               onPress={() => {
-                const pSet = new Set<string>(projectGroups.map((g) => g.id));
+                setExpandedProjectIds(new Set(projectGroups.map((g) => g.id)));
                 const bSet = new Set<string>();
                 projectGroups.forEach((g) => g.buildings.forEach((b) => bSet.add(b.id)));
-                setExpandedProjectIds(pSet);
                 setExpandedBuildingIds(bSet);
               }}
             >
-              <Text style={styles.expandBtnText}>Rozwiń wszystko</Text>
+              <Text style={styles.expandBtnText}>⊞ Alle auf</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.expandBtn}
@@ -334,7 +330,7 @@ export default function PlansListScreen() {
                 setExpandedBuildingIds(new Set());
               }}
             >
-              <Text style={styles.expandBtnText}>Zwiń</Text>
+              <Text style={styles.expandBtnText}>⊟ Alle zu</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -343,7 +339,7 @@ export default function PlansListScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#38BDF8" />
-          <Text style={styles.loadingText}>Synchronizacja planów z serwisem...</Text>
+          <Text style={styles.loadingText}>Pläne werden synchronisiert...</Text>
         </View>
       ) : (
         <FlatList

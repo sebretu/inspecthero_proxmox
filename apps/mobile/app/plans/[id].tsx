@@ -57,6 +57,10 @@ interface CircuitPin {
   phase?: number;
   breaker_current?: number;
   fuse_type?: string;
+  cable_type?: string;
+  distribution_board?: string;
+  status?: string;
+  description?: string;
   pos_x: number;
   pos_y: number;
 }
@@ -351,16 +355,20 @@ export default function InteractivePlanScreen() {
                 const py = c.y_norm != null ? Math.round(c.y_norm * fetchedHeight) : (c.pos_y || 200);
                 return {
                   id: c.id,
-                  circuit_name: c.circuit_code || c.short_label || c.full_name || 'Obwód',
-                  circuit_code: c.circuit_code || c.short_label,
-                  short_label: c.short_label,
-                  full_name: c.full_name,
+                  circuit_name: c.circuit_code || c.short_label || c.full_name || '1',
+                  circuit_code: c.circuit_code || c.short_label || '1',
+                  short_label: c.short_label || c.circuit_code,
+                  full_name: c.full_name || c.circuit_name,
                   type: c.type || 'socket',
                   marker_shape: c.marker_shape || 'circle',
-                  color: c.color,
-                  phase: c.phase,
+                  color: c.color || '#0284C7',
+                  phase: c.phase || 1,
                   breaker_current: c.breaker_current,
                   fuse_type: c.breaker_current ? `${c.breaker_curve || 'B'}${c.breaker_current}A` : (c.fuse_type || 'B16'),
+                  cable_type: c.cable_type || c.cable || 'NYM-J 3x1.5',
+                  distribution_board: c.distribution_board || c.uv_name || 'UV-Plan',
+                  status: c.status || 'Gemeldet zur Ausführung',
+                  description: c.description || c.notes,
                   pos_x: px,
                   pos_y: py,
                 };
@@ -1129,20 +1137,28 @@ export default function InteractivePlanScreen() {
             if (!c) return;
             const lat = -(c.pos_y || 500) / Math.pow(2, maxZoom);
             const lng = (c.pos_x || 500) / Math.pow(2, maxZoom);
-            const title = escapeHtml(c.circuit_name || c.circuit_code || c.short_label || 'Obwód');
-            const fuse = escapeHtml(c.fuse_type || (c.breaker_current ? (c.breaker_curve || 'B') + c.breaker_current + 'A' : ''));
-            const fullLabel = fuse ? title + ' (' + fuse + ')' : title;
-            const svgHtml = getVectorSvgHtml(c.type || 'sym_socket', c.color || '#38BDF8', 0);
+            const title = escapeHtml(c.circuit_code || c.circuit_name || c.short_label || '1');
+            const fuse = escapeHtml(c.fuse_type || (c.breaker_current ? (c.breaker_curve || 'B') + c.breaker_current + 'A' : 'B16'));
+            const cableType = escapeHtml(c.cable_type || 'NYM-J 3x1.5');
+            const status = escapeHtml(c.status || 'Gemeldet zur Ausführung');
+            const uv = escapeHtml(c.distribution_board || 'UV');
+            const badgeBg = c.color || '#0284C7';
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="svg-marker-container"><div class="svg-marker-box" style="border-color: #38BDF8aa;">' + svgHtml + '</div><span class="pin-label">' + fullLabel + '</span></div>',
-              iconSize: [36, 36],
-              iconAnchor: [18, 18],
+              html: '<div class="circuit-circle-badge" style="background:' + badgeBg + '; border: 2px solid #FFFFFF; box-shadow: 0 3px 6px rgba(0,0,0,0.5); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-weight: 900; font-size: 11px; letter-spacing: -0.5px;">' + title + '</div>',
+              iconSize: [28, 28],
+              iconAnchor: [14, 14],
             });
 
             const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
-            marker.bindTooltip('<b>' + title + '</b>' + (fuse ? '<br/>Bezpiecznik: ' + fuse : '') + (c.phase ? '<br/>Faza: L' + c.phase : ''), { direction: 'top', className: 'plan-tooltip' });
+            const tooltipHtml = '<b>⚡ Stromkreis ' + title + '</b><br/>' +
+              '🔌 Kabel: ' + cableType + '<br/>' +
+              '🛡️ Sicherung: ' + fuse + (c.phase ? ' (L' + c.phase + ')' : '') + '<br/>' +
+              '🏢 Verteiler: ' + uv + '<br/>' +
+              '📊 Status: ' + status;
+
+            marker.bindTooltip(tooltipHtml, { direction: 'top', className: 'plan-tooltip' });
             marker.on('click', function(e) {
               L.DomEvent.stopPropagation(e);
               send({ type: 'CIRCUIT_CLICK', id: c.id });
@@ -1504,12 +1520,29 @@ export default function InteractivePlanScreen() {
           <View style={styles.drawerHandle} />
           <View style={styles.drawerHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.drawerTitle, { color: '#A855F7' }]}>
-                ⚡ {selectedCircuit.circuit_code || selectedCircuit.circuit_name}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <Text style={[styles.drawerTitle, { color: '#38BDF8' }]}>
+                  ⚡ Stromkreis: {selectedCircuit.circuit_code || selectedCircuit.circuit_name}
+                </Text>
+                <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#38BDF8' }}>
+                  <Text style={{ color: '#38BDF8', fontSize: 11, fontWeight: '800' }}>
+                    {selectedCircuit.fuse_type || 'B16'} {selectedCircuit.phase ? `(L${selectedCircuit.phase})` : ''}
+                  </Text>
+                </View>
+              </View>
               <Text style={styles.drawerDesc}>
-                Typ: {selectedCircuit.type || 'Gniazdo'} • Zabezpieczenie: {selectedCircuit.fuse_type || 'B16'}
+                🔌 Kabel: {selectedCircuit.cable_type || 'NYM-J 3x1.5'} • 🏢 Verteiler: {selectedCircuit.distribution_board || 'UV-Plan'}
               </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                <Text style={{ color: '#22C55E', fontSize: 12, fontWeight: '700' }}>
+                  📊 Status: {selectedCircuit.status || 'Gemeldet zur Ausführung'}
+                </Text>
+              </View>
+              {selectedCircuit.full_name || selectedCircuit.description ? (
+                <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 4 }}>
+                  📝 {selectedCircuit.full_name || selectedCircuit.description}
+                </Text>
+              ) : null}
             </View>
             <TouchableOpacity onPress={() => setSelectedCircuit(null)} style={styles.drawerClose}>
               <Text style={styles.drawerCloseText}>✕</Text>

@@ -20,6 +20,7 @@ export function HeaderNav() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [adminVisible, setAdminVisible] = useState(false);
   const [langPickerVisible, setLangPickerVisible] = useState(false);
+  const [quickActionVisible, setQuickActionVisible] = useState(false);
 
   const navigateTo = (path: string) => {
     setMenuVisible(false);
@@ -90,49 +91,15 @@ export function HeaderNav() {
 
       {/* Navigation & Action Buttons Row */}
       <View style={styles.navRow}>
-        {/* Quick Action: New Task ✓ */}
+        {/* Unified Quick Action Button (+) */}
         <TouchableOpacity
-          style={styles.actionTaskBtn}
-          onPress={() => router.push('/tasks/create?type=task' as any)}
+          style={styles.actionAddBtn}
+          onPress={() => setQuickActionVisible(true)}
           activeOpacity={0.8}
-          accessibilityLabel="Nowe Zadanie"
+          accessibilityLabel={t('quick_create', '+ Erstellen')}
         >
-          <Text style={styles.actionTaskBtnText}>✓</Text>
+          <Text style={styles.actionAddBtnText}>➕</Text>
         </TouchableOpacity>
-
-        {/* Quick Action: New Question ? */}
-        <TouchableOpacity
-          style={styles.actionQuestionBtn}
-          onPress={() => router.push('/tasks/create?type=question' as any)}
-          activeOpacity={0.8}
-          accessibilityLabel="Zadaj pytanie"
-        >
-          <Text style={styles.actionQuestionBtnText}>?</Text>
-        </TouchableOpacity>
-
-        {/* Quick Action: New Revision 📋 (Admin only) */}
-        {isAdmin && (
-          <TouchableOpacity
-            style={styles.actionRevisionBtn}
-            onPress={() => router.push('/tasks/create?type=revision' as any)}
-            activeOpacity={0.8}
-            accessibilityLabel="Nowa Rewizja"
-          >
-            <Text style={styles.actionAdminBtnText}>📋</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Quick Action: New Fehler ⚠️ (Admin only) */}
-        {isAdmin && (
-          <TouchableOpacity
-            style={styles.actionFehlerBtn}
-            onPress={() => router.push('/tasks/create?type=fehler' as any)}
-            activeOpacity={0.8}
-            accessibilityLabel="Nowy Błąd"
-          >
-            <Text style={styles.actionAdminBtnText}>⚠️</Text>
-          </TouchableOpacity>
-        )}
 
         {/* MENU ▾ */}
         <TouchableOpacity
@@ -163,6 +130,103 @@ export function HeaderNav() {
           <Text style={styles.langBtnText}>{currentFlag} {language.toUpperCase()}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Modal: Quick Action Creation Menu (+ Erstellen) */}
+      <Modal
+        visible={quickActionVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setQuickActionVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setQuickActionVisible(false)}>
+          <View style={styles.quickModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>⚡ {t('create_new', 'Neu erstellen')}</Text>
+              <TouchableOpacity onPress={() => setQuickActionVisible(false)}>
+                <Text style={styles.closeBtn}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.quickActionsList}>
+              <TouchableOpacity
+                style={[styles.quickChoice, { borderColor: '#F59E0B' }]}
+                onPress={() => {
+                  setQuickActionVisible(false);
+                  router.push('/tasks/create?type=task' as any);
+                }}
+              >
+                <Text style={styles.quickChoiceIcon}>📋</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.quickChoiceTitle, { color: '#F59E0B' }]}>
+                    {t('new_task', 'Aufgabe erstellen')}
+                  </Text>
+                  <Text style={styles.quickChoiceSubtitle}>
+                    {t('new_task_desc', 'Montageaufgabe, Prüfung oder Baustellenauftrag')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.quickChoice, { borderColor: '#6366F1' }]}
+                onPress={() => {
+                  setQuickActionVisible(false);
+                  router.push('/tasks/create?type=question' as any);
+                }}
+              >
+                <Text style={styles.quickChoiceIcon}>❓</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.quickChoiceTitle, { color: '#818CF8' }]}>
+                    {t('new_question', 'Frage stellen')}
+                  </Text>
+                  <Text style={styles.quickChoiceSubtitle}>
+                    {t('new_question_desc', 'Rückfrage an Bauleiter, Planer oder Meister')}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {isAdmin && (
+                <TouchableOpacity
+                  style={[styles.quickChoice, { borderColor: '#0D9488' }]}
+                  onPress={() => {
+                    setQuickActionVisible(false);
+                    router.push('/tasks/create?type=revision' as any);
+                  }}
+                >
+                  <Text style={styles.quickChoiceIcon}>🔄</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.quickChoiceTitle, { color: '#2DD4BF' }]}>
+                      {t('new_revision', 'Revision erstellen')}
+                    </Text>
+                    <Text style={styles.quickChoiceSubtitle}>
+                      {t('new_revision_desc', 'Planänderung, Umbau oder Nachtrag')}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {isAdmin && (
+                <TouchableOpacity
+                  style={[styles.quickChoice, { borderColor: '#DC2626' }]}
+                  onPress={() => {
+                    setQuickActionVisible(false);
+                    router.push('/tasks/create?type=fehler' as any);
+                  }}
+                >
+                  <Text style={styles.quickChoiceIcon}>⚠️</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.quickChoiceTitle, { color: '#F87171' }]}>
+                      {t('new_fehler', 'Mangel / Fehler melden')}
+                    </Text>
+                    <Text style={styles.quickChoiceSubtitle}>
+                      {t('new_fehler_desc', 'Ausführungsfehler, Schaden oder Abweichung')}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* Modal: MENU (Viewer) */}
       <Modal
@@ -293,63 +357,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
-  actionTaskBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#F59E0B',
+  actionAddBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    backgroundColor: '#0284C7',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    shadowColor: '#F59E0B',
+    borderWidth: 1.5,
+    borderColor: '#38BDF8',
+    shadowColor: '#0284C7',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 3,
   },
-  actionTaskBtnText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '900',
-  },
-  actionQuestionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#4F46E5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#A5B4FC',
-  },
-  actionQuestionBtnText: {
-    color: '#FFFFFF',
+  actionAddBtnText: {
     fontSize: 15,
-    fontWeight: '900',
   },
-  actionRevisionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#0D9488',
+  quickModal: {
+    width: '92%',
+    backgroundColor: '#0F172A',
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#38BDF8',
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  quickActionsList: {
+    marginTop: 10,
+    gap: 10,
+  },
+  quickChoice: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#99F6E4',
+    backgroundColor: '#1E293B',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
   },
-  actionFehlerBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#DC2626',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#FECACA',
+  quickChoiceIcon: {
+    fontSize: 24,
+    marginRight: 12,
   },
-  actionAdminBtnText: {
-    fontSize: 14,
+  quickChoiceTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  quickChoiceSubtitle: {
+    fontSize: 12,
+    color: '#94A3B8',
   },
   menuBtn: {
     backgroundColor: '#1E293B',

@@ -112,12 +112,14 @@ export default function CircuitsScreen() {
         }
       }
 
-      // Fetch active current plans list
+      // Fetch active plans list that actually contain Stromkreise
       const planRows = (await db.getAllAsync(`
         SELECT p.id, p.name, p.project_id, COALESCE(pr.name, '') as project_name 
         FROM plans p 
         LEFT JOIN projects pr ON p.project_id = pr.id 
-        WHERE p.deleted_at IS NULL AND p.id != 'pln-sample-001'
+        WHERE p.deleted_at IS NULL 
+          AND p.id != 'pln-sample-001'
+          AND EXISTS (SELECT 1 FROM stromkreise s WHERE s.plan_id = p.id AND s.deleted_at IS NULL)
         ORDER BY pr.name ASC, p.name ASC;
       `)) as PlanOption[];
       setPlans(planRows);
@@ -207,7 +209,7 @@ export default function CircuitsScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.cardTitle}>{item.circuit_name}</Text>
               <Text style={styles.planSubtitle}>
-                {item.project_name ? `${item.project_name} • ` : ''}{item.plan_name || 'Brak przypisanego planu'}
+                {item.project_name ? `${item.project_name} • ` : ''}{item.plan_name || 'Kein Plan zugewiesen'}
               </Text>
             </View>
           </View>
@@ -218,9 +220,9 @@ export default function CircuitsScreen() {
 
         <View style={styles.cardFooter}>
           <Text style={styles.positionText}>
-            Pozycja na rzucie: X={item.pos_x || 0}, Y={item.pos_y || 0}
+            Plan-Position: X={item.pos_x || 0}, Y={item.pos_y || 0}
           </Text>
-          <Text style={styles.actionLink}>Pokaż na planie 2D →</Text>
+          <Text style={styles.actionLink}>Auf 2D-Plan anzeigen →</Text>
         </View>
       </TouchableOpacity>
     );
@@ -230,9 +232,9 @@ export default function CircuitsScreen() {
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <Stack.Screen
         options={{
-          title: t('circuits', '⚡ Obwody Elektryczne (Stromkreise)'),
+          title: t('circuits', '⚡ Stromkreise & Absicherung'),
           headerShown: true,
-          headerBackTitle: 'Wróć',
+          headerBackTitle: 'Zurück',
           headerStyle: { backgroundColor: '#0B0F19' },
           headerTintColor: '#38BDF8',
           headerTitleStyle: { color: '#F8FAFC', fontWeight: '800' },
@@ -241,14 +243,14 @@ export default function CircuitsScreen() {
 
       {/* Plan Filter Bar */}
       <View style={styles.filterSection}>
-        <Text style={styles.filterHeading}>FILTRUJ WG PLANU:</Text>
+        <Text style={styles.filterHeading}>NACH PLAN FILTERN:</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
           <TouchableOpacity
             style={[styles.chip, selectedPlanId === 'all' && styles.chipActive]}
             onPress={() => setSelectedPlanId('all')}
           >
             <Text style={[styles.chipText, selectedPlanId === 'all' && styles.chipTextActive]}>
-              Wszystkie ({circuits.length})
+              Alle ({circuits.length})
             </Text>
           </TouchableOpacity>
           {plans.map((p) => (
@@ -267,7 +269,7 @@ export default function CircuitsScreen() {
         {/* Search Bar */}
         <TextInput
           style={styles.searchInput}
-          placeholder="Szukaj obwodu (np. 1Q1, B16, UV)..."
+          placeholder="Stromkreis suchen (z.B. 1Q1, B16, UV)..."
           placeholderTextColor="#64748B"
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -278,7 +280,7 @@ export default function CircuitsScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#38BDF8" />
-          <Text style={styles.loadingText}>Ładowanie obwodów elektrycznych...</Text>
+          <Text style={styles.loadingText}>Stromkreise werden geladen...</Text>
         </View>
       ) : (
         <FlatList
@@ -290,9 +292,9 @@ export default function CircuitsScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>⚡</Text>
-              <Text style={styles.emptyTitle}>Brak obwodów elektrycznych</Text>
+              <Text style={styles.emptyTitle}>Keine Stromkreise gefunden</Text>
               <Text style={styles.emptySub}>
-                Wybierz inny plan lub dodaj obwody bezpośrednio na rzucie PDF.
+                Wählen Sie einen anderen Plan oder fügen Sie Stromkreise direkt im Plan ein.
               </Text>
             </View>
           }

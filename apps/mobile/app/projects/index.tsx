@@ -111,9 +111,9 @@ export default function ProjectsScreen() {
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <Stack.Screen
         options={{
-          title: 'Projekty',
+          title: 'Bauprojekte (et4u)',
           headerShown: true,
-          headerBackTitle: 'Wstecz',
+          headerBackTitle: 'Zurück',
           headerStyle: { backgroundColor: '#0B0F19' },
           headerTintColor: '#38BDF8',
           headerTitleStyle: { color: '#F8FAFC', fontWeight: '700' },
@@ -123,7 +123,7 @@ export default function ProjectsScreen() {
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Szukaj projektu budowlanego..."
+          placeholder="Projekte suchen..."
           placeholderTextColor="#64748B"
           value={search}
           onChangeText={setSearch}
@@ -134,7 +134,7 @@ export default function ProjectsScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#38BDF8" />
-          <Text style={styles.loadingText}>Ładowanie projektów z lokalnej bazy...</Text>
+          <Text style={styles.loadingText}>Projekte werden geladen...</Text>
         </View>
       ) : (
         <FlatList
@@ -151,9 +151,9 @@ export default function ProjectsScreen() {
           }
           ListEmptyComponent={
             <View style={styles.center}>
-              <Text style={styles.emptyTitle}>Brak projektów</Text>
+              <Text style={styles.emptyTitle}>Keine Projekte</Text>
               <Text style={styles.emptySubtitle}>
-                Nie znaleziono projektów pasujących do filtra.
+                Keine passenden Projekte gefunden.
               </Text>
             </View>
           }
@@ -166,23 +166,23 @@ export default function ProjectsScreen() {
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>{item.name}</Text>
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{item.status || 'AKTYWNY'}</Text>
+                  <Text style={styles.badgeText}>{item.status || 'AKTIV'}</Text>
                 </View>
               </View>
 
               <View style={styles.metaRow}>
                 <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Budynki</Text>
+                  <Text style={styles.metaLabel}>Gebäude</Text>
                   <Text style={styles.metaValue}>{item.building_count || 1}</Text>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Zadania offline</Text>
+                  <Text style={styles.metaLabel}>Aufgaben</Text>
                   <Text style={styles.metaValue}>{item.task_count || 3}</Text>
                 </View>
                 <View style={styles.divider} />
                 <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>Baza</Text>
+                  <Text style={styles.metaLabel}>Datenbank</Text>
                   <Text style={styles.metaValue}>SQLite (WAL)</Text>
                 </View>
               </View>
