@@ -247,6 +247,30 @@ export const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 3,
+    up: async (db: SQLiteDatabase) => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS plan_bma_symbols (
+          id TEXT PRIMARY KEY,
+          plan_id TEXT NOT NULL,
+          symbol_type TEXT NOT NULL,
+          x_norm REAL NOT NULL,
+          y_norm REAL NOT NULL,
+          label TEXT,
+          loop_number TEXT,
+          address TEXT,
+          description TEXT,
+          created_by TEXT,
+          created_at TEXT,
+          updated_at TEXT,
+          version INTEGER NOT NULL DEFAULT 1,
+          deleted_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_plan_bma_symbols_plan ON plan_bma_symbols(plan_id) WHERE deleted_at IS NULL;
+      `);
+    },
+  },
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {
