@@ -1146,9 +1146,9 @@ export default function InteractivePlanScreen() {
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="circuit-circle-badge" style="background:' + badgeBg + '; border: 2px solid #FFFFFF; box-shadow: 0 3px 6px rgba(0,0,0,0.5); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-weight: 900; font-size: 11px; letter-spacing: -0.5px;">' + title + '</div>',
-              iconSize: [28, 28],
-              iconAnchor: [14, 14],
+              html: '<div class="circuit-circle-badge" style="background:' + badgeBg + '; border: 2px solid #FFFFFF; box-shadow: 0 3px 6px rgba(0,0,0,0.5); min-width: 28px; height: 28px; padding: 0 6px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-weight: 900; font-size: 11px; letter-spacing: -0.3px; white-space: nowrap;"><span style="font-size:10px; margin-right:2px;">⚡</span>' + title + '</div>',
+              iconSize: [32, 28],
+              iconAnchor: [16, 14],
             });
 
             const marker = L.marker([lat, lng], { icon: icon }).addTo(map);

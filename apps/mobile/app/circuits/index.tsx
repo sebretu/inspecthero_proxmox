@@ -183,11 +183,6 @@ export default function CircuitsScreen() {
   });
 
   const renderCircuitItem = ({ item }: { item: StromkreisRow }) => {
-    const isCEE = item.circuit_name.toUpperCase().includes('CEE') || (item.fuse_type && item.fuse_type.includes('32A'));
-    const isLight = item.circuit_name.toUpperCase().includes('L') || item.circuit_name.toUpperCase().includes('BELEUCHTUNG');
-    const badgeColor = isCEE ? '#EF4444' : isLight ? '#EAB308' : '#3B82F6';
-    const icon = isCEE ? '⚡' : isLight ? '💡' : '🔌';
-
     return (
       <TouchableOpacity
         style={styles.card}
@@ -203,18 +198,18 @@ export default function CircuitsScreen() {
       >
         <View style={styles.cardHeader}>
           <View style={styles.titleRow}>
-            <View style={[styles.iconBadge, { backgroundColor: `${badgeColor}20`, borderColor: badgeColor }]}>
-              <Text style={styles.iconText}>{icon}</Text>
+            <View style={[styles.iconBadge, { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: '#38BDF8' }]}>
+              <Text style={styles.iconText}>⚡</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{item.circuit_name}</Text>
+              <Text style={styles.cardTitle}>Stromkreis: {item.circuit_name}</Text>
               <Text style={styles.planSubtitle}>
                 {item.project_name ? `${item.project_name} • ` : ''}{item.plan_name || 'Kein Plan zugewiesen'}
               </Text>
             </View>
           </View>
-          <View style={[styles.fuseBadge, { borderColor: badgeColor }]}>
-            <Text style={[styles.fuseText, { color: badgeColor }]}>{item.fuse_type || 'B16'}</Text>
+          <View style={[styles.fuseBadge, { borderColor: '#38BDF8' }]}>
+            <Text style={[styles.fuseText, { color: '#38BDF8' }]}>{item.fuse_type || 'B16'}</Text>
           </View>
         </View>
 
