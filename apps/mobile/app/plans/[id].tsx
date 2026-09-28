@@ -243,7 +243,7 @@ export default function InteractivePlanScreen() {
 
       const activePlanId = id || planRow?.id || 'pln-sample-001';
 
-      // 2. Fetch metadata from server to get EXACT grid and tile sizes
+      // 2. Fetch metadata (Check local meta.json first for instant offline rendering)
       let tileSize = 256;
       let maxZoom = 5;
       let gridW = 9;
@@ -251,6 +251,16 @@ export default function InteractivePlanScreen() {
       let fetchedWidth = planRow?.width || 1920;
       let fetchedHeight = planRow?.height || 1080;
       let activeProjectId = planRow?.project_id || '';
+
+      const localMeta = await TileCacheService.getLocalMeta(activePlanId);
+      if (localMeta) {
+        if (localMeta.tileSize) tileSize = localMeta.tileSize;
+        if (localMeta.maxZoom) maxZoom = localMeta.maxZoom;
+        if (localMeta.gridW) gridW = localMeta.gridW;
+        if (localMeta.gridH) gridH = localMeta.gridH;
+        if (localMeta.imageWidth) fetchedWidth = localMeta.imageWidth;
+        if (localMeta.imageHeight) fetchedHeight = localMeta.imageHeight;
+      }
 
       try {
         const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
@@ -359,6 +369,7 @@ export default function InteractivePlanScreen() {
 
           const orient = metaObj.orientation || (metaObj.rotation === 270 ? 'vertical' : 'horizontal');
           const rot = metaObj.rotation != null ? metaObj.rotation : (orient === 'vertical' ? 270 : 0);
+          const kabel = metaObj.kabeltyp || metaObj.cable_type || metaObj.cable || c.cable_type || c.kabeltyp || '';
 
           return {
             id: c.id,
@@ -368,6 +379,7 @@ export default function InteractivePlanScreen() {
             full_name: c.full_name || c.circuit_name,
             type: c.type || 'socket',
             fuse_type: c.fuse_type || 'B16',
+            cable_type: kabel,
             status: c.status || 'open',
             orientation: orient,
             rotation: rot,
@@ -395,6 +407,7 @@ export default function InteractivePlanScreen() {
 
                 const orient = metaObj.orientation || c.orientation || (metaObj.rotation === 270 ? 'vertical' : 'horizontal');
                 const rot = metaObj.rotation != null ? metaObj.rotation : (orient === 'vertical' ? 270 : 0);
+                const kabel = metaObj.kabeltyp || metaObj.cable_type || metaObj.cable || c.cable_type || c.kabeltyp || '';
 
                 db.runAsync(
                   `INSERT INTO stromkreise (id, plan_id, circuit_name, circuit_code, short_label, full_name, type, fuse_type, x_norm, y_norm, status, metadata, version)
@@ -433,7 +446,7 @@ export default function InteractivePlanScreen() {
                   full_name: c.full_name || c.circuit_name,
                   type: c.type || 'socket',
                   fuse_type: c.breaker_current ? `${c.breaker_curve || 'B'}${c.breaker_current}A` : (c.fuse_type || 'B16'),
-                  cable_type: c.cable_type || c.cable || 'NYM-J 3x1.5',
+                  cable_type: kabel,
                   status: c.status || 'open',
                   orientation: orient,
                   rotation: rot,
@@ -1303,6 +1316,10 @@ export default function InteractivePlanScreen() {
             if (fullName) {
               tooltipHtml += '<div style="font-size: 10px; color: #38BDF8; font-weight: 700; margin-top: 2px;">🏷️ ' + fullName + '</div>';
             }
+            const cableType = escapeHtml(c.cable_type || metaObj.kabeltyp || metaObj.cable_type || metaObj.cable || '');
+            if (cableType) {
+              tooltipHtml += '<div style="font-size: 10px; color: #F59E0B; font-weight: 600; margin-top: 2px;">🔌 ' + cableType + '</div>';
+            }
             tooltipHtml += '<div style="font-size: 9px; opacity: 0.8; margin-top: 2px;">Status: ' + st + '</div>';
 
             marker.bindTooltip(tooltipHtml, { direction: 'top', className: 'plan-tooltip' });
@@ -1614,7 +1631,7 @@ export default function InteractivePlanScreen() {
           <WebView
             ref={webViewRef}
             originWhitelist={['*']}
-            source={{ html: generateLeafletHtml() }}
+            source={{ html: generateLeafletHtml(), baseUrl: 'file:///' }}
             style={styles.webView}
             onMessage={handleWebViewMessage}
             javaScriptEnabled={true}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,15 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  TextInput,
   RefreshControl,
+  TextInput,
   Alert,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDatabase } from '../../src/db/database';
 import { authSupabase } from '../../src/auth/authClient';
-import { TileCacheService, ProjectCacheProgress } from '../../src/features/tiles/TileCacheService';
+import { TileCacheService } from '../../src/features/tiles/TileCacheService';
 import { TileDownloadManager, DownloadManagerState } from '../../src/features/tiles/TileDownloadManager';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
@@ -77,7 +77,90 @@ export default function PlansListScreen() {
     } catch {}
   };
 
-  const syncPlansAndProjectsFromApi = async (db: any) => {
+  const queryLocalPlans = async (db: any) => {
+    const projs = ((await db.getAllAsync(
+      "SELECT id, name, company_name, address FROM projects WHERE deleted_at IS NULL ORDER BY name ASC;"
+    )) as { id: string; name: string; company_name?: string; address?: string }[]) || [];
+
+    const allBuildings = ((await db.getAllAsync(
+      "SELECT id, project_id, name FROM buildings WHERE deleted_at IS NULL ORDER BY name ASC;"
+    )) as { id: string; project_id: string; name: string }[]) || [];
+
+    const allPlans = ((await db.getAllAsync(`
+      SELECT 
+        p.id, 
+        p.name, 
+        p.project_id,
+        b.id as building_id,
+        COALESCE(b.name, 'Główny budynek') as building_name,
+        COALESCE(f.name, '') as floor_name,
+        (SELECT COUNT(*) FROM tasks t WHERE t.plan_id = p.id AND t.deleted_at IS NULL) as task_count,
+        (SELECT COUNT(*) FROM bma_devices bd WHERE bd.plan_id = p.id AND bd.deleted_at IS NULL) as bma_count,
+        (SELECT COUNT(*) FROM stromkreise s WHERE s.plan_id = p.id AND s.deleted_at IS NULL) as circuit_count
+      FROM plans p
+      LEFT JOIN floors f ON p.floor_id = f.id
+      LEFT JOIN buildings b ON f.building_id = b.id
+      WHERE p.deleted_at IS NULL
+      ORDER BY p.name ASC;
+    `)) as PlanItem[]) || [];
+
+    const cachedSet = new Set<string>();
+    if (allPlans) {
+      for (const pl of allPlans) {
+        const isCached = await TileCacheService.isPlanCachedLocally(pl.id);
+        if (isCached) cachedSet.add(pl.id);
+      }
+    }
+    setCachedPlanIds(cachedSet);
+
+    const groups: ProjectGroup[] = (projs || []).map((pr: any) => {
+      const prPlans = (allPlans || []).filter((pl: any) => pl.project_id === pr.id);
+      prPlans.forEach((p: any) => {
+        p.isCached = cachedSet.has(p.id);
+      });
+      const prBuildings = (allBuildings || []).filter((b: any) => b.project_id === pr.id);
+
+      const buildingMap: Record<string, BuildingGroup> = {};
+      for (const b of prBuildings) {
+        buildingMap[b.id] = { id: b.id, name: b.name, plans: [] };
+      }
+
+      const unassignedPlans: PlanItem[] = [];
+      for (const pl of prPlans) {
+        if (pl.building_id && buildingMap[pl.building_id]) {
+          buildingMap[pl.building_id].plans.push(pl);
+        } else {
+          unassignedPlans.push(pl);
+        }
+      }
+
+      const bGroups: BuildingGroup[] = Object.values(buildingMap).filter((b) => b.plans.length > 0);
+      if (unassignedPlans.length > 0) {
+        bGroups.unshift({
+          id: `unassigned-${pr.id}`,
+          name: 'Plany kondygnacji',
+          plans: unassignedPlans,
+        });
+      }
+
+      const totalPlans = prPlans.length;
+      const isFullyCached = totalPlans > 0 && prPlans.every((p: any) => p.isCached);
+
+      return {
+        id: pr.id,
+        name: pr.name,
+        company_name: pr.company_name,
+        address: pr.address,
+        buildings: bGroups,
+        totalPlansCount: totalPlans,
+        isFullyCached,
+      };
+    });
+
+    setProjectGroups(groups);
+  };
+
+  const syncPlansAndProjectsFromApiBackground = async (db: any) => {
     try {
       const { data: { session } } = await authSupabase.auth.getSession();
       const headers: Record<string, string> = {};
@@ -85,7 +168,6 @@ export default function PlansListScreen() {
         headers['Authorization'] = `Bearer ${session.access_token}`;
       }
 
-      // 1. Fetch user's active company projects (matching web)
       const pRes = await fetch(`${API_BASE_URL}/api/projects`, { headers });
       if (!pRes.ok) return;
 
@@ -95,64 +177,69 @@ export default function PlansListScreen() {
 
       const now = new Date().toISOString();
 
-      for (const p of apiProjects) {
-        const compName = p.companies?.name || null;
-        await db.runAsync(
-          `INSERT INTO projects (id, name, company_name, address, status, created_at, updated_at, version)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-           ON CONFLICT(id) DO UPDATE SET name = excluded.name, company_name = excluded.company_name, address = excluded.address, updated_at = excluded.updated_at;`,
-          [p.id, p.name, compName, p.address || null, p.status || 'ACTIVE', p.created_at || now, p.updated_at || now]
-        );
+      await Promise.all(
+        apiProjects.map(async (p: any) => {
+          const compName = p.companies?.name || null;
+          await db.runAsync(
+            `INSERT INTO projects (id, name, company_name, address, status, created_at, updated_at, version)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+             ON CONFLICT(id) DO UPDATE SET name = excluded.name, company_name = excluded.company_name, address = excluded.address, updated_at = excluded.updated_at;`,
+            [p.id, p.name, compName, p.address || null, p.status || 'ACTIVE', p.created_at || now, p.updated_at || now]
+          );
 
-        // 2. Fetch buildings for this project
-        const bRes = await fetch(`${API_BASE_URL}/api/buildings?projectId=${encodeURIComponent(p.id)}`, { headers });
-        if (bRes.ok) {
-          const bJson = await bRes.json();
-          const bList = Array.isArray(bJson) ? bJson : (bJson?.data || []);
-          for (const b of bList) {
-            await db.runAsync(
-              `INSERT INTO buildings (id, project_id, name, created_at, updated_at, version)
-               VALUES (?, ?, ?, ?, ?, 1)
-               ON CONFLICT(id) DO UPDATE SET name = excluded.name, project_id = excluded.project_id, updated_at = excluded.updated_at;`,
-              [b.id, p.id, b.name, b.created_at || now, b.updated_at || now]
-            );
-          }
-        }
+          const [bRes, fRes, planRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/buildings?projectId=${encodeURIComponent(p.id)}`, { headers }),
+            fetch(`${API_BASE_URL}/api/floors?projectId=${encodeURIComponent(p.id)}`, { headers }),
+            fetch(`${API_BASE_URL}/api/plans?projectId=${encodeURIComponent(p.id)}`, { headers }),
+          ]);
 
-        // 3. Fetch floors for this project
-        const fRes = await fetch(`${API_BASE_URL}/api/floors?projectId=${encodeURIComponent(p.id)}`, { headers });
-        if (fRes.ok) {
-          const fJson = await fRes.json();
-          const fList = Array.isArray(fJson) ? fJson : (fJson?.data || []);
-          for (const f of fList) {
-            await db.runAsync(
-              `INSERT INTO floors (id, building_id, name, level_number, created_at, updated_at, version)
-               VALUES (?, ?, ?, ?, ?, ?, 1)
-               ON CONFLICT(id) DO UPDATE SET name = excluded.name, building_id = excluded.building_id, updated_at = excluded.updated_at;`,
-              [f.id, f.building_id, f.name, f.level || 0, f.created_at || now, f.updated_at || now]
-            );
+          if (bRes.ok) {
+            const bJson = await bRes.json();
+            const bList = Array.isArray(bJson) ? bJson : (bJson?.data || []);
+            for (const b of bList) {
+              await db.runAsync(
+                `INSERT INTO buildings (id, project_id, name, created_at, updated_at, version)
+                 VALUES (?, ?, ?, ?, ?, 1)
+                 ON CONFLICT(id) DO UPDATE SET name = excluded.name, project_id = excluded.project_id, updated_at = excluded.updated_at;`,
+                [b.id, p.id, b.name, b.created_at || now, b.updated_at || now]
+              );
+            }
           }
-        }
 
-        // 4. Fetch all plans for this project
-        const planRes = await fetch(`${API_BASE_URL}/api/plans?projectId=${encodeURIComponent(p.id)}`, { headers });
-        if (planRes.ok) {
-          const planJson = await planRes.json();
-          const plansList = Array.isArray(planJson) ? planJson : (planJson?.data || []);
-          for (const pl of plansList) {
-            const bName = pl.floors?.buildings?.name || '';
-            const fName = pl.floors?.name || '';
-            const rawName = pl.name || pl.pdf_path?.split('/')?.pop() || 'Plan';
-            const planName = [bName, fName, (rawName && rawName !== fName) ? rawName : ''].filter(Boolean).join(' · ') || rawName || 'Plan architektoniczny';
-            await db.runAsync(
-              `INSERT INTO plans (id, project_id, floor_id, name, width, height, created_at, updated_at, version)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-               ON CONFLICT(id) DO UPDATE SET name = excluded.name, project_id = excluded.project_id, floor_id = excluded.floor_id, updated_at = excluded.updated_at;`,
-              [pl.id, p.id, pl.floor_id || null, planName, pl.image_width || 1920, pl.image_height || 1080, pl.created_at || now, pl.updated_at || now]
-            );
+          if (fRes.ok) {
+            const fJson = await fRes.json();
+            const fList = Array.isArray(fJson) ? fJson : (fJson?.data || []);
+            for (const f of fList) {
+              await db.runAsync(
+                `INSERT INTO floors (id, building_id, name, level_number, created_at, updated_at, version)
+                 VALUES (?, ?, ?, ?, ?, ?, 1)
+                 ON CONFLICT(id) DO UPDATE SET name = excluded.name, building_id = excluded.building_id, updated_at = excluded.updated_at;`,
+                [f.id, f.building_id, f.name, f.level || 0, f.created_at || now, f.updated_at || now]
+              );
+            }
           }
-        }
-      }
+
+          if (planRes.ok) {
+            const planJson = await planRes.json();
+            const plansList = Array.isArray(planJson) ? planJson : (planJson?.data || []);
+            for (const pl of plansList) {
+              const bName = pl.floors?.buildings?.name || '';
+              const fName = pl.floors?.name || '';
+              const rawName = pl.name || 'Plan';
+              const planName = [bName, fName, (rawName && rawName !== fName) ? rawName : ''].filter(Boolean).join(' · ') || rawName || 'Plan architektoniczny';
+              await db.runAsync(
+                `INSERT INTO plans (id, project_id, floor_id, name, width, height, created_at, updated_at, version)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+                 ON CONFLICT(id) DO UPDATE SET name = excluded.name, project_id = excluded.project_id, floor_id = excluded.floor_id, updated_at = excluded.updated_at;`,
+                [pl.id, p.id, pl.floor_id || null, planName, pl.image_width || 1920, pl.image_height || 1080, pl.created_at || now, pl.updated_at || now]
+              );
+            }
+          }
+        })
+      );
+
+      await queryLocalPlans(db);
+      await refreshCacheStats();
     } catch (apiErr) {
       console.warn('[PlansList] Live sync error:', apiErr);
     }
@@ -161,107 +248,16 @@ export default function PlansListScreen() {
   const loadData = useCallback(async () => {
     try {
       const db = await getDatabase();
-      await syncPlansAndProjectsFromApi(db);
-
-      // Query projects, buildings and plans
-      const projs = await db.getAllAsync<{ id: string; name: string; company_name?: string; address?: string }>(
-        "SELECT id, name, company_name, address FROM projects WHERE deleted_at IS NULL ORDER BY name ASC;"
-      );
-
-      const allBuildings = await db.getAllAsync<{ id: string; project_id: string; name: string }>(
-        "SELECT id, project_id, name FROM buildings WHERE deleted_at IS NULL ORDER BY name ASC;"
-      );
-
-      const allPlans = await db.getAllAsync<PlanItem>(`
-        SELECT 
-          p.id, 
-          p.name, 
-          p.project_id,
-          b.id as building_id,
-          COALESCE(b.name, 'Główny budynek') as building_name,
-          COALESCE(f.name, '') as floor_name,
-          (SELECT COUNT(*) FROM tasks t WHERE t.plan_id = p.id AND t.deleted_at IS NULL) as task_count,
-          (SELECT COUNT(*) FROM bma_devices bd WHERE bd.plan_id = p.id AND bd.deleted_at IS NULL) as bma_count,
-          (SELECT COUNT(*) FROM stromkreise s WHERE s.plan_id = p.id AND s.deleted_at IS NULL) as circuit_count
-        FROM plans p
-        LEFT JOIN floors f ON p.floor_id = f.id
-        LEFT JOIN buildings b ON f.building_id = b.id
-        WHERE p.deleted_at IS NULL
-        ORDER BY p.name ASC;
-      `);
-
-      // Check cache status for each plan
-      const cachedSet = new Set<string>();
-      if (allPlans) {
-        for (const pl of allPlans) {
-          const isCached = await TileCacheService.isPlanCachedLocally(pl.id);
-          if (isCached) cachedSet.add(pl.id);
-        }
-      }
-      setCachedPlanIds(cachedSet);
-
-      const matchedPlanIds = new Set<string>();
-      const groups: ProjectGroup[] = projs.map((pr) => {
-        const prPlans = (allPlans || []).filter((pl) => pl.project_id === pr.id);
-        prPlans.forEach((p) => {
-          matchedPlanIds.add(p.id);
-          p.isCached = cachedSet.has(p.id);
-        });
-        const prBuildings = (allBuildings || []).filter((b) => b.project_id === pr.id);
-
-        const buildingMap: Record<string, BuildingGroup> = {};
-        for (const b of prBuildings) {
-          buildingMap[b.id] = { id: b.id, name: b.name, plans: [] };
-        }
-
-        for (const pl of prPlans) {
-          const bId = pl.building_id || 'unassigned';
-          if (!buildingMap[bId]) {
-            buildingMap[bId] = { id: bId, name: pl.building_name || 'Główny budynek', plans: [] };
-          }
-          buildingMap[bId].plans.push(pl);
-        }
-
-        const buildingsList = Object.values(buildingMap).filter((bg) => bg.plans.length > 0 || prBuildings.some((b) => b.id === bg.id));
-        const allPrPlansCached = prPlans.length > 0 && prPlans.every((pl) => cachedSet.has(pl.id));
-
-        return {
-          id: pr.id,
-          name: pr.name,
-          company_name: pr.company_name,
-          address: pr.address,
-          buildings: buildingsList,
-          totalPlansCount: prPlans.length,
-          isFullyCached: allPrPlansCached,
-        };
-      });
-
-      // Catch any standalone plans
-      const orphanPlans = (allPlans || []).filter((pl) => !matchedPlanIds.has(pl.id));
-      if (orphanPlans.length > 0) {
-        orphanPlans.forEach((p) => {
-          p.isCached = cachedSet.has(p.id);
-        });
-        groups.push({
-          id: 'unassigned-project',
-          name: 'Pozostałe / Rzuty architektoniczne',
-          buildings: [
-            {
-              id: 'unassigned-building',
-              name: 'Wszystkie rzuty',
-              plans: orphanPlans,
-            },
-          ],
-          totalPlansCount: orphanPlans.length,
-          isFullyCached: orphanPlans.every((pl) => cachedSet.has(pl.id)),
-        });
-      }
-
-      setProjectGroups(groups);
+      // 1. Instant load from SQLite (0ms UI render)
+      await queryLocalPlans(db);
       await refreshCacheStats();
+      setLoading(false);
+      setRefreshing(false);
+
+      // 2. Non-blocking background sync
+      syncPlansAndProjectsFromApiBackground(db);
     } catch (err) {
       console.error('[PlansList] Load error:', err);
-    } finally {
       setLoading(false);
       setRefreshing(false);
     }
@@ -273,7 +269,9 @@ export default function PlansListScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadData();
+    getDatabase().then((db) => {
+      syncPlansAndProjectsFromApiBackground(db).finally(() => setRefreshing(false));
+    });
   };
 
   const handleDownloadProjectOffline = async (group: ProjectGroup) => {
@@ -321,62 +319,72 @@ export default function PlansListScreen() {
     });
   };
 
-  // Filter groups based on search
-  const q = search.toLowerCase().trim();
-  const filteredGroups = projectGroups
-    .map((g) => {
-      const matchesProjectName = g.name.toLowerCase().includes(q) || (g.company_name && g.company_name.toLowerCase().includes(q));
-      const filteredBuildings = g.buildings
-        .map((b) => {
-          const matchesBuildingName = b.name.toLowerCase().includes(q);
-          const matchingPlans = b.plans.filter(
-            (p) =>
-              matchesProjectName ||
-              matchesBuildingName ||
-              p.name.toLowerCase().includes(q) ||
-              (p.floor_name && p.floor_name.toLowerCase().includes(q))
-          );
+  const q = search.trim().toLowerCase();
+  const filteredGroups = useMemo(() => {
+    if (!q) return projectGroups;
+    return projectGroups
+      .map((g) => {
+        const matchesProject = g.name.toLowerCase().includes(q) || (g.company_name && g.company_name.toLowerCase().includes(q));
+        const filteredBuildings = g.buildings
+          .map((b) => {
+            const matchesBuilding = b.name.toLowerCase().includes(q);
+            const matchingPlans = b.plans.filter(
+              (p) => p.name.toLowerCase().includes(q) || (p.floor_name && p.floor_name.toLowerCase().includes(q))
+            );
+            if (matchesBuilding || matchingPlans.length > 0) {
+              return {
+                ...b,
+                plans: matchesBuilding ? b.plans : matchingPlans,
+              };
+            }
+            return null;
+          })
+          .filter(Boolean) as BuildingGroup[];
+
+        if (matchesProject || filteredBuildings.length > 0) {
           return {
-            ...b,
-            plans: q ? matchingPlans : b.plans,
-            hasMatch: matchesBuildingName || matchingPlans.length > 0,
+            ...g,
+            buildings: matchesProject ? g.buildings : filteredBuildings,
           };
-        })
-        .filter((b) => (q ? b.hasMatch : true));
+        }
+        return null;
+      })
+      .filter(Boolean) as ProjectGroup[];
+  }, [projectGroups, q]);
 
-      return {
-        ...g,
-        buildings: filteredBuildings,
-        hasMatch: matchesProjectName || filteredBuildings.length > 0,
-      };
-    })
-    .filter((g) => (q ? g.hasMatch : true));
-
-  const totalPlansCount = projectGroups.reduce((acc, g) => acc + g.totalPlansCount, 0);
+  const totalPlansCount = useMemo(() => {
+    return projectGroups.reduce((acc, g) => acc + g.totalPlansCount, 0);
+  }, [projectGroups]);
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <Stack.Screen
         options={{
-          title: 'Baupläne (et4u)',
+          title: 'Baupläne (Leaflet)',
           headerShown: true,
-          headerBackTitle: 'Zurück',
+          headerBackTitle: 'Wstecz',
           headerStyle: { backgroundColor: '#0B0F19' },
           headerTintColor: '#38BDF8',
-          headerTitleStyle: { color: '#F8FAFC', fontWeight: '700' },
+          headerTitleStyle: { color: '#F8FAFC', fontWeight: '800' },
         }}
       />
 
-      {/* Top Offline Storage & Search Header */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Projekt, Gebäude oder Plan suchen..."
-          placeholderTextColor="#64748B"
-          value={search}
-          onChangeText={setSearch}
-          clearButtonMode="while-editing"
-        />
+      {/* Header controls & stats */}
+      <View style={styles.headerControls}>
+        <View style={styles.searchSection}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Pläne oder Geschosse durchsuchen..."
+            placeholderTextColor="#64748B"
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search ? (
+            <TouchableOpacity onPress={() => setSearch('')} style={styles.clearSearchBtn}>
+              <Text style={styles.clearSearchText}>✕</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
         {/* Storage status & Controls */}
         <View style={styles.storageStatusRow}>
@@ -525,103 +533,85 @@ export default function PlansListScreen() {
                         group.isFullyCached && styles.projectOfflineBtnCached,
                         isDownloadingThis && styles.projectOfflineBtnActive,
                       ]}
-                      disabled={isDownloadingThis}
                       onPress={() => handleDownloadProjectOffline(group)}
+                      disabled={isDownloadingThis}
                     >
                       {isDownloadingThis ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
                         <Text style={styles.projectOfflineBtnText}>
-                          {group.isFullyCached ? '🔄 Aktualisieren' : '⬇️ Offline'}
+                          {group.isFullyCached ? '💾 Aktualny' : '⬇️ Offline'}
                         </Text>
                       )}
                     </TouchableOpacity>
 
-                    <Text style={styles.chevron}>{isExpanded ? '▲' : '▼'}</Text>
+                    <Text style={styles.accordionArrow}>{isExpanded ? '▲' : '▼'}</Text>
                   </View>
                 </TouchableOpacity>
 
-                {/* Project Accordion Body (Buildings & Plans) */}
+                {/* Buildings & Plans Container */}
                 {isExpanded && (
-                  <View style={styles.accordionBody}>
-                    {group.buildings.length === 0 ? (
-                      <View style={styles.emptyPlansBox}>
-                        <Text style={styles.emptyPlansText}>Brak zdefiniowanych budynków i planów dla tego projektu.</Text>
-                      </View>
-                    ) : (
-                      group.buildings.map((bldg) => {
-                        const isBldgExpanded = expandedBuildingIds.has(bldg.id) || q.length > 0;
-                        return (
-                          <View key={bldg.id} style={styles.buildingContainer}>
-                            {/* Building Header */}
-                            <TouchableOpacity
-                              style={styles.buildingHeader}
-                              activeOpacity={0.7}
-                              onPress={() => toggleBuildingExpand(bldg.id)}
-                            >
-                              <View style={styles.buildingHeaderLeft}>
-                                <Text style={styles.buildingIcon}>🏢</Text>
-                                <Text style={styles.buildingTitle}>{bldg.name}</Text>
-                              </View>
-                              <View style={styles.buildingHeaderRight}>
-                                <Text style={styles.buildingCountBadge}>{bldg.plans.length} rzutów</Text>
-                                <Text style={styles.chevronSmall}>{isBldgExpanded ? '▲' : '▼'}</Text>
-                              </View>
-                            </TouchableOpacity>
+                  <View style={styles.projectBody}>
+                    {group.buildings.map((building) => {
+                      const isBuildingExpanded = expandedBuildingIds.has(building.id) || q.length > 0;
+                      return (
+                        <View key={building.id} style={styles.buildingSection}>
+                          <TouchableOpacity
+                            style={styles.buildingHeader}
+                            onPress={() => toggleBuildingExpand(building.id)}
+                          >
+                            <Text style={styles.buildingIcon}>🏢</Text>
+                            <Text style={styles.buildingName}>{building.name}</Text>
+                            <Text style={styles.buildingCount}>({building.plans.length})</Text>
+                            <Text style={styles.buildingArrow}>{isBuildingExpanded ? '−' : '+'}</Text>
+                          </TouchableOpacity>
 
-                            {/* Plans under Building */}
-                            {isBldgExpanded && (
-                              <View style={styles.buildingPlansList}>
-                                {bldg.plans.length === 0 ? (
-                                  <Text style={styles.emptyBuildingPlans}>Brak aktywnych planów w tym budynku.</Text>
-                                ) : (
-                                  bldg.plans.map((plan) => (
-                                    <TouchableOpacity
-                                      key={plan.id}
-                                      style={styles.planItemCard}
-                                      activeOpacity={0.8}
-                                      onPress={() => router.push({ pathname: '/plans/[id]', params: { id: plan.id } } as any)}
-                                    >
-                                      <View style={styles.planMainRow}>
-                                        <Text style={styles.planIcon}>📐</Text>
-                                        <View style={{ flex: 1 }}>
-                                          <View style={styles.planTitleRow}>
-                                            <Text style={styles.planTitle}>{plan.name}</Text>
-                                            {cachedPlanIds.has(plan.id) && (
-                                              <View style={styles.planCachedTag}>
-                                                <Text style={styles.planCachedTagText}>💾 Offline</Text>
-                                              </View>
-                                            )}
-                                          </View>
-                                          {plan.floor_name ? (
-                                            <Text style={styles.floorTitle}>Kondygnacja: {plan.floor_name}</Text>
-                                          ) : null}
-                                        </View>
-                                        <Text style={styles.arrowIcon}>➔</Text>
+                          {isBuildingExpanded && (
+                            <View style={styles.plansGrid}>
+                              {building.plans.map((plan) => (
+                                <TouchableOpacity
+                                  key={plan.id}
+                                  style={styles.planCard}
+                                  activeOpacity={0.7}
+                                  onPress={() => {
+                                    router.push({ pathname: '/plans/[id]', params: { id: plan.id } } as any);
+                                  }}
+                                >
+                                  <View style={styles.planCardLeft}>
+                                    <Text style={styles.planIcon}>📐</Text>
+                                    <View style={{ flex: 1 }}>
+                                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <Text style={styles.planName}>{plan.name}</Text>
+                                        {plan.isCached && (
+                                          <Text style={styles.cachedPlanBadge}>💾</Text>
+                                        )}
                                       </View>
+                                      {plan.floor_name ? (
+                                        <Text style={styles.floorName}>Kondygnacja: {plan.floor_name}</Text>
+                                      ) : null}
+                                    </View>
+                                  </View>
 
-                                      <View style={styles.badgeRow}>
-                                        <View style={styles.badgeTask}>
-                                          <Text style={styles.badgeTaskText}>📌 {plan.task_count || 0} zadań</Text>
-                                        </View>
-                                        <View style={styles.badgeBma}>
-                                          <Text style={styles.badgeBmaText}>🚨 {plan.bma_count || 0} BMA</Text>
-                                        </View>
-                                        {plan.circuit_count ? (
-                                          <View style={styles.badgeCircuit}>
-                                            <Text style={styles.badgeCircuitText}>⚡ {plan.circuit_count} obwodów</Text>
-                                          </View>
-                                        ) : null}
+                                  <View style={styles.planCardRight}>
+                                    {plan.circuit_count ? (
+                                      <View style={styles.circuitBadge}>
+                                        <Text style={styles.circuitBadgeText}>⚡ {plan.circuit_count}</Text>
                                       </View>
-                                    </TouchableOpacity>
-                                  ))
-                                )}
-                              </View>
-                            )}
-                          </View>
-                        );
-                      })
-                    )}
+                                    ) : null}
+                                    {plan.bma_count ? (
+                                      <View style={styles.bmaBadge}>
+                                        <Text style={styles.bmaBadgeText}>🚨 {plan.bma_count}</Text>
+                                      </View>
+                                    ) : null}
+                                    <Text style={styles.arrowIcon}>➔</Text>
+                                  </View>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
                   </View>
                 )}
               </View>
@@ -634,98 +624,86 @@ export default function PlansListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#030712',
-  },
-  searchContainer: {
+  container: { flex: 1, backgroundColor: '#030712' },
+  headerControls: {
+    backgroundColor: '#0F172A',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 10,
-    backgroundColor: '#0B0F19',
+    paddingTop: 10,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
   },
+  searchSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+    marginBottom: 8,
+  },
   searchInput: {
-    backgroundColor: '#030712',
-    color: '#F8FAFC',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
+    flex: 1,
+    backgroundColor: '#1E293B',
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#334155',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: '#F8FAFC',
+    fontSize: 13,
+  },
+  clearSearchBtn: {
+    position: 'absolute',
+    right: 10,
+    padding: 4,
+  },
+  clearSearchText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
   storageStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 8,
     paddingVertical: 4,
-    paddingHorizontal: 6,
-    backgroundColor: '#0F172A',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#1E293B',
   },
-  storageLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  storageText: {
-    fontSize: 12,
-    color: '#94A3B8',
-  },
-  storageHighlight: {
-    color: '#38BDF8',
-    fontWeight: '700',
-  },
+  storageLeft: { flex: 1 },
+  storageText: { color: '#94A3B8', fontSize: 11, fontWeight: '600' },
+  storageHighlight: { color: '#38BDF8', fontWeight: '800' },
   clearCacheBtn: {
-    paddingVertical: 3,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    borderRadius: 6,
     paddingHorizontal: 8,
-    backgroundColor: '#334155',
-    borderRadius: 4,
+    paddingVertical: 4,
   },
-  clearCacheBtnText: {
-    color: '#F1F5F9',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+  clearCacheBtnText: { color: '#EF4444', fontSize: 10, fontWeight: '800' },
   summaryInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#1E293B',
   },
-  summaryInfoText: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  expandToggleRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+  summaryInfoText: { color: '#64748B', fontSize: 11, fontWeight: '600' },
+  expandToggleRow: { flexDirection: 'row', gap: 6 },
   expandBtn: {
     backgroundColor: '#1E293B',
+    borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#334155',
   },
-  expandBtnText: {
-    color: '#38BDF8',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+  expandBtnText: { color: '#94A3B8', fontSize: 10, fontWeight: '700' },
   downloadProgressBanner: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: '#0F172A',
-    borderRadius: 8,
+    marginTop: 8,
+    backgroundColor: 'rgba(56, 189, 248, 0.1)',
     borderWidth: 1,
-    borderColor: '#0284C7',
+    borderColor: '#38BDF8',
+    borderRadius: 8,
+    padding: 10,
   },
   downloadProgressHeader: {
     flexDirection: 'row',
@@ -735,12 +713,13 @@ const styles = StyleSheet.create({
   downloadProgressTitle: {
     color: '#38BDF8',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   downloadProgressPlanName: {
-    color: '#94A3B8',
+    color: '#F8FAFC',
     fontSize: 11,
-    marginTop: 2,
+    fontWeight: '600',
+    marginTop: 4,
     marginBottom: 6,
   },
   progressBarBackground: {
@@ -752,37 +731,12 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: '100%',
     backgroundColor: '#38BDF8',
-    borderRadius: 3,
   },
-  list: {
-    padding: 16,
-    gap: 12,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  loadingText: {
-    marginTop: 12,
-    color: '#94A3B8',
-    fontSize: 14,
-  },
-  emptyTitle: {
-    color: '#F8FAFC',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  emptySubtitle: {
-    color: '#64748B',
-    fontSize: 13,
-    textAlign: 'center',
-  },
+  list: { padding: 14, paddingBottom: 40 },
   projectCard: {
     backgroundColor: '#0F172A',
-    borderRadius: 12,
+    borderRadius: 14,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: '#1E293B',
     overflow: 'hidden',
@@ -792,27 +746,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 14,
-    backgroundColor: '#0F172A',
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
   },
   accordionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
     flex: 1,
-    marginRight: 8,
+    marginRight: 10,
   },
-  projectIcon: {
-    fontSize: 22,
-  },
+  projectIcon: { fontSize: 24, marginRight: 10 },
   projectName: {
     color: '#F8FAFC',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   companyBadge: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
     paddingHorizontal: 6,
-    paddingVertical: 1.5,
+    paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: '#38BDF8',
@@ -820,35 +771,33 @@ const styles = StyleSheet.create({
   companyBadgeText: {
     color: '#38BDF8',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   projectAddressText: {
     color: '#94A3B8',
     fontSize: 11,
-    marginTop: 1,
+    marginTop: 2,
   },
   projectSubRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 2,
+    marginTop: 4,
   },
   projectSubtext: {
     color: '#64748B',
-    fontSize: 12,
+    fontSize: 11,
   },
   cachedBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
     paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingVertical: 2,
     borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#10B981',
   },
   cachedBadgeText: {
-    color: '#34D399',
-    fontSize: 10,
-    fontWeight: '700',
+    color: '#22C55E',
+    fontSize: 9,
+    fontWeight: '800',
   },
   accordionRight: {
     flexDirection: 'row',
@@ -856,190 +805,109 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   projectOfflineBtn: {
-    backgroundColor: '#0284C7',
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderWidth: 1,
+    borderColor: '#38BDF8',
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   projectOfflineBtnCached: {
-    backgroundColor: '#1E293B',
-    borderWidth: 1,
-    borderColor: '#334155',
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderColor: '#22C55E',
   },
   projectOfflineBtnActive: {
-    backgroundColor: '#0369A1',
-    minWidth: 50,
-    alignItems: 'center',
+    backgroundColor: '#0284C7',
   },
   projectOfflineBtnText: {
-    color: '#FFFFFF',
+    color: '#38BDF8',
     fontSize: 11,
-    fontWeight: '700',
-  },
-  chevron: {
-    color: '#64748B',
-    fontSize: 13,
     fontWeight: '800',
   },
-  accordionBody: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-    backgroundColor: '#0B0F19',
+  accordionArrow: {
+    color: '#64748B',
+    fontSize: 12,
+  },
+  projectBody: {
     borderTopWidth: 1,
     borderTopColor: '#1E293B',
-    gap: 10,
-    paddingTop: 10,
+    padding: 10,
   },
-  emptyPlansBox: {
-    padding: 12,
-    alignItems: 'center',
-  },
-  emptyPlansText: {
-    color: '#64748B',
-    fontSize: 13,
-  },
-  buildingContainer: {
-    backgroundColor: '#0F172A',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    overflow: 'hidden',
+  buildingSection: {
+    marginBottom: 8,
   },
   buildingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: '#162238',
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#131D31',
+    paddingVertical: 8,
+    borderRadius: 8,
   },
-  buildingHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  buildingIcon: {
-    fontSize: 15,
-  },
-  buildingTitle: {
-    color: '#F1F5F9',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  buildingHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  buildingCountBadge: {
-    color: '#94A3B8',
-    fontSize: 11,
-  },
-  chevronSmall: {
-    color: '#64748B',
-    fontSize: 11,
-  },
-  buildingPlansList: {
-    padding: 8,
-    gap: 8,
-    backgroundColor: '#0F172A',
-  },
-  emptyBuildingPlans: {
-    color: '#64748B',
+  buildingIcon: { fontSize: 16, marginRight: 8 },
+  buildingName: {
+    color: '#38BDF8',
     fontSize: 12,
-    padding: 8,
+    fontWeight: '800',
+    flex: 1,
   },
-  planItemCard: {
+  buildingCount: { color: '#64748B', fontSize: 11, marginRight: 8 },
+  buildingArrow: { color: '#38BDF8', fontSize: 14, fontWeight: 'bold' },
+  plansGrid: {
+    paddingTop: 8,
+    paddingLeft: 8,
+  },
+  planCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#1E293B',
     borderRadius: 8,
     padding: 10,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: '#334155',
   },
-  planMainRow: {
+  planCardLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    flex: 1,
+    marginRight: 8,
   },
-  planIcon: {
-    fontSize: 18,
-  },
-  planTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  planTitle: {
+  planIcon: { fontSize: 18, marginRight: 8 },
+  planName: {
     color: '#F8FAFC',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
-  planCachedTag: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#38BDF8',
-  },
-  planCachedTagText: {
-    color: '#38BDF8',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  floorTitle: {
-    color: '#94A3B8',
-    fontSize: 11,
+  cachedPlanBadge: { fontSize: 12 },
+  floorName: {
+    color: '#64748B',
+    fontSize: 10,
     marginTop: 2,
   },
-  arrowIcon: {
-    color: '#38BDF8',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  badgeRow: {
+  planCardRight: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: 6,
-    marginTop: 8,
   },
-  badgeTask: {
-    backgroundColor: 'rgba(2, 132, 199, 0.15)',
+  circuitBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#0284C7',
   },
-  badgeTaskText: {
-    color: '#38BDF8',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  badgeBma: {
-    backgroundColor: 'rgba(220, 38, 38, 0.15)',
+  circuitBadgeText: { color: '#38BDF8', fontSize: 10, fontWeight: '800' },
+  bmaBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#DC2626',
   },
-  badgeBmaText: {
-    color: '#F87171',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  badgeCircuit: {
-    backgroundColor: 'rgba(139, 92, 246, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#8B5CF6',
-  },
-  badgeCircuitText: {
-    color: '#C084FC',
-    fontSize: 10,
-    fontWeight: '700',
-  },
+  bmaBadgeText: { color: '#EF4444', fontSize: 10, fontWeight: '800' },
+  arrowIcon: { color: '#38BDF8', fontSize: 12, fontWeight: '900' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
+  loadingText: { color: '#94A3B8', fontSize: 13, marginTop: 12 },
+  emptyTitle: { color: '#F8FAFC', fontSize: 16, fontWeight: '800', marginBottom: 4 },
+  emptySubtitle: { color: '#64748B', fontSize: 12, textAlign: 'center' },
 });

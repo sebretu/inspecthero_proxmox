@@ -59,6 +59,24 @@ export class TileCacheService {
   }
 
   /**
+   * Read cached metadata for a plan if available
+   */
+  static async getLocalMeta(planId: string): Promise<any | null> {
+    try {
+      const planDir = this.getPlanTilesDir(planId);
+      const metaPath = `${planDir}meta.json`;
+      const metaInfo = await FileSystem.getInfoAsync(metaPath);
+      if (metaInfo.exists) {
+        const metaStr = await FileSystem.readAsStringAsync(metaPath);
+        return JSON.parse(metaStr);
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Calculate disk usage for a specific plan
    */
   static async getPlanCacheSize(planId: string): Promise<number> {
