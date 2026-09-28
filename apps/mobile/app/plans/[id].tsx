@@ -61,6 +61,9 @@ interface CircuitPin {
   fuse_type?: string;
   cable_type?: string;
   status?: string;
+  orientation?: 'horizontal' | 'vertical';
+  rotation?: number;
+  metadata?: any;
   description?: string;
   x_norm: number;
   y_norm: number;
@@ -342,23 +345,37 @@ export default function InteractivePlanScreen() {
       // 4. Fetch Stromkreise (Circuits)
       let loadedCircuits: CircuitPin[] = [];
       const localCircuitRows = (await db.getAllAsync(
-        'SELECT id, circuit_name, circuit_code, short_label, full_name, type, fuse_type, x_norm, y_norm, pos_x, pos_y, status FROM stromkreise WHERE plan_id = ? AND deleted_at IS NULL;',
+        'SELECT id, circuit_name, circuit_code, short_label, full_name, type, fuse_type, x_norm, y_norm, pos_x, pos_y, status, metadata FROM stromkreise WHERE plan_id = ? AND deleted_at IS NULL;',
         [activePlanId]
       )) as any[];
 
       if (localCircuitRows && localCircuitRows.length > 0) {
-        loadedCircuits = localCircuitRows.map((c) => ({
-          id: c.id,
-          circuit_name: c.circuit_code || c.short_label || c.circuit_name || '1',
-          circuit_code: c.circuit_code || c.short_label || c.circuit_name || '1',
-          short_label: c.short_label || c.circuit_code,
-          full_name: c.full_name || c.circuit_name,
-          type: c.type || 'socket',
-          fuse_type: c.fuse_type || 'B16',
-          status: c.status || 'open',
-          x_norm: c.x_norm ?? (c.pos_x ? c.pos_x / worldPxW : 0.2),
-          y_norm: c.y_norm ?? (c.pos_y ? c.pos_y / worldPxH : 0.2),
-        }));
+        loadedCircuits = localCircuitRows.map((c) => {
+          let metaObj: any = {};
+          try {
+            if (typeof c.metadata === 'string') metaObj = JSON.parse(c.metadata);
+            else if (c.metadata && typeof c.metadata === 'object') metaObj = c.metadata;
+          } catch {}
+
+          const orient = metaObj.orientation || (metaObj.rotation === 270 ? 'vertical' : 'horizontal');
+          const rot = metaObj.rotation != null ? metaObj.rotation : (orient === 'vertical' ? 270 : 0);
+
+          return {
+            id: c.id,
+            circuit_name: c.circuit_code || c.short_label || c.circuit_name || '1',
+            circuit_code: c.circuit_code || c.short_label || c.circuit_name || '1',
+            short_label: c.short_label || c.circuit_code,
+            full_name: c.full_name || c.circuit_name,
+            type: c.type || 'socket',
+            fuse_type: c.fuse_type || 'B16',
+            status: c.status || 'open',
+            orientation: orient,
+            rotation: rot,
+            metadata: metaObj,
+            x_norm: c.x_norm ?? (c.pos_x ? c.pos_x / worldPxW : 0.2),
+            y_norm: c.y_norm ?? (c.pos_y ? c.pos_y / worldPxH : 0.2),
+          };
+        });
       }
 
       if (token && activeProjectId) {
@@ -369,20 +386,63 @@ export default function InteractivePlanScreen() {
             const cJson = await cRes.json();
             const circData = Array.isArray(cJson) ? cJson : (cJson?.data || []);
             if (Array.isArray(circData) && circData.length > 0) {
-              loadedCircuits = circData.map((c: any) => ({
-                id: c.id,
-                circuit_name: c.circuit_code || c.short_label || c.full_name || '1',
-                circuit_code: c.circuit_code || c.short_label || '1',
-                short_label: c.short_label || c.circuit_code,
-                full_name: c.full_name || c.circuit_name,
-                type: c.type || 'socket',
-                fuse_type: c.breaker_current ? `${c.breaker_curve || 'B'}${c.breaker_current}A` : (c.fuse_type || 'B16'),
-                cable_type: c.cable_type || c.cable || 'NYM-J 3x1.5',
-                status: c.status || 'open',
-                description: c.description || c.notes,
-                x_norm: c.x_norm ?? 0.2,
-                y_norm: c.y_norm ?? 0.2,
-              }));
+              loadedCircuits = circData.map((c: any) => {
+                let metaObj: any = {};
+                try {
+                  if (typeof c.metadata === 'string') metaObj = JSON.parse(c.metadata);
+                  else if (c.metadata && typeof c.metadata === 'object') metaObj = c.metadata;
+                } catch {}
+
+                const orient = metaObj.orientation || c.orientation || (metaObj.rotation === 270 ? 'vertical' : 'horizontal');
+                const rot = metaObj.rotation != null ? metaObj.rotation : (orient === 'vertical' ? 270 : 0);
+
+                db.runAsync(
+                  `INSERT INTO stromkreise (id, plan_id, circuit_name, circuit_code, short_label, full_name, type, fuse_type, x_norm, y_norm, status, metadata, version)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                   ON CONFLICT(id) DO UPDATE SET 
+                    circuit_name = excluded.circuit_name,
+                    circuit_code = excluded.circuit_code,
+                    short_label = excluded.short_label,
+                    full_name = excluded.full_name,
+                    type = excluded.type,
+                    x_norm = excluded.x_norm,
+                    y_norm = excluded.y_norm,
+                    status = excluded.status,
+                    metadata = excluded.metadata;`,
+                  [
+                    c.id,
+                    activePlanId,
+                    c.circuit_code || c.short_label || '1',
+                    c.circuit_code || c.short_label || '1',
+                    c.short_label || c.circuit_code || '1',
+                    c.full_name || null,
+                    c.type || 'socket',
+                    c.breaker_current ? `${c.breaker_curve || 'B'}${c.breaker_current}A` : (c.fuse_type || 'B16'),
+                    c.x_norm ?? 0.2,
+                    c.y_norm ?? 0.2,
+                    c.status || 'open',
+                    JSON.stringify(metaObj),
+                  ]
+                ).catch(() => {});
+
+                return {
+                  id: c.id,
+                  circuit_name: c.circuit_code || c.short_label || c.full_name || '1',
+                  circuit_code: c.circuit_code || c.short_label || '1',
+                  short_label: c.short_label || c.circuit_code,
+                  full_name: c.full_name || c.circuit_name,
+                  type: c.type || 'socket',
+                  fuse_type: c.breaker_current ? `${c.breaker_curve || 'B'}${c.breaker_current}A` : (c.fuse_type || 'B16'),
+                  cable_type: c.cable_type || c.cable || 'NYM-J 3x1.5',
+                  status: c.status || 'open',
+                  orientation: orient,
+                  rotation: rot,
+                  metadata: metaObj,
+                  description: c.description || c.notes,
+                  x_norm: c.x_norm ?? 0.2,
+                  y_norm: c.y_norm ?? 0.2,
+                };
+              });
             }
           }
         } catch {}
@@ -579,6 +639,62 @@ export default function InteractivePlanScreen() {
       Alert.alert('Status zaktualizowany', `Nowy status obwodu: ${newStatus}`);
     } catch (e: any) {
       Alert.alert('Błąd', e?.message || 'Nie udało się zaktualizować statusu');
+    }
+  };
+
+  const toggleCircuitOrientation = async (circuitId: string) => {
+    try {
+      const current = circuits.find((c) => c.id === circuitId);
+      if (!current) return;
+      const isCurrentlyVertical = current.orientation === 'vertical' || current.rotation === 270;
+      const newOrientation: 'horizontal' | 'vertical' = isCurrentlyVertical ? 'horizontal' : 'vertical';
+      const newRotation = isCurrentlyVertical ? 0 : 270;
+
+      const db = await getDatabase();
+      const currentMeta = current.metadata || {};
+      const updatedMeta = { ...currentMeta, orientation: newOrientation, rotation: newRotation };
+
+      await db.runAsync(
+        'UPDATE stromkreise SET metadata = ? WHERE id = ?;',
+        [JSON.stringify(updatedMeta), circuitId]
+      );
+
+      const updatedList = circuits.map((c) =>
+        c.id === circuitId
+          ? { ...c, orientation: newOrientation, rotation: newRotation, metadata: updatedMeta }
+          : c
+      );
+      setCircuits(updatedList);
+
+      if (selectedCircuit?.id === circuitId) {
+        setSelectedCircuit((prev) =>
+          prev ? { ...prev, orientation: newOrientation, rotation: newRotation, metadata: updatedMeta } : null
+        );
+      }
+
+      // Reload Leaflet webview to reflect new rotation angle
+      webViewRef.current?.injectJavaScript(`
+        if (window.map) {
+          window.location.reload();
+        }
+        true;
+      `);
+
+      // Sync to API
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
+      const token = session?.access_token;
+      if (token) {
+        fetch(`${apiUrl}/api/stromkreise`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ id: circuitId, metadata: updatedMeta }),
+        }).catch(() => {});
+      }
+    } catch (err: any) {
+      Alert.alert('Błąd', err?.message || 'Nie udało się zmienić orientacji');
     }
   };
 
@@ -1138,13 +1254,24 @@ export default function InteractivePlanScreen() {
             });
           };
 
-          // 1:1 Web Stromkreise Marker Generator (Podłużny badge bez błyskawicy)
+          // 1:1 Web Stromkreise Marker Generator (Podłużny badge bez błyskawicy, rotacja pion/poziom i pełna nazwa w chmurce)
           window.addCircuitMarker = function(c) {
             if (!c) return;
             const ll = normToLatLng(c.x_norm || 0.2, c.y_norm || 0.2);
             const title = escapeHtml(c.circuit_code || c.circuit_name || c.short_label || '1');
+            const fullName = escapeHtml(c.full_name || '');
             const st = (c.status || 'open').toUpperCase();
             const type = c.type || 'socket';
+
+            let metaObj = {};
+            try {
+              if (typeof c.metadata === 'string') metaObj = JSON.parse(c.metadata);
+              else if (c.metadata && typeof c.metadata === 'object') metaObj = c.metadata;
+            } catch(e) {}
+
+            const orientation = c.orientation || metaObj.orientation || (metaObj.rotation === 270 ? 'vertical' : 'horizontal');
+            const isVertical = orientation === 'vertical' || orientation === 'senkrecht';
+            const rotation = c.rotation != null ? c.rotation : (metaObj.rotation != null ? metaObj.rotation : (isVertical ? 270 : 0));
 
             let skClass = 'sk-socket';
             if (st === 'APPROVED' || st === 'DONE' || st === 'CLOSED') {
@@ -1161,15 +1288,24 @@ export default function InteractivePlanScreen() {
               skClass = 'sk-special';
             }
 
+            const rotStyle = rotation ? 'transform: rotate(' + rotation + 'deg); transform-origin: center;' : '';
+
             const icon = L.divIcon({
               className: '',
-              html: '<div class="stromkreis-badge-container ' + skClass + '">' + title + '</div>',
-              iconSize: [title.length > 3 ? 36 : 26, 20],
-              iconAnchor: [(title.length > 3 ? 36 : 26) / 2, 10],
+              html: '<div class="stromkreis-badge-container ' + skClass + '" style="' + rotStyle + '">' + title + '</div>',
+              iconSize: [title.length > 3 ? 38 : 28, 20],
+              iconAnchor: [(title.length > 3 ? 38 : 28) / 2, 10],
             });
 
             const marker = L.marker(ll, { icon: icon }).addTo(map);
-            marker.bindTooltip('<b>Stromkreis ' + title + '</b><br/>Status: ' + st, { direction: 'top', className: 'plan-tooltip' });
+
+            let tooltipHtml = '<div style="font-weight: 800; font-size: 11px;">Stromkreis ' + title + '</div>';
+            if (fullName) {
+              tooltipHtml += '<div style="font-size: 10px; color: #38BDF8; font-weight: 700; margin-top: 2px;">🏷️ ' + fullName + '</div>';
+            }
+            tooltipHtml += '<div style="font-size: 9px; opacity: 0.8; margin-top: 2px;">Status: ' + st + '</div>';
+
+            marker.bindTooltip(tooltipHtml, { direction: 'top', className: 'plan-tooltip' });
             marker.on('click', function(e) {
               L.DomEvent.stopPropagation(e);
               send({ type: 'CIRCUIT_CLICK', id: c.id });
@@ -1521,7 +1657,7 @@ export default function InteractivePlanScreen() {
         </View>
       )}
 
-      {/* 5. Bottom Stromkreis Drawer (1:1 Web with Execution / Approval Buttons, no Sicherung/Verteiler clutter) */}
+      {/* 5. Bottom Stromkreis Drawer (1:1 Web with Execution / Approval Buttons, Full Name and Orientation Controls) */}
       {selectedCircuit && (
         <View style={styles.drawer}>
           <View style={styles.drawerHandle} />
@@ -1530,6 +1666,11 @@ export default function InteractivePlanScreen() {
               <Text style={styles.circuitDrawerTitle}>
                 Stromkreis: {selectedCircuit.circuit_code || selectedCircuit.circuit_name}
               </Text>
+              {selectedCircuit.full_name ? (
+                <View style={styles.circuitFullNameBadge}>
+                  <Text style={styles.circuitFullNameText}>🏷️ {selectedCircuit.full_name}</Text>
+                </View>
+              ) : null}
               <Text style={styles.circuitDrawerSubtitle}>
                 Typ: {ALL_SYMBOLS.find((s) => s.id === selectedCircuit.type)?.name || selectedCircuit.type}
                 {selectedCircuit.cable_type ? ` • ${selectedCircuit.cable_type}` : ''}
@@ -1544,6 +1685,16 @@ export default function InteractivePlanScreen() {
               <Text style={styles.drawerCloseText}>✕</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Orientation Toggle Button */}
+          <TouchableOpacity
+            style={styles.orientationBtn}
+            onPress={() => toggleCircuitOrientation(selectedCircuit.id)}
+          >
+            <Text style={styles.orientationBtnText}>
+              📐 Orientacja: {selectedCircuit.orientation === 'vertical' || selectedCircuit.rotation === 270 ? '↕️ Pionowo (270°)' : '↔️ Poziomo (0°)'} — Dotknij, aby zmienić
+            </Text>
+          </TouchableOpacity>
 
           {/* User Execution and Admin Action Buttons */}
           <View style={styles.circuitActionButtonsRow}>
@@ -2025,11 +2176,41 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginBottom: 2,
   },
+  circuitFullNameBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.4)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+    marginVertical: 4,
+  },
+  circuitFullNameText: {
+    color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: '800',
+  },
   circuitDrawerSubtitle: {
     color: '#94A3B8',
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 6,
+  },
+  orientationBtn: {
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    marginVertical: 6,
+  },
+  orientationBtnText: {
+    color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: '800',
   },
   statusBadgeRow: {
     marginTop: 2,

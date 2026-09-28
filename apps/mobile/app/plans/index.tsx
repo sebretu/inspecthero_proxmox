@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDatabase } from '../../src/db/database';
 import { authSupabase } from '../../src/auth/authClient';
 import { TileCacheService, ProjectCacheProgress } from '../../src/features/tiles/TileCacheService';
+import { TileDownloadManager, DownloadManagerState } from '../../src/features/tiles/TileDownloadManager';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
 
@@ -57,8 +58,17 @@ export default function PlansListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [cachedPlanIds, setCachedPlanIds] = useState<Set<string>>(new Set());
   const [totalCacheBytes, setTotalCacheBytes] = useState<number>(0);
-  const [downloadingProjectId, setDownloadingProjectId] = useState<string | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState<ProjectCacheProgress | null>(null);
+  const [downloadState, setDownloadState] = useState<DownloadManagerState>(TileDownloadManager.getState());
+
+  useEffect(() => {
+    const unsub = TileDownloadManager.subscribe((st) => {
+      setDownloadState(st);
+      if (!st.isDownloading) {
+        refreshCacheStats();
+      }
+    });
+    return unsub;
+  }, []);
 
   const refreshCacheStats = async () => {
     try {
@@ -130,7 +140,10 @@ export default function PlansListScreen() {
           const planJson = await planRes.json();
           const plansList = Array.isArray(planJson) ? planJson : (planJson?.data || []);
           for (const pl of plansList) {
-            const planName = pl.name || pl.floors?.name || pl.pdf_path?.split('/')?.pop() || 'Plan architektoniczny';
+            const bName = pl.floors?.buildings?.name || '';
+            const fName = pl.floors?.name || '';
+            const rawName = pl.name || pl.pdf_path?.split('/')?.pop() || 'Plan';
+            const planName = [bName, fName, (rawName && rawName !== fName) ? rawName : ''].filter(Boolean).join(' · ') || rawName || 'Plan architektoniczny';
             await db.runAsync(
               `INSERT INTO plans (id, project_id, floor_id, name, width, height, created_at, updated_at, version)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
@@ -264,33 +277,11 @@ export default function PlansListScreen() {
   };
 
   const handleDownloadProjectOffline = async (group: ProjectGroup) => {
-    if (downloadingProjectId) return;
-    try {
-      setDownloadingProjectId(group.id);
-      setDownloadProgress({
-        totalPlans: group.totalPlansCount,
-        completedPlans: 0,
-        currentPlanName: group.name,
-        planProgress: { total: 100, completed: 0, currentZoom: 1 },
-      });
-
-      const res = await TileCacheService.prefetchProjectPlans(group.id, (prog) => {
-        setDownloadProgress({ ...prog });
-      });
-
-      if (res.success) {
-        Alert.alert('✅ Pomyślnie pobrano', `Projekt "${group.name}" jest dostępny offline bez dostępu do Internetu.`);
-      } else {
-        Alert.alert('Uwaga', 'Część kafelków mogła nie zostać pobrana. Sprawdź połączenie.');
-      }
-
-      await loadData();
-    } catch (e: any) {
-      Alert.alert('Błąd pobierania', e?.message || 'Nie udało się pobrać planów do trybu offline.');
-    } finally {
-      setDownloadingProjectId(null);
-      setDownloadProgress(null);
+    if (downloadState.isDownloading) {
+      Alert.alert('Pobieranie w toku', 'Trwa już pobieranie planów w tle. Możesz opuścić tę zakładkę.');
+      return;
     }
+    TileDownloadManager.startProjectDownload(group.id, group.name);
   };
 
   const handleClearAllCache = async () => {
@@ -429,17 +420,17 @@ export default function PlansListScreen() {
           </View>
         </View>
 
-        {/* Real-time Project Download Progress Bar */}
-        {downloadingProjectId && downloadProgress && (
+        {/* Real-time Project Download Progress Bar (Persistent across navigation) */}
+        {downloadState.isDownloading && (
           <View style={styles.downloadProgressBanner}>
             <View style={styles.downloadProgressHeader}>
               <ActivityIndicator size="small" color="#38BDF8" />
               <Text style={styles.downloadProgressTitle}>
-                Pobieranie: Plan {downloadProgress.completedPlans + 1}/{downloadProgress.totalPlans}
+                Pobieranie w tle: Plan {downloadState.completedItems + 1}/{downloadState.totalItems}
               </Text>
             </View>
             <Text style={styles.downloadProgressPlanName} numberOfLines={1}>
-              {downloadProgress.currentPlanName}
+              {downloadState.currentPlanName}
             </Text>
             <View style={styles.progressBarBackground}>
               <View
@@ -447,8 +438,10 @@ export default function PlansListScreen() {
                   styles.progressBarFill,
                   {
                     width: `${Math.round(
-                      ((downloadProgress.completedPlans + (downloadProgress.planProgress.completed / (downloadProgress.planProgress.total || 1))) /
-                        (downloadProgress.totalPlans || 1)) *
+                      ((downloadState.completedItems +
+                        ((downloadState.planProgress?.completed || 0) /
+                          (downloadState.planProgress?.total || 1))) /
+                        (downloadState.totalItems || 1)) *
                         100
                     )}%`,
                   },
@@ -487,7 +480,7 @@ export default function PlansListScreen() {
           }
           renderItem={({ item: group }) => {
             const isExpanded = expandedProjectIds.has(group.id) || q.length > 0;
-            const isDownloadingThis = downloadingProjectId === group.id;
+            const isDownloadingThis = downloadState.isDownloading && downloadState.targetId === group.id;
 
             return (
               <View style={styles.projectCard}>

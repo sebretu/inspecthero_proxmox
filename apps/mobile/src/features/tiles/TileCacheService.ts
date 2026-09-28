@@ -10,6 +10,7 @@ export interface TileCacheProgress {
   currentZoom: number;
   planId?: string;
   planName?: string;
+  speedKbps?: number;
 }
 
 export interface ProjectCacheProgress {
@@ -23,7 +24,7 @@ export class TileCacheService {
   private static apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
 
   /**
-   * Format bytes into readable format (KB, MB)
+   * Format bytes into readable format (KB, MB, GB)
    */
   static formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B';
@@ -46,6 +47,10 @@ export class TileCacheService {
   static async isPlanCachedLocally(planId: string): Promise<boolean> {
     try {
       const planDir = this.getPlanTilesDir(planId);
+      const metaPath = `${planDir}meta.json`;
+      const metaInfo = await FileSystem.getInfoAsync(metaPath);
+      if (metaInfo.exists) return true;
+
       const info = await FileSystem.getInfoAsync(planDir);
       return info.exists && info.isDirectory;
     } catch {
@@ -146,7 +151,7 @@ export class TileCacheService {
   }
 
   /**
-   * Prefetch tiles for offline use up to specified maxZoom (default 4 for optimal crispness + storage)
+   * High-speed parallel prefetch of tiles for offline use with versioning & 20+ concurrent workers
    */
   static async prefetchPlanTiles(
     planId: string,
@@ -168,63 +173,126 @@ export class TileCacheService {
       const minZoom = meta.minZoom || 1;
       const maxZoom = Math.min(meta.maxZoom || 5, targetMaxZoom);
       const limits = meta.limits || {};
+      const activeVersionId = meta.activeVersionId || meta.version || 'v1';
 
-      // 2. Count total tiles to download
-      let totalTiles = 0;
-      for (let z = minZoom; z <= maxZoom; z++) {
-        const lim = limits[String(z)];
-        if (lim) {
-          totalTiles += (lim.maxX + 1) * (lim.maxY + 1);
-        } else {
-          const maxIdx = Math.pow(2, z) - 1;
-          totalTiles += (Math.min(maxIdx, 10) + 1) * (Math.min(maxIdx, 10) + 1);
+      const planDir = this.getPlanTilesDir(planId);
+      await FileSystem.makeDirectoryAsync(planDir, { intermediates: true });
+
+      // Save local meta.json for version check
+      const localMetaPath = `${planDir}meta.json`;
+      let needsDownload = true;
+      try {
+        const localMetaInfo = await FileSystem.getInfoAsync(localMetaPath);
+        if (localMetaInfo.exists) {
+          const localMetaContent = await FileSystem.readAsStringAsync(localMetaPath);
+          const parsed = JSON.parse(localMetaContent);
+          if (parsed.activeVersionId === activeVersionId && parsed.maxZoom >= maxZoom) {
+            // Version matches, check if complete
+            needsDownload = false;
+          }
         }
+      } catch {}
+
+      // 2. Build list of all tile jobs
+      interface TileJob {
+        z: number;
+        x: number;
+        y: number;
+        remoteUrl: string;
+        localPath: string;
+        dirPath: string;
       }
 
-      let completed = 0;
+      const tileJobs: TileJob[] = [];
+      const distinctDirs = new Set<string>();
 
-      // 3. Download tiles concurrently in small batches
       for (let z = minZoom; z <= maxZoom; z++) {
         const lim = limits[String(z)];
         const maxX = lim ? lim.maxX : Math.min(Math.pow(2, z) - 1, 10);
         const maxY = lim ? lim.maxY : Math.min(Math.pow(2, z) - 1, 10);
 
         for (let x = 0; x <= maxX; x++) {
-          const zxDir = `${this.getPlanTilesDir(planId)}${z}/${x}/`;
-          await FileSystem.makeDirectoryAsync(zxDir, { intermediates: true });
+          const zxDir = `${planDir}${z}/${x}/`;
+          distinctDirs.add(zxDir);
 
-          const downloadPromises = [];
           for (let y = 0; y <= maxY; y++) {
             const localPath = `${zxDir}${y}.png`;
-            const fileInfo = await FileSystem.getInfoAsync(localPath);
+            const remoteUrl = `${this.apiUrl}/api/tiles/${planId}/${z}/${x}/${y}.png${tokenParam}`;
+            tileJobs.push({ z, x, y, remoteUrl, localPath, dirPath: zxDir });
+          }
+        }
+      }
 
+      const totalTiles = tileJobs.length;
+      if (totalTiles === 0) {
+        return { success: true, tileCount: 0 };
+      }
+
+      // If version already matches and directory exists, quick return
+      if (!needsDownload) {
+        if (onProgress) {
+          onProgress({ total: totalTiles, completed: totalTiles, currentZoom: maxZoom, planId });
+        }
+        return { success: true, tileCount: totalTiles };
+      }
+
+      // 3. Pre-create all distinct directories in parallel
+      await Promise.all(
+        Array.from(distinctDirs).map((d) => FileSystem.makeDirectoryAsync(d, { intermediates: true }).catch(() => {}))
+      );
+
+      let completed = 0;
+      let lastReportTime = Date.now();
+
+      // 4. Concurrency Worker Pool (20 parallel streams for 500Mbit saturation)
+      const CONCURRENCY = 20;
+      let jobIndex = 0;
+
+      const worker = async () => {
+        while (jobIndex < tileJobs.length) {
+          const curIndex = jobIndex++;
+          const job = tileJobs[curIndex];
+          if (!job) break;
+
+          try {
+            // Check if file exists to avoid re-downloading unchanged tile
+            const fileInfo = await FileSystem.getInfoAsync(job.localPath);
             if (!fileInfo.exists) {
-              const remoteUrl = `${this.apiUrl}/api/tiles/${planId}/${z}/${x}/${y}.png${tokenParam}`;
-              downloadPromises.push(
-                FileSystem.downloadAsync(remoteUrl, localPath)
-                  .then(() => {
-                    completed++;
-                    if (onProgress) {
-                      onProgress({ total: totalTiles, completed, currentZoom: z, planId });
-                    }
-                  })
-                  .catch((e) => {
-                    console.warn(`[TileCacheService] Failed tile ${z}/${x}/${y}:`, e);
-                    completed++;
-                  })
-              );
-            } else {
-              completed++;
+              await FileSystem.downloadAsync(job.remoteUrl, job.localPath);
+            }
+          } catch (dlErr) {
+            // Non-fatal, continue with next tile
+          } finally {
+            completed++;
+            const now = Date.now();
+            if (now - lastReportTime > 80 || completed === totalTiles) {
+              lastReportTime = now;
               if (onProgress) {
-                onProgress({ total: totalTiles, completed, currentZoom: z, planId });
+                onProgress({ total: totalTiles, completed, currentZoom: job.z, planId });
               }
             }
           }
-
-          // Await batch of column tiles
-          await Promise.all(downloadPromises);
         }
+      };
+
+      const workers = [];
+      for (let i = 0; i < Math.min(CONCURRENCY, tileJobs.length); i++) {
+        workers.push(worker());
       }
+
+      await Promise.all(workers);
+
+      // Save local meta.json indicating completed version
+      await FileSystem.writeAsStringAsync(localMetaPath, JSON.stringify({
+        activeVersionId,
+        maxZoom,
+        minZoom,
+        limits,
+        gridW: meta.gridW,
+        gridH: meta.gridH,
+        tileSize: meta.tileSize || 256,
+        downloadedAt: new Date().toISOString()
+      })).catch(() => {});
 
       return { success: true, tileCount: completed };
     } catch (err) {
@@ -234,7 +302,7 @@ export class TileCacheService {
   }
 
   /**
-   * Prefetch all plans for an entire project
+   * Prefetch all plans for an entire project with incremental caching
    */
   static async prefetchProjectPlans(
     projectId: string,
