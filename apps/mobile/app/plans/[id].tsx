@@ -172,6 +172,8 @@ export default function InteractivePlanScreen() {
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<PlanInfo | null>(null);
   const [isLocalTileCached, setIsLocalTileCached] = useState(false);
+  const [planCacheBytes, setPlanCacheBytes] = useState(0);
+  const [downloadingOffline, setDownloadingOffline] = useState(false);
   const [floors, setFloors] = useState<FloorOption[]>([]);
   const [currentFloorId, setCurrentFloorId] = useState<string | null>(null);
 
@@ -293,6 +295,19 @@ export default function InteractivePlanScreen() {
 
       const isCached = await TileCacheService.isPlanCachedLocally(activePlanId);
       setIsLocalTileCached(isCached);
+      const cacheBytes = await TileCacheService.getPlanCacheSize(activePlanId);
+      setPlanCacheBytes(cacheBytes);
+
+      // Background cache tiles if online and not yet cached
+      if (token && !isCached) {
+        TileCacheService.prefetchPlanTiles(activePlanId, 4).then(async (res) => {
+          if (res.success) {
+            setIsLocalTileCached(true);
+            const b = await TileCacheService.getPlanCacheSize(activePlanId);
+            setPlanCacheBytes(b);
+          }
+        }).catch(() => {});
+      }
 
       // 3. Fetch Tasks on Plan (SQLite fallback + live API sync)
       let loadedTasks: TaskPin[] = [];
@@ -1247,15 +1262,16 @@ export default function InteractivePlanScreen() {
             }
           };
 
-          // Tile Layer
+          // Tile Layer with Local Cache First and Remote Fallback
           if (planId) {
             const tokenParam = token ? '?token=' + encodeURIComponent(token) : '';
             const localTileDir = "${isLocalTileCached ? TileCacheService.getPlanTilesDir(planId) : ''}";
+            const remoteUrl = apiUrl + '/api/tiles/' + planId + '/{z}/{x}/{y}.png' + tokenParam;
             const tileUrl = localTileDir
               ? localTileDir + '{z}/{x}/{y}.png'
-              : apiUrl + '/api/tiles/' + planId + '/{z}/{x}/{y}.png' + tokenParam;
+              : remoteUrl;
 
-            L.tileLayer(tileUrl, {
+            const tileLayer = L.tileLayer(tileUrl, {
               minZoom: minZoom,
               maxZoom: maxZoom + 1,
               maxNativeZoom: maxZoom,
@@ -1266,6 +1282,14 @@ export default function InteractivePlanScreen() {
               updateWhenZooming: false,
               keepBuffer: 6,
             }).addTo(map);
+
+            if (localTileDir) {
+              tileLayer.on('tileerror', function(error) {
+                if (error && error.tile && error.coords) {
+                  error.tile.src = apiUrl + '/api/tiles/' + planId + '/' + error.coords.z + '/' + error.coords.x + '/' + error.coords.y + '.png' + tokenParam;
+                }
+              });
+            }
           }
 
           map.fitBounds(bounds);
@@ -1289,6 +1313,26 @@ export default function InteractivePlanScreen() {
     `;
   };
 
+  const handleDownloadOffline = async () => {
+    if (!plan?.id || downloadingOffline) return;
+    try {
+      setDownloadingOffline(true);
+      const res = await TileCacheService.prefetchPlanTiles(plan.id, 4);
+      if (res.success) {
+        setIsLocalTileCached(true);
+        const b = await TileCacheService.getPlanCacheSize(plan.id);
+        setPlanCacheBytes(b);
+        Alert.alert('✅ Pomyślnie pobrano', `Plan został zapisany offline (${TileCacheService.formatBytes(b)}).`);
+      } else {
+        Alert.alert('Uwaga', 'Nie udało się pobrać wszystkich kafelków planu.');
+      }
+    } catch (e: any) {
+      Alert.alert('Błąd', e?.message || 'Wystąpił błąd podczas pobierania planu.');
+    } finally {
+      setDownloadingOffline(false);
+    }
+  };
+
   const selectedCategorySymbols = ALL_SYMBOLS.filter((s) => s.category === selectedCategory);
 
   return (
@@ -1302,12 +1346,28 @@ export default function InteractivePlanScreen() {
           headerTintColor: '#38BDF8',
           headerTitleStyle: { color: '#F8FAFC', fontWeight: '800' },
           headerRight: () => (
-            <TouchableOpacity
-              style={styles.headerLayersBtn}
-              onPress={() => setShowLayersModal(true)}
-            >
-              <Text style={styles.headerLayersBtnText}>🗂️ Warstwy</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <TouchableOpacity
+                style={[styles.headerOfflineBtn, isLocalTileCached && styles.headerOfflineBtnCached]}
+                onPress={handleDownloadOffline}
+                disabled={downloadingOffline}
+              >
+                {downloadingOffline ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.headerOfflineBtnText}>
+                    {isLocalTileCached ? `💾 ${TileCacheService.formatBytes(planCacheBytes)}` : '⬇️ Offline'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.headerLayersBtn}
+                onPress={() => setShowLayersModal(true)}
+              >
+                <Text style={styles.headerLayersBtnText}>🗂️ Warstwy</Text>
+              </TouchableOpacity>
+            </View>
           ),
         }}
       />
@@ -1825,6 +1885,22 @@ const styles = StyleSheet.create({
     color: '#38BDF8',
     fontSize: 12,
     fontWeight: '800',
+  },
+  headerOfflineBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    backgroundColor: '#0284C7',
+    borderRadius: 6,
+  },
+  headerOfflineBtnCached: {
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  headerOfflineBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   floorBar: {
     flexDirection: 'row',

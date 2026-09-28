@@ -7,13 +7,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
-  ScrollView,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDatabase } from '../../src/db/database';
 import { authSupabase } from '../../src/auth/authClient';
+import { TileCacheService, ProjectCacheProgress } from '../../src/features/tiles/TileCacheService';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
 
@@ -27,6 +28,7 @@ interface PlanItem {
   task_count?: number;
   bma_count?: number;
   circuit_count?: number;
+  isCached?: boolean;
 }
 
 interface BuildingGroup {
@@ -40,6 +42,7 @@ interface ProjectGroup {
   name: string;
   buildings: BuildingGroup[];
   totalPlansCount: number;
+  isFullyCached?: boolean;
 }
 
 export default function PlansListScreen() {
@@ -50,6 +53,17 @@ export default function PlansListScreen() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [cachedPlanIds, setCachedPlanIds] = useState<Set<string>>(new Set());
+  const [totalCacheBytes, setTotalCacheBytes] = useState<number>(0);
+  const [downloadingProjectId, setDownloadingProjectId] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<ProjectCacheProgress | null>(null);
+
+  const refreshCacheStats = async () => {
+    try {
+      const bytes = await TileCacheService.getTotalCacheSize();
+      setTotalCacheBytes(bytes);
+    } catch {}
+  };
 
   const syncPlansAndProjectsFromApi = async (db: any) => {
     try {
@@ -68,11 +82,8 @@ export default function PlansListScreen() {
       if (apiProjects.length === 0) return;
 
       const now = new Date().toISOString();
-      const validProjectIds: string[] = [];
-      const validPlanIds: string[] = [];
 
       for (const p of apiProjects) {
-        validProjectIds.push(p.id);
         await db.runAsync(
           `INSERT INTO projects (id, name, status, created_at, updated_at, version)
            VALUES (?, ?, ?, ?, ?, 1)
@@ -116,7 +127,6 @@ export default function PlansListScreen() {
           const planJson = await planRes.json();
           const plansList = Array.isArray(planJson) ? planJson : (planJson?.data || []);
           for (const pl of plansList) {
-            validPlanIds.push(pl.id);
             const planName = pl.name || pl.floors?.name || pl.pdf_path?.split('/')?.pop() || 'Plan architektoniczny';
             await db.runAsync(
               `INSERT INTO plans (id, project_id, floor_id, name, width, height, created_at, updated_at, version)
@@ -164,13 +174,25 @@ export default function PlansListScreen() {
         ORDER BY p.name ASC;
       `);
 
+      // Check cache status for each plan
+      const cachedSet = new Set<string>();
+      if (allPlans) {
+        for (const pl of allPlans) {
+          const isCached = await TileCacheService.isPlanCachedLocally(pl.id);
+          if (isCached) cachedSet.add(pl.id);
+        }
+      }
+      setCachedPlanIds(cachedSet);
+
       const matchedPlanIds = new Set<string>();
       const groups: ProjectGroup[] = projs.map((pr) => {
         const prPlans = (allPlans || []).filter((pl) => pl.project_id === pr.id);
-        prPlans.forEach((p) => matchedPlanIds.add(p.id));
+        prPlans.forEach((p) => {
+          matchedPlanIds.add(p.id);
+          p.isCached = cachedSet.has(p.id);
+        });
         const prBuildings = (allBuildings || []).filter((b) => b.project_id === pr.id);
 
-        // Group plans by building
         const buildingMap: Record<string, BuildingGroup> = {};
         for (const b of prBuildings) {
           buildingMap[b.id] = { id: b.id, name: b.name, plans: [] };
@@ -185,18 +207,23 @@ export default function PlansListScreen() {
         }
 
         const buildingsList = Object.values(buildingMap).filter((bg) => bg.plans.length > 0 || prBuildings.some((b) => b.id === bg.id));
+        const allPrPlansCached = prPlans.length > 0 && prPlans.every((pl) => cachedSet.has(pl.id));
 
         return {
           id: pr.id,
           name: pr.name,
           buildings: buildingsList,
           totalPlansCount: prPlans.length,
+          isFullyCached: allPrPlansCached,
         };
       });
 
-      // Catch any standalone or unassigned plans
+      // Catch any standalone plans
       const orphanPlans = (allPlans || []).filter((pl) => !matchedPlanIds.has(pl.id));
       if (orphanPlans.length > 0) {
+        orphanPlans.forEach((p) => {
+          p.isCached = cachedSet.has(p.id);
+        });
         groups.push({
           id: 'unassigned-project',
           name: 'Pozostałe / Rzuty architektoniczne',
@@ -208,14 +235,12 @@ export default function PlansListScreen() {
             },
           ],
           totalPlansCount: orphanPlans.length,
+          isFullyCached: orphanPlans.every((pl) => cachedSet.has(pl.id)),
         });
       }
 
       setProjectGroups(groups);
-
-      // Projects are COLLAPSED by default as requested by user
-      setExpandedProjectIds(new Set());
-      setExpandedBuildingIds(new Set());
+      await refreshCacheStats();
     } catch (err) {
       console.error('[PlansList] Load error:', err);
     } finally {
@@ -231,6 +256,55 @@ export default function PlansListScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     loadData();
+  };
+
+  const handleDownloadProjectOffline = async (group: ProjectGroup) => {
+    if (downloadingProjectId) return;
+    try {
+      setDownloadingProjectId(group.id);
+      setDownloadProgress({
+        totalPlans: group.totalPlansCount,
+        completedPlans: 0,
+        currentPlanName: group.name,
+        planProgress: { total: 100, completed: 0, currentZoom: 1 },
+      });
+
+      const res = await TileCacheService.prefetchProjectPlans(group.id, (prog) => {
+        setDownloadProgress({ ...prog });
+      });
+
+      if (res.success) {
+        Alert.alert('✅ Pomyślnie pobrano', `Projekt "${group.name}" jest dostępny offline bez dostępu do Internetu.`);
+      } else {
+        Alert.alert('Uwaga', 'Część kafelków mogła nie zostać pobrana. Sprawdź połączenie.');
+      }
+
+      await loadData();
+    } catch (e: any) {
+      Alert.alert('Błąd pobierania', e?.message || 'Nie udało się pobrać planów do trybu offline.');
+    } finally {
+      setDownloadingProjectId(null);
+      setDownloadProgress(null);
+    }
+  };
+
+  const handleClearAllCache = async () => {
+    Alert.alert(
+      'Wyczyść pamięć podręczną',
+      `Czy chcesz usunąć wszystkie pobrane kafelki planów (${TileCacheService.formatBytes(totalCacheBytes)}) z pamięci telefonu?`,
+      [
+        { text: 'Anuluj', style: 'cancel' },
+        {
+          text: 'Wyczyść',
+          style: 'destructive',
+          onPress: async () => {
+            await TileCacheService.clearAllTileCache();
+            await loadData();
+            Alert.alert('Pamięć wyczyszczona', 'Pamięć podręczna planów została zwolniona.');
+          },
+        },
+      ]
+    );
   };
 
   const toggleProjectExpand = (projectId: string) => {
@@ -297,7 +371,7 @@ export default function PlansListScreen() {
         }}
       />
 
-      {/* Search Header */}
+      {/* Top Offline Storage & Search Header */}
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
@@ -307,6 +381,21 @@ export default function PlansListScreen() {
           onChangeText={setSearch}
           clearButtonMode="while-editing"
         />
+
+        {/* Storage status & Controls */}
+        <View style={styles.storageStatusRow}>
+          <View style={styles.storageLeft}>
+            <Text style={styles.storageText}>
+              💾 Offline-Cache: <Text style={styles.storageHighlight}>{TileCacheService.formatBytes(totalCacheBytes)}</Text>
+            </Text>
+          </View>
+          {totalCacheBytes > 0 && (
+            <TouchableOpacity style={styles.clearCacheBtn} onPress={handleClearAllCache}>
+              <Text style={styles.clearCacheBtnText}>🗑️ Leeren</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         <View style={styles.summaryInfoRow}>
           <Text style={styles.summaryInfoText}>
             🏢 {projectGroups.length} Projekte • 📐 {totalPlansCount} Pläne
@@ -334,6 +423,35 @@ export default function PlansListScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Real-time Project Download Progress Bar */}
+        {downloadingProjectId && downloadProgress && (
+          <View style={styles.downloadProgressBanner}>
+            <View style={styles.downloadProgressHeader}>
+              <ActivityIndicator size="small" color="#38BDF8" />
+              <Text style={styles.downloadProgressTitle}>
+                Pobieranie: Plan {downloadProgress.completedPlans + 1}/{downloadProgress.totalPlans}
+              </Text>
+            </View>
+            <Text style={styles.downloadProgressPlanName} numberOfLines={1}>
+              {downloadProgress.currentPlanName}
+            </Text>
+            <View style={styles.progressBarBackground}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  {
+                    width: `${Math.round(
+                      ((downloadProgress.completedPlans + (downloadProgress.planProgress.completed / (downloadProgress.planProgress.total || 1))) /
+                        (downloadProgress.totalPlans || 1)) *
+                        100
+                    )}%`,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+        )}
       </View>
 
       {loading ? (
@@ -364,6 +482,8 @@ export default function PlansListScreen() {
           }
           renderItem={({ item: group }) => {
             const isExpanded = expandedProjectIds.has(group.id) || q.length > 0;
+            const isDownloadingThis = downloadingProjectId === group.id;
+
             return (
               <View style={styles.projectCard}>
                 {/* Project Accordion Header */}
@@ -374,18 +494,41 @@ export default function PlansListScreen() {
                 >
                   <View style={styles.accordionLeft}>
                     <Text style={styles.projectIcon}>📁</Text>
-                    <View>
+                    <View style={{ flex: 1 }}>
                       <Text style={styles.projectName}>{group.name}</Text>
-                      <Text style={styles.projectSubtext}>
-                        {group.buildings.length} {group.buildings.length === 1 ? 'budynek' : 'budynków'} • {group.totalPlansCount} rzutów
-                      </Text>
+                      <View style={styles.projectSubRow}>
+                        <Text style={styles.projectSubtext}>
+                          {group.buildings.length} {group.buildings.length === 1 ? 'budynek' : 'budynków'} • {group.totalPlansCount} rzutów
+                        </Text>
+                        {group.isFullyCached && (
+                          <View style={styles.cachedBadge}>
+                            <Text style={styles.cachedBadgeText}>✅ Offline bereit</Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                   </View>
 
                   <View style={styles.accordionRight}>
-                    <View style={styles.planCountBadge}>
-                      <Text style={styles.planCountText}>{group.totalPlansCount}</Text>
-                    </View>
+                    {/* Quick Download Entire Project Offline Button */}
+                    <TouchableOpacity
+                      style={[
+                        styles.projectOfflineBtn,
+                        group.isFullyCached && styles.projectOfflineBtnCached,
+                        isDownloadingThis && styles.projectOfflineBtnActive,
+                      ]}
+                      disabled={isDownloadingThis}
+                      onPress={() => handleDownloadProjectOffline(group)}
+                    >
+                      {isDownloadingThis ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.projectOfflineBtnText}>
+                          {group.isFullyCached ? '🔄 Aktualisieren' : '⬇️ Offline'}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+
                     <Text style={styles.chevron}>{isExpanded ? '▲' : '▼'}</Text>
                   </View>
                 </TouchableOpacity>
@@ -434,7 +577,14 @@ export default function PlansListScreen() {
                                       <View style={styles.planMainRow}>
                                         <Text style={styles.planIcon}>📐</Text>
                                         <View style={{ flex: 1 }}>
-                                          <Text style={styles.planTitle}>{plan.name}</Text>
+                                          <View style={styles.planTitleRow}>
+                                            <Text style={styles.planTitle}>{plan.name}</Text>
+                                            {cachedPlanIds.has(plan.id) && (
+                                              <View style={styles.planCachedTag}>
+                                                <Text style={styles.planCachedTagText}>💾 Offline</Text>
+                                              </View>
+                                            )}
+                                          </View>
                                           {plan.floor_name ? (
                                             <Text style={styles.floorTitle}>Kondygnacja: {plan.floor_name}</Text>
                                           ) : null}
@@ -498,18 +648,51 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1E293B',
   },
-  summaryInfoRow: {
-    marginTop: 8,
+  storageStatusRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    backgroundColor: '#0F172A',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  storageLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  storageText: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  storageHighlight: {
+    color: '#38BDF8',
+    fontWeight: '700',
+  },
+  clearCacheBtn: {
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    backgroundColor: '#334155',
+    borderRadius: 4,
+  },
+  clearCacheBtnText: {
+    color: '#F1F5F9',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  summaryInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
   },
   summaryInfoText: {
+    color: '#94A3B8',
     fontSize: 12,
     fontWeight: '600',
-    color: '#94A3B8',
   },
   expandToggleRow: {
     flexDirection: 'row',
@@ -517,7 +700,7 @@ const styles = StyleSheet.create({
   },
   expandBtn: {
     backgroundColor: '#1E293B',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
@@ -528,124 +711,279 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
+  downloadProgressBanner: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#0284C7',
+  },
+  downloadProgressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  downloadProgressTitle: {
+    color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  downloadProgressPlanName: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
+    marginBottom: 6,
+  },
+  progressBarBackground: {
+    height: 6,
+    backgroundColor: '#1E293B',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#38BDF8',
+    borderRadius: 3,
+  },
   list: {
-    padding: 14,
-    paddingBottom: 40,
+    padding: 16,
+    gap: 12,
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: '#94A3B8',
+    fontSize: 14,
+  },
+  emptyTitle: {
+    color: '#F8FAFC',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    color: '#64748B',
+    fontSize: 13,
+    textAlign: 'center',
   },
   projectCard: {
     backgroundColor: '#0F172A',
-    borderRadius: 14,
-    marginBottom: 12,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#1E293B',
     overflow: 'hidden',
   },
   accordionHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 14,
     backgroundColor: '#0F172A',
   },
   accordionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
     flex: 1,
+    marginRight: 8,
   },
   projectIcon: {
     fontSize: 22,
-    marginRight: 10,
   },
   projectName: {
-    fontSize: 16,
-    fontWeight: '700',
     color: '#F8FAFC',
-    marginBottom: 2,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  projectSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
   },
   projectSubtext: {
-    fontSize: 12,
     color: '#64748B',
+    fontSize: 12,
+  },
+  cachedBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
+  cachedBadgeText: {
+    color: '#34D399',
+    fontSize: 10,
+    fontWeight: '700',
   },
   accordionRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
-  planCountBadge: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+  projectOfflineBtn: {
+    backgroundColor: '#0284C7',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
   },
-  planCountText: {
-    color: '#38BDF8',
-    fontSize: 12,
+  projectOfflineBtnCached: {
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  projectOfflineBtnActive: {
+    backgroundColor: '#0369A1',
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  projectOfflineBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '700',
   },
   chevron: {
-    color: '#94A3B8',
-    fontSize: 12,
+    color: '#64748B',
+    fontSize: 13,
     fontWeight: '800',
   },
   accordionBody: {
-    padding: 10,
-    backgroundColor: '#070D1A',
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    backgroundColor: '#0B0F19',
     borderTopWidth: 1,
     borderTopColor: '#1E293B',
-    gap: 8,
+    gap: 10,
+    paddingTop: 10,
   },
   emptyPlansBox: {
     padding: 12,
     alignItems: 'center',
   },
   emptyPlansText: {
-    fontSize: 12,
     color: '#64748B',
+    fontSize: 13,
   },
-  planItemCard: {
+  buildingContainer: {
     backgroundColor: '#0F172A',
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#1E293B',
+    overflow: 'hidden',
+  },
+  buildingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#131D31',
+  },
+  buildingHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  buildingIcon: {
+    fontSize: 15,
+  },
+  buildingTitle: {
+    color: '#F1F5F9',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  buildingHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  buildingCountBadge: {
+    color: '#94A3B8',
+    fontSize: 11,
+  },
+  chevronSmall: {
+    color: '#64748B',
+    fontSize: 11,
+  },
+  buildingPlansList: {
+    padding: 8,
+    gap: 8,
+    backgroundColor: '#0F172A',
+  },
+  emptyBuildingPlans: {
+    color: '#64748B',
+    fontSize: 12,
+    padding: 8,
+  },
+  planItemCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   planMainRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 8,
   },
   planIcon: {
-    fontSize: 20,
-    marginRight: 10,
+    fontSize: 18,
   },
-  planTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#F8FAFC',
-  },
-  floorTitle: {
-    fontSize: 11,
-    color: '#94A3B8',
-    marginTop: 1,
-  },
-  arrowIcon: {
-    fontSize: 14,
-    color: '#38BDF8',
-    fontWeight: '800',
-    marginLeft: 8,
-  },
-  badgeRow: {
+  planTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
+  planTitle: {
+    color: '#F8FAFC',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  planCachedTag: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+  },
+  planCachedTagText: {
+    color: '#38BDF8',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  floorTitle: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  arrowIcon: {
+    color: '#38BDF8',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
   badgeTask: {
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 5,
+    backgroundColor: 'rgba(2, 132, 199, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#0284C7',
   },
   badgeTaskText: {
     color: '#38BDF8',
@@ -653,102 +991,29 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   badgeBma: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 5,
+    backgroundColor: 'rgba(220, 38, 38, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#DC2626',
   },
   badgeBmaText: {
-    color: '#EF4444',
+    color: '#F87171',
     fontSize: 10,
     fontWeight: '700',
   },
   badgeCircuit: {
-    backgroundColor: 'rgba(168, 85, 247, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 5,
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#8B5CF6',
   },
   badgeCircuitText: {
     color: '#C084FC',
     fontSize: 10,
     fontWeight: '700',
-  },
-  buildingContainer: {
-    backgroundColor: '#0B132B',
-    borderRadius: 10,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    overflow: 'hidden',
-  },
-  buildingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 10,
-    backgroundColor: '#0E1738',
-  },
-  buildingHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  buildingIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  buildingTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#38BDF8',
-  },
-  buildingHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  buildingCountBadge: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#94A3B8',
-  },
-  chevronSmall: {
-    color: '#94A3B8',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  buildingPlansList: {
-    padding: 8,
-    gap: 8,
-    backgroundColor: '#060B1A',
-  },
-  emptyBuildingPlans: {
-    fontSize: 11,
-    color: '#64748B',
-    padding: 8,
-    textAlign: 'center',
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  loadingText: {
-    color: '#94A3B8',
-    marginTop: 12,
-    fontSize: 14,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    color: '#F8FAFC',
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
   },
 });
