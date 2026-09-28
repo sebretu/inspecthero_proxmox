@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
   RefreshControl,
   TextInput,
 } from 'react-native';
@@ -14,44 +13,31 @@ import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDatabase } from '../../src/db/database';
 import { authSupabase } from '../../src/auth/authClient';
-import { useLanguage } from '../../src/i18n/LanguageContext';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
 
-interface StromkreisRow {
-  id: string;
-  plan_id: string;
-  project_id?: string;
-  circuit_name: string;
-  circuit_code?: string;
-  short_label?: string;
-  full_name?: string;
-  type?: string;
-  fuse_type: string | null;
-  phase?: number;
-  breaker_current?: number;
-  breaker_curve?: string;
-  pos_x?: number;
-  pos_y?: number;
-  plan_name?: string;
-  project_name?: string;
-  version: number;
-}
-
-interface PlanOption {
+interface PlanWithCircuits {
   id: string;
   name: string;
-  project_id?: string;
-  project_name?: string;
+  project_id: string;
+  project_name: string;
+  company_name?: string;
+  floor_name?: string;
+  circuit_count: number;
+}
+
+interface ProjectGroupWithCircuits {
+  id: string;
+  name: string;
+  company_name?: string;
+  plans: PlanWithCircuits[];
+  totalCircuits: number;
 }
 
 export default function CircuitsScreen() {
   const router = useRouter();
-  const { t } = useLanguage();
-  const [plans, setPlans] = useState<PlanOption[]>([]);
-  const [selectedPlanId, setSelectedPlanId] = useState<string>('all');
+  const [projectGroups, setProjectGroups] = useState<ProjectGroupWithCircuits[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [circuits, setCircuits] = useState<StromkreisRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -71,14 +57,15 @@ export default function CircuitsScreen() {
         const now = new Date().toISOString();
 
         for (const p of apiProjects) {
+          const compName = p.companies?.name || null;
           await db.runAsync(
-            `INSERT INTO projects (id, name, status, created_at, updated_at, version)
-             VALUES (?, ?, ?, ?, ?, 1)
-             ON CONFLICT(id) DO UPDATE SET name = excluded.name, status = excluded.status, updated_at = excluded.updated_at;`,
-            [p.id, p.name, p.status || 'ACTIVE', p.created_at || now, p.updated_at || now]
+            `INSERT INTO projects (id, name, company_name, address, status, created_at, updated_at, version)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+             ON CONFLICT(id) DO UPDATE SET name = excluded.name, company_name = excluded.company_name, address = excluded.address, updated_at = excluded.updated_at;`,
+            [p.id, p.name, compName, p.address || null, p.status || 'ACTIVE', p.created_at || now, p.updated_at || now]
           );
 
-          // 2. Fetch active/current plans for each project
+          // 2. Fetch plans for this project
           const planRes = await fetch(`${API_BASE_URL}/api/plans?projectId=${encodeURIComponent(p.id)}&current=true`, { headers });
           if (planRes.ok) {
             const planJson = await planRes.json();
@@ -99,11 +86,35 @@ export default function CircuitsScreen() {
                 const circs = Array.isArray(cJson) ? cJson : (cJson?.data || []);
                 for (const c of circs) {
                   const fuseStr = c.breaker_current ? `${c.breaker_curve || 'B'}${c.breaker_current}A` : (c.fuse_type || 'B16');
+                  const code = c.circuit_code || c.short_label || c.circuit_name || '1';
                   await db.runAsync(
-                    `INSERT INTO stromkreise (id, plan_id, circuit_name, fuse_type, pos_x, pos_y, version)
-                     VALUES (?, ?, ?, ?, ?, ?, 1)
-                     ON CONFLICT(id) DO UPDATE SET circuit_name = excluded.circuit_name, fuse_type = excluded.fuse_type;`,
-                    [c.id, pl.id, c.circuit_code || c.short_label || c.full_name || 'Obwód', fuseStr, c.x_norm ? Math.round(c.x_norm * 1920) : 100, c.y_norm ? Math.round(c.y_norm * 1080) : 100]
+                    `INSERT INTO stromkreise (id, plan_id, circuit_name, circuit_code, short_label, full_name, type, fuse_type, x_norm, y_norm, status, metadata, version)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                     ON CONFLICT(id) DO UPDATE SET 
+                       circuit_name = excluded.circuit_name, 
+                       circuit_code = excluded.circuit_code, 
+                       short_label = excluded.short_label, 
+                       full_name = excluded.full_name, 
+                       type = excluded.type, 
+                       fuse_type = excluded.fuse_type, 
+                       x_norm = excluded.x_norm, 
+                       y_norm = excluded.y_norm,
+                       status = excluded.status,
+                       metadata = excluded.metadata;`,
+                    [
+                      c.id,
+                      pl.id,
+                      code,
+                      code,
+                      c.short_label || code,
+                      c.full_name || null,
+                      c.type || 'socket',
+                      fuseStr,
+                      c.x_norm ?? 0.1,
+                      c.y_norm ?? 0.1,
+                      c.status || 'open',
+                      JSON.stringify(c.metadata || {}),
+                    ]
                   ).catch(() => {});
                 }
               }
@@ -111,56 +122,61 @@ export default function CircuitsScreen() {
           }
         }
       }
-
-      // Fetch active plans list that actually contain Stromkreise
-      const planRows = (await db.getAllAsync(`
-        SELECT p.id, p.name, p.project_id, COALESCE(pr.name, '') as project_name 
-        FROM plans p 
-        LEFT JOIN projects pr ON p.project_id = pr.id 
-        WHERE p.deleted_at IS NULL 
-          AND p.id != 'pln-sample-001'
-          AND EXISTS (SELECT 1 FROM stromkreise s WHERE s.plan_id = p.id AND s.deleted_at IS NULL)
-        ORDER BY pr.name ASC, p.name ASC;
-      `)) as PlanOption[];
-      setPlans(planRows);
-    } catch (e) {
-      console.warn('[Circuits] Sync error:', e);
+    } catch (apiErr) {
+      console.warn('[CircuitsScreen] Live sync error:', apiErr);
     }
   };
 
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
       const db = await getDatabase();
       await syncCircuitsFromApi(db);
 
-      let query = `
-        SELECT s.id, s.plan_id, s.circuit_name, s.fuse_type, s.pos_x, s.pos_y, s.version,
-               COALESCE(p.name, 'Plan') as plan_name,
-               COALESCE(pr.name, '') as project_name
-        FROM stromkreise s
-        LEFT JOIN plans p ON s.plan_id = p.id
-        LEFT JOIN projects pr ON p.project_id = pr.id
-        WHERE s.deleted_at IS NULL
-      `;
-      const params: any[] = [];
+      // Query ONLY plans that actually have Stromkreise
+      const planRows = (await db.getAllAsync<PlanWithCircuits>(`
+        SELECT 
+          p.id, 
+          p.name, 
+          p.project_id, 
+          COALESCE(pr.name, 'Projekt') as project_name,
+          pr.company_name,
+          COALESCE(f.name, '') as floor_name,
+          COUNT(s.id) as circuit_count
+        FROM plans p 
+        INNER JOIN stromkreise s ON s.plan_id = p.id AND s.deleted_at IS NULL
+        LEFT JOIN projects pr ON p.project_id = pr.id 
+        LEFT JOIN floors f ON p.floor_id = f.id
+        WHERE p.deleted_at IS NULL 
+        GROUP BY p.id, p.name, p.project_id, pr.name, pr.company_name, f.name
+        HAVING COUNT(s.id) > 0
+        ORDER BY pr.name ASC, p.name ASC;
+      `)) || [];
 
-      if (selectedPlanId !== 'all') {
-        query += ` AND s.plan_id = ?`;
-        params.push(selectedPlanId);
+      // Group plans by project
+      const groupMap: Record<string, ProjectGroupWithCircuits> = {};
+      for (const pl of planRows) {
+        const pId = pl.project_id || 'unassigned';
+        if (!groupMap[pId]) {
+          groupMap[pId] = {
+            id: pId,
+            name: pl.project_name,
+            company_name: pl.company_name,
+            plans: [],
+            totalCircuits: 0,
+          };
+        }
+        groupMap[pId].plans.push(pl);
+        groupMap[pId].totalCircuits += pl.circuit_count;
       }
 
-      query += ` ORDER BY s.circuit_name ASC;`;
-
-      const rows = (await db.getAllAsync(query, params)) as StromkreisRow[];
-      setCircuits(rows || []);
+      setProjectGroups(Object.values(groupMap));
     } catch (err) {
-      console.error('[Circuits] Load error:', err);
+      console.error('[CircuitsScreen] Load error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedPlanId]);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -171,63 +187,26 @@ export default function CircuitsScreen() {
     loadData();
   };
 
-  const filteredCircuits = circuits.filter((c) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      c.circuit_name.toLowerCase().includes(q) ||
-      (c.fuse_type && c.fuse_type.toLowerCase().includes(q)) ||
-      (c.project_name && c.project_name.toLowerCase().includes(q)) ||
-      (c.plan_name && c.plan_name.toLowerCase().includes(q))
-    );
-  });
-
-  const renderCircuitItem = ({ item }: { item: StromkreisRow }) => {
-    return (
-      <TouchableOpacity
-        style={styles.card}
-        activeOpacity={0.8}
-        onPress={() => {
-          if (item.plan_id) {
-            router.push({
-              pathname: '/plans/[id]',
-              params: { id: item.plan_id },
-            } as any);
-          }
-        }}
-      >
-        <View style={styles.cardHeader}>
-          <View style={styles.titleRow}>
-            <View style={[styles.iconBadge, { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: '#38BDF8' }]}>
-              <Text style={styles.iconText}>⚡</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Stromkreis: {item.circuit_name}</Text>
-              <Text style={styles.planSubtitle}>
-                {item.project_name ? `${item.project_name} • ` : ''}{item.plan_name || 'Kein Plan zugewiesen'}
-              </Text>
-            </View>
-          </View>
-          <View style={[styles.fuseBadge, { borderColor: '#38BDF8' }]}>
-            <Text style={[styles.fuseText, { color: '#38BDF8' }]}>{item.fuse_type || 'B16'}</Text>
-          </View>
-        </View>
-
-        <View style={styles.cardFooter}>
-          <Text style={styles.positionText}>
-            Plan-Position: X={item.pos_x || 0}, Y={item.pos_y || 0}
-          </Text>
-          <Text style={styles.actionLink}>Auf 2D-Plan anzeigen →</Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const q = searchQuery.toLowerCase().trim();
+  const filteredGroups = projectGroups
+    .map((g) => {
+      const matchProj = g.name.toLowerCase().includes(q) || (g.company_name && g.company_name.toLowerCase().includes(q));
+      const matchingPlans = g.plans.filter(
+        (p) => matchProj || p.name.toLowerCase().includes(q) || (p.floor_name && p.floor_name.toLowerCase().includes(q))
+      );
+      return {
+        ...g,
+        plans: q ? matchingPlans : g.plans,
+        hasMatch: matchProj || matchingPlans.length > 0,
+      };
+    })
+    .filter((g) => (q ? g.hasMatch : true));
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <Stack.Screen
         options={{
-          title: t('circuits', '⚡ Stromkreise & Absicherung'),
+          title: 'Stromkreise (Pläne & Markery)',
           headerShown: true,
           headerBackTitle: 'Zurück',
           headerStyle: { backgroundColor: '#0B0F19' },
@@ -236,63 +215,90 @@ export default function CircuitsScreen() {
         }}
       />
 
-      {/* Plan Filter Bar */}
-      <View style={styles.filterSection}>
-        <Text style={styles.filterHeading}>NACH PLAN FILTERN:</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-          <TouchableOpacity
-            style={[styles.chip, selectedPlanId === 'all' && styles.chipActive]}
-            onPress={() => setSelectedPlanId('all')}
-          >
-            <Text style={[styles.chipText, selectedPlanId === 'all' && styles.chipTextActive]}>
-              Alle ({circuits.length})
-            </Text>
-          </TouchableOpacity>
-          {plans.map((p) => (
-            <TouchableOpacity
-              key={p.id}
-              style={[styles.chip, selectedPlanId === p.id && styles.chipActive]}
-              onPress={() => setSelectedPlanId(p.id)}
-            >
-              <Text style={[styles.chipText, selectedPlanId === p.id && styles.chipTextActive]}>
-                {p.project_name ? `[${p.project_name}] ` : ''}{p.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Search Bar */}
+      {/* Search Header */}
+      <View style={styles.searchHeader}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Stromkreis suchen (z.B. 1Q1, B16, UV)..."
+          placeholder="Projekt oder Plan mit Stromkreisen suchen..."
           placeholderTextColor="#64748B"
           value={searchQuery}
           onChangeText={setSearchQuery}
+          clearButtonMode="while-editing"
         />
+        <Text style={styles.hintText}>
+          ⚡ Wybierz rzut, aby otworzyć interaktywną mapę z obwodami i zgłaszaniem wykonania.
+        </Text>
       </View>
 
-      {/* Main List */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#38BDF8" />
-          <Text style={styles.loadingText}>Stromkreise werden geladen...</Text>
+          <Text style={styles.loadingText}>Stromkreise-Pläne werden geladen...</Text>
         </View>
       ) : (
         <FlatList
-          data={filteredCircuits}
+          data={filteredGroups}
           keyExtractor={(item) => item.id}
-          renderItem={renderCircuitItem}
-          contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#38BDF8" />}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#38BDF8" />
+          }
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyEmoji}>⚡</Text>
-              <Text style={styles.emptyTitle}>Keine Stromkreise gefunden</Text>
-              <Text style={styles.emptySub}>
-                Wählen Sie einen anderen Plan oder fügen Sie Stromkreise direkt im Plan ein.
+            <View style={styles.center}>
+              <Text style={styles.emptyTitle}>Brak planów ze Stromkreise</Text>
+              <Text style={styles.emptySubtitle}>
+                Nie znaleziono aktywnych rzutów ze wstawionymi obwodami elektrycznymi.
               </Text>
             </View>
           }
+          renderItem={({ item: group }) => (
+            <View style={styles.projectCard}>
+              <View style={styles.projectHeader}>
+                <View style={styles.projectTitleRow}>
+                  <Text style={styles.projectIcon}>🏢</Text>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text style={styles.projectName}>{group.name}</Text>
+                      {group.company_name && (
+                        <View style={styles.companyBadge}>
+                          <Text style={styles.companyBadgeText}>{group.company_name}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.projectSubtext}>
+                      {group.plans.length} {group.plans.length === 1 ? 'Plan' : 'Pläne'} • {group.totalCircuits} Stromkreise-Marker
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.plansContainer}>
+                {group.plans.map((p) => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={styles.planCard}
+                    activeOpacity={0.7}
+                    onPress={() => router.push({ pathname: '/plans/[id]', params: { id: p.id } } as any)}
+                  >
+                    <View style={styles.planLeft}>
+                      <Text style={styles.planIcon}>📐</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.planName}>{p.name}</Text>
+                        {p.floor_name ? <Text style={styles.floorName}>Kondygnacja: {p.floor_name}</Text> : null}
+                      </View>
+                    </View>
+
+                    <View style={styles.planRight}>
+                      <View style={styles.circuitCountBadge}>
+                        <Text style={styles.circuitCountText}>⚡ {p.circuit_count} Kreise</Text>
+                      </View>
+                      <Text style={styles.arrowIcon}>➔</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
         />
       )}
     </SafeAreaView>
@@ -304,158 +310,153 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#030712',
   },
-  filterSection: {
+  searchHeader: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 10,
     backgroundColor: '#0B0F19',
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
   },
-  filterHeading: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#64748B',
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  chipScroll: {
-    flexDirection: 'row',
-    marginBottom: 10,
-  },
-  chip: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  chipActive: {
-    backgroundColor: 'rgba(56, 189, 248, 0.2)',
-    borderColor: '#38BDF8',
-  },
-  chipText: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  chipTextActive: {
-    color: '#38BDF8',
-  },
   searchInput: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#030712',
     color: '#F8FAFC',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 13,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1E293B',
   },
-  listContent: {
+  hintText: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 8,
+  },
+  list: {
     padding: 16,
     gap: 12,
   },
-  card: {
-    backgroundColor: '#0F172A',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    marginBottom: 8,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  center: {
     flex: 1,
-  },
-  iconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    padding: 24,
   },
-  iconText: {
-    fontSize: 18,
+  loadingText: {
+    marginTop: 12,
+    color: '#94A3B8',
+    fontSize: 14,
   },
-  cardTitle: {
+  emptyTitle: {
+    color: '#F8FAFC',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    color: '#64748B',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  projectCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    overflow: 'hidden',
+  },
+  projectHeader: {
+    padding: 14,
+    backgroundColor: '#131D31',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+  },
+  projectTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  projectIcon: {
+    fontSize: 22,
+  },
+  projectName: {
+    color: '#F8FAFC',
     fontSize: 15,
     fontWeight: '800',
-    color: '#F8FAFC',
   },
-  planSubtitle: {
-    fontSize: 11,
+  companyBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+  },
+  companyBadgeText: {
+    color: '#38BDF8',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  projectSubtext: {
     color: '#94A3B8',
+    fontSize: 12,
+    marginTop: 3,
+  },
+  plansContainer: {
+    padding: 10,
+    gap: 8,
+  },
+  planCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1E293B',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  planLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  planIcon: {
+    fontSize: 18,
+  },
+  planName: {
+    color: '#F8FAFC',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  floorName: {
+    color: '#94A3B8',
+    fontSize: 11,
     marginTop: 2,
   },
-  fuseBadge: {
+  planRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  circuitCountBadge: {
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    backgroundColor: '#1E293B',
+    borderColor: '#8B5CF6',
   },
-  fuseText: {
+  circuitCountText: {
+    color: '#C084FC',
     fontSize: 11,
     fontWeight: '800',
   },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#1E293B',
-    paddingTop: 8,
-    marginTop: 4,
-  },
-  positionText: {
-    fontSize: 11,
-    color: '#64748B',
-  },
-  actionLink: {
-    fontSize: 12,
-    fontWeight: '700',
+  arrowIcon: {
     color: '#38BDF8',
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: '#94A3B8',
-    marginTop: 12,
-    fontSize: 14,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  emptyEmoji: {
-    fontSize: 44,
-    marginBottom: 12,
-  },
-  emptyTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
-    color: '#F8FAFC',
-    marginBottom: 6,
-  },
-  emptySub: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
-    maxWidth: 260,
   },
 });

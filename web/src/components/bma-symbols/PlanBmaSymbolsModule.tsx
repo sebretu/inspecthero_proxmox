@@ -207,6 +207,25 @@ export type BmaSymbolRow = {
   created_at?: string;
 };
 
+export const isBmaSymbolType = (type?: string | null): boolean => {
+  if (!type) return false;
+  return (
+    type === "detector_red" ||
+    type === "detector_blue" ||
+    type === "dis_signalgeber" ||
+    type === "sirene" ||
+    type === "sirene_up" ||
+    type === "sirene_down" ||
+    type === "sirene_left" ||
+    type === "sirene_right" ||
+    type === "bma_handmelder" ||
+    type === "bma_rauchmelder" ||
+    type.startsWith("bma_") ||
+    type.startsWith("bma") ||
+    type.startsWith("detector_")
+  );
+};
+
 export const BMA_SYMBOLS_CONFIG: Record<
   BmaSymbolType,
   { name: string; iconUrl: string; width: number; height: number; defaultPrefix: string; isEmergency?: boolean; isLight?: boolean; isOutlet?: boolean; isLadder?: boolean; isStripe?: boolean; isHeating?: boolean; isBigScale?: boolean }
@@ -991,6 +1010,7 @@ export default function PlanBmaSymbolsModule({
   };
 
   const handleQuickSaveSerial = async (symbol: BmaSymbolRow, serial: string) => {
+    if (!isBmaSymbolType(symbol.symbol_type)) return;
     const currentSym = symbols.find((s) => s.id === symbol.id) || symbol;
     const descObj = normalizeDescObj(currentSym.description);
 
@@ -1034,12 +1054,18 @@ export default function PlanBmaSymbolsModule({
   };
 
   const renderTooltipQuickSerialAndPhotos = (s: BmaSymbolRow) => {
+    const isBma = isBmaSymbolType(s.symbol_type);
     const parsed = normalizeDescObj(s.description);
-    const serial = parsed.serial_number || parsed.serialNumber || null;
+    const serial = isBma ? (parsed.serial_number || parsed.serialNumber || null) : null;
     const photos: string[] = Array.isArray(parsed.photos) ? parsed.photos : [];
     const isScanning = quickScanningSymbolId === s.id;
     const isUploading = quickUploadingSymbolId === s.id;
     const isEditingInline = editingSerialSymbolId === s.id;
+
+    // If it's not a BMA symbol and has no photos, do not render this section at all
+    if (!isBma && photos.length === 0) {
+      return null;
+    }
 
     return (
       <div
@@ -1055,99 +1081,135 @@ export default function PlanBmaSymbolsModule({
         onPointerDown={(e) => { e.stopPropagation(); }}
         onDoubleClick={(e) => { e.stopPropagation(); }}
       >
-        {/* Serial Number Direct Section */}
-        {isEditingInline ? (
-          <div
-            style={{ display: "flex", gap: 4, alignItems: "center" }}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <input
-              type="text"
-              autoFocus
-              value={inlineSerialText}
-              placeholder="Numer seryjny..."
+        {/* Serial Number Direct Section (ONLY FOR BMA SYMBOLS) */}
+        {isBma && (
+          isEditingInline ? (
+            <div
+              style={{ display: "flex", gap: 4, alignItems: "center" }}
               onClick={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
-              onChange={(e) => setInlineSerialText(e.target.value)}
-              onKeyDown={(e) => {
-                e.stopPropagation();
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleQuickSaveSerial(s, inlineSerialText);
-                }
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  setEditingSerialSymbolId(null);
-                }
-              }}
-              style={{
-                flex: 1,
-                background: "#0f172a",
-                border: "1px solid #38bdf8",
-                borderRadius: 5,
-                color: "#fff",
-                fontSize: 11,
-                padding: "4px 6px",
-                outline: "none",
-              }}
-            />
-            <button
-              type="button"
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                handleQuickSaveSerial(s, inlineSerialText);
-              }}
-              style={{ background: "#10b981", color: "#fff", border: "none", borderRadius: 5, padding: "4px 8px", fontSize: 11, cursor: "pointer", fontWeight: "bold" }}
-              title="Zapisz"
             >
-              ✓
-            </button>
-            <button
-              type="button"
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                setEditingSerialSymbolId(null);
-              }}
-              style={{ background: "#475569", color: "#fff", border: "none", borderRadius: 5, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
-              title="Anuluj"
-            >
-              ✕
-            </button>
-          </div>
-        ) : isScanning ? (
-          <div style={{ background: "rgba(56,189,248,0.15)", border: "1px solid rgba(56,189,248,0.4)", borderRadius: 6, padding: "5px 8px", fontSize: 10, color: "#38bdf8", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-            <span>⏳ Skanowanie aparatem / AI OCR...</span>
-          </div>
-        ) : serial ? (
-          <div style={{ background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.4)", borderRadius: 6, padding: "4px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 5, overflow: "hidden" }}>
-              <span style={{ fontSize: 12 }}>🏷️</span>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 8, color: "#86efac", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em" }}>Serial Number</div>
-                <div style={{ fontSize: 11, color: "#ffffff", fontWeight: 800, fontFamily: "monospace", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{serial}</div>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 3, alignItems: "center", marginLeft: 4 }}>
+              <input
+                type="text"
+                autoFocus
+                value={inlineSerialText}
+                placeholder="Numer seryjny..."
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onChange={(e) => setInlineSerialText(e.target.value)}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleQuickSaveSerial(s, inlineSerialText);
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setEditingSerialSymbolId(null);
+                  }
+                }}
+                style={{
+                  flex: 1,
+                  background: "#0f172a",
+                  border: "1px solid #38bdf8",
+                  borderRadius: 5,
+                  color: "#fff",
+                  fontSize: 11,
+                  padding: "4px 6px",
+                  outline: "none",
+                }}
+              />
               <button
                 type="button"
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
-                  setOpenTooltipId(s.id);
-                  setEditingSerialSymbolId(s.id);
-                  setInlineSerialText(serial);
+                  handleQuickSaveSerial(s, inlineSerialText);
                 }}
-                style={{ background: "rgba(255,255,255,0.1)", border: "none", borderRadius: 4, padding: "2px 5px", fontSize: 10, color: "#cbd5e1", cursor: "pointer" }}
-                title="Edytuj numer seryjny"
+                style={{ background: "#10b981", color: "#fff", border: "none", borderRadius: 5, padding: "4px 8px", fontSize: 11, cursor: "pointer", fontWeight: "bold" }}
+                title="Zapisz"
               >
-                ✏️
+                ✓
               </button>
+              <button
+                type="button"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setEditingSerialSymbolId(null);
+                }}
+                style={{ background: "#475569", color: "#fff", border: "none", borderRadius: 5, padding: "4px 8px", fontSize: 11, cursor: "pointer" }}
+                title="Anuluj"
+              >
+                ✕
+              </button>
+            </div>
+          ) : isScanning ? (
+            <div style={{ background: "rgba(56,189,248,0.15)", border: "1px solid rgba(56,189,248,0.4)", borderRadius: 6, padding: "5px 8px", fontSize: 10, color: "#38bdf8", fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+              <span>⏳ Skanowanie aparatem / AI OCR...</span>
+            </div>
+          ) : serial ? (
+            <div style={{ background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.4)", borderRadius: 6, padding: "4px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, overflow: "hidden" }}>
+                <span style={{ fontSize: 12 }}>🏷️</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 8, color: "#86efac", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em" }}>Serial Number</div>
+                  <div style={{ fontSize: 11, color: "#ffffff", fontWeight: 800, fontFamily: "monospace", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{serial}</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 3, alignItems: "center", marginLeft: 4 }}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setOpenTooltipId(s.id);
+                    setEditingSerialSymbolId(s.id);
+                    setInlineSerialText(serial);
+                  }}
+                  style={{ background: "rgba(255,255,255,0.1)", border: "none", borderRadius: 4, padding: "2px 5px", fontSize: 10, color: "#cbd5e1", cursor: "pointer" }}
+                  title="Edytuj numer seryjny"
+                >
+                  ✏️
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setOpenTooltipId(s.id);
+                    targetQuickSymbolRef.current = s;
+                    if (quickScanFileInputRef.current) {
+                      quickScanFileInputRef.current.value = "";
+                      quickScanFileInputRef.current.click();
+                    }
+                  }}
+                  style={{ background: "rgba(56,189,248,0.2)", border: "1px solid rgba(56,189,248,0.4)", borderRadius: 4, padding: "2px 5px", fontSize: 10, color: "#38bdf8", cursor: "pointer", display: "flex", alignItems: "center" }}
+                  title="Zeskanuj ponownie aparatem"
+                >
+                  📷
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleQuickSaveSerial(s, "");
+                  }}
+                  style={{ background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 4, padding: "2px 5px", fontSize: 10, color: "#f87171", cursor: "pointer" }}
+                  title="Usuń numer seryjny"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 4 }}>
               <button
                 type="button"
                 onMouseDown={(e) => e.stopPropagation()}
@@ -1161,10 +1223,26 @@ export default function PlanBmaSymbolsModule({
                     quickScanFileInputRef.current.click();
                   }
                 }}
-                style={{ background: "rgba(56,189,248,0.2)", border: "1px solid rgba(56,189,248,0.4)", borderRadius: 4, padding: "2px 5px", fontSize: 10, color: "#38bdf8", cursor: "pointer", display: "flex", alignItems: "center" }}
-                title="Zeskanuj ponownie aparatem"
+                style={{
+                  flex: 1,
+                  background: "linear-gradient(135deg, #0284c7, #2563eb)",
+                  border: "none",
+                  color: "#ffffff",
+                  borderRadius: 6,
+                  padding: "6px 8px",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 5,
+                  boxShadow: "0 2px 6px rgba(37,99,235,0.35)",
+                }}
+                title="Zrób zdjęcie / Zeskanuj numer seryjny aparatem"
               >
-                📷
+                <span>📷</span>
+                <span>Skanuj Serial</span>
               </button>
               <button
                 type="button"
@@ -1172,75 +1250,25 @@ export default function PlanBmaSymbolsModule({
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
-                  handleQuickSaveSerial(s, "");
+                  setOpenTooltipId(s.id);
+                  setEditingSerialSymbolId(s.id);
+                  setInlineSerialText("");
                 }}
-                style={{ background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 4, padding: "2px 5px", fontSize: 10, color: "#f87171", cursor: "pointer" }}
-                title="Usuń numer seryjny"
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  color: "#cbd5e1",
+                  borderRadius: 6,
+                  padding: "6px 8px",
+                  fontSize: 11,
+                  cursor: "pointer",
+                }}
+                title="Wpisz numer ręcznie"
               >
-                🗑️
+                ⌨️
               </button>
             </div>
-          </div>
-        ) : (
-          <div style={{ display: "flex", gap: 4 }}>
-            <button
-              type="button"
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                setOpenTooltipId(s.id);
-                targetQuickSymbolRef.current = s;
-                if (quickScanFileInputRef.current) {
-                  quickScanFileInputRef.current.value = "";
-                  quickScanFileInputRef.current.click();
-                }
-              }}
-              style={{
-                flex: 1,
-                background: "linear-gradient(135deg, #0284c7, #2563eb)",
-                border: "none",
-                color: "#ffffff",
-                borderRadius: 6,
-                padding: "6px 8px",
-                fontSize: 11,
-                fontWeight: 800,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 5,
-                boxShadow: "0 2px 6px rgba(37,99,235,0.35)",
-              }}
-              title="Zrób zdjęcie / Zeskanuj numer seryjny aparatem"
-            >
-              <span>📷</span>
-              <span>Skanuj Serial</span>
-            </button>
-            <button
-              type="button"
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                setOpenTooltipId(s.id);
-                setEditingSerialSymbolId(s.id);
-                setInlineSerialText("");
-              }}
-              style={{
-                background: "rgba(255,255,255,0.08)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                color: "#cbd5e1",
-                borderRadius: 6,
-                padding: "6px 8px",
-                fontSize: 11,
-                cursor: "pointer",
-              }}
-              title="Wpisz numer ręcznie"
-            >
-              ⌨️
-            </button>
-          </div>
+          )
         )}
 
         {/* Photos Mini Gallery */}
@@ -2384,7 +2412,9 @@ export default function PlanBmaSymbolsModule({
     if (s.description) {
       try {
         const parsed = JSON.parse(s.description);
-        if (parsed.serial_number || parsed.serialNumber) initSerial = String(parsed.serial_number || parsed.serialNumber);
+        if (isBmaSymbolType(s.symbol_type) && (parsed.serial_number || parsed.serialNumber)) {
+          initSerial = String(parsed.serial_number || parsed.serialNumber);
+        }
         if (Array.isArray(parsed.photos)) initPhotos = parsed.photos;
         if (lampTypesData.variants && lampTypesData.variants.length > 0) {
           const isHeating = s.symbol_type === 'warmepumpe_aussen' || s.symbol_type === 'warmepumpe_innen' || s.symbol_type === 'infrarotheizung' || s.symbol_type === 'geraet_box';
@@ -3151,10 +3181,12 @@ export default function PlanBmaSymbolsModule({
           delete descObj.zuleitung;
         }
 
-        if (serialNumberInput.trim()) {
+        const isBmaEdit = isBmaSymbolType(editingSymbol?.symbol_type);
+        if (isBmaEdit && serialNumberInput.trim()) {
           descObj.serial_number = serialNumberInput.trim();
         } else {
           delete descObj.serial_number;
+          delete descObj.serialNumber;
         }
         if (photosInput.length > 0) {
           descObj.photos = photosInput;
@@ -3219,7 +3251,8 @@ export default function PlanBmaSymbolsModule({
           descObj.powerKw = powerKwInput.trim();
         }
 
-        if (serialNumberInput.trim()) {
+        const isBmaInsert = isBmaSymbolType(modalCoords.symbol_type);
+        if (isBmaInsert && serialNumberInput.trim()) {
           descObj.serial_number = serialNumberInput.trim();
         }
         if (photosInput.length > 0) {
@@ -7452,6 +7485,7 @@ export default function PlanBmaSymbolsModule({
                 const isRevisionCloud = (currentType as string) === "revision_cloud";
                 const isAbdeckung = (currentType as string) === "abdeckung_box";
                 const isHeating = conf?.isHeating || (currentType as string) === "warmepumpe_aussen" || (currentType as string) === "warmepumpe_innen" || (currentType as string) === "infrarotheizung" || (currentType as string) === "geraet_box";
+                const isBma = isBmaSymbolType(currentType);
 
                 return (
                   <>
@@ -8295,118 +8329,120 @@ export default function PlanBmaSymbolsModule({
                       />
                     </div>
 
-                    {/* Serial Number & Camera/OCR Scanner */}
-                    <div className={styles.inputGroup} style={{ marginTop: 12 }}>
-                      <label className={styles.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span>🔢 {t("bmaAutomation", "serialNumber" as any, "Numer seryjny (Seriennummer)")}</span>
-                        {isScanningSerial && (
-                          <span style={{ fontSize: 10, color: "#38bdf8", fontWeight: 700 }}>
-                            ⚡ Skanowanie aparatem / AI...
-                          </span>
-                        )}
-                      </label>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                          type="text"
-                          className={styles.input}
-                          value={serialNumberInput}
-                          onChange={(e) => setSerialNumberInput(e.target.value)}
-                          placeholder="np. S/N 12345678 lub zeskanuj aparatem"
-                          style={{ flex: 1 }}
-                        />
-                        <label
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            width: 42,
-                            height: 42,
-                            borderRadius: 8,
-                            background: isScanningSerial ? "rgba(245, 158, 11, 0.2)" : "rgba(37, 99, 235, 0.2)",
-                            border: isScanningSerial ? "1px solid #f59e0b" : "1px solid rgba(59, 130, 246, 0.4)",
-                            color: isScanningSerial ? "#f59e0b" : "#60a5fa",
-                            cursor: isScanningSerial || uploadingPhoto ? "wait" : "pointer",
-                            flexShrink: 0,
-                            transition: "all 0.2s ease"
-                          }}
-                          title="Zrób zdjęcie etykiety / zeskanuj numer seryjny"
-                        >
-                          {isScanningSerial ? (
-                            <span style={{ fontSize: 14 }}>⏳</span>
-                          ) : (
-                            <span style={{ fontSize: 18 }}>📷</span>
+                    {/* Serial Number & Camera/OCR Scanner (ONLY FOR BMA SYMBOLS) */}
+                    {isBma && (
+                      <div className={styles.inputGroup} style={{ marginTop: 12 }}>
+                        <label className={styles.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span>🔢 {t("bmaAutomation", "serialNumber" as any, "Numer seryjny (Seriennummer)")}</span>
+                          {isScanningSerial && (
+                            <span style={{ fontSize: 10, color: "#38bdf8", fontWeight: 700 }}>
+                              ⚡ Skanowanie aparatem / AI...
+                            </span>
                           )}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            style={{ display: "none" }}
-                            disabled={isScanningSerial || uploadingPhoto}
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              setIsScanningSerial(true);
-                              setUploadingPhoto(true);
-                              try {
-                                const token = await getToken();
-                                const fd = new FormData();
-                                fd.append("file", file);
-                                fetch("/api/upload", { method: "POST", body: fd, headers: token ? { Authorization: `Bearer ${token}` } : {} })
-                                  .then(r => r.json())
-                                  .then(rj => {
-                                    if (rj.ok && rj.data?.url) {
-                                      setPhotosInput(prev => [...prev, rj.data.url]);
-                                    }
-                                  })
-                                  .catch(console.error)
-                                  .finally(() => setUploadingPhoto(false));
-
-                                const reader = new FileReader();
-                                reader.readAsDataURL(file);
-                                reader.onload = async () => {
-                                  const dataUrl = reader.result as string;
-                                  const base64 = dataUrl.split(",")[1];
-                                  try {
-                                    const zx = new BrowserMultiFormatReader();
-                                    const img = new Image();
-                                    img.src = dataUrl;
-                                    await new Promise(r => img.onload = r);
-                                    const result = await zx.decodeFromImageElement(img);
-                                    if (result && result.getText()) {
-                                      setSerialNumberInput(result.getText());
-                                      setIsScanningSerial(false);
-                                      return;
-                                    }
-                                  } catch (zxErr) {
-                                    console.log("ZXing barcode scan fallback to AI...", zxErr);
-                                  }
-
-                                  try {
-                                    const res = await fetch("/api/bma/scan-serial", {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-                                      body: JSON.stringify({ imageBase64: base64 })
-                                    });
-                                    const rj = await res.json();
-                                    if (rj.serialNumber && rj.serialNumber !== "UNKNOWN") {
-                                      setSerialNumberInput(rj.serialNumber);
-                                    }
-                                  } catch (aiErr) {
-                                    console.error("AI serial scan error:", aiErr);
-                                  } finally {
-                                    setIsScanningSerial(false);
-                                  }
-                                };
-                              } catch (err) {
-                                console.error(err);
-                                setIsScanningSerial(false);
-                                setUploadingPhoto(false);
-                              }
-                            }}
-                          />
                         </label>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            type="text"
+                            className={styles.input}
+                            value={serialNumberInput}
+                            onChange={(e) => setSerialNumberInput(e.target.value)}
+                            placeholder="np. S/N 12345678 lub zeskanuj aparatem"
+                            style={{ flex: 1 }}
+                          />
+                          <label
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: 42,
+                              height: 42,
+                              borderRadius: 8,
+                              background: isScanningSerial ? "rgba(245, 158, 11, 0.2)" : "rgba(37, 99, 235, 0.2)",
+                              border: isScanningSerial ? "1px solid #f59e0b" : "1px solid rgba(59, 130, 246, 0.4)",
+                              color: isScanningSerial ? "#f59e0b" : "#60a5fa",
+                              cursor: isScanningSerial || uploadingPhoto ? "wait" : "pointer",
+                              flexShrink: 0,
+                              transition: "all 0.2s ease"
+                            }}
+                            title="Zrób zdjęcie etykiety / zeskanuj numer seryjny"
+                          >
+                            {isScanningSerial ? (
+                              <span style={{ fontSize: 14 }}>⏳</span>
+                            ) : (
+                              <span style={{ fontSize: 18 }}>📷</span>
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              style={{ display: "none" }}
+                              disabled={isScanningSerial || uploadingPhoto}
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                setIsScanningSerial(true);
+                                setUploadingPhoto(true);
+                                try {
+                                  const token = await getToken();
+                                  const fd = new FormData();
+                                  fd.append("file", file);
+                                  fetch("/api/upload", { method: "POST", body: fd, headers: token ? { Authorization: `Bearer ${token}` } : {} })
+                                    .then(r => r.json())
+                                    .then(rj => {
+                                      if (rj.ok && rj.data?.url) {
+                                        setPhotosInput(prev => [...prev, rj.data.url]);
+                                      }
+                                    })
+                                    .catch(console.error)
+                                    .finally(() => setUploadingPhoto(false));
+
+                                  const reader = new FileReader();
+                                  reader.readAsDataURL(file);
+                                  reader.onload = async () => {
+                                    const dataUrl = reader.result as string;
+                                    const base64 = dataUrl.split(",")[1];
+                                    try {
+                                      const zx = new BrowserMultiFormatReader();
+                                      const img = new Image();
+                                      img.src = dataUrl;
+                                      await new Promise(r => img.onload = r);
+                                      const result = await zx.decodeFromImageElement(img);
+                                      if (result && result.getText()) {
+                                        setSerialNumberInput(result.getText());
+                                        setIsScanningSerial(false);
+                                        return;
+                                      }
+                                    } catch (zxErr) {
+                                      console.log("ZXing barcode scan fallback to AI...", zxErr);
+                                    }
+
+                                    try {
+                                      const res = await fetch("/api/bma/scan-serial", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                                        body: JSON.stringify({ imageBase64: base64 })
+                                      });
+                                      const rj = await res.json();
+                                      if (rj.serialNumber && rj.serialNumber !== "UNKNOWN") {
+                                        setSerialNumberInput(rj.serialNumber);
+                                      }
+                                    } catch (aiErr) {
+                                      console.error("AI serial scan error:", aiErr);
+                                    } finally {
+                                      setIsScanningSerial(false);
+                                    }
+                                  };
+                                } catch (err) {
+                                  console.error(err);
+                                  setIsScanningSerial(false);
+                                  setUploadingPhoto(false);
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Photos Gallery & Upload */}
                     <div className={styles.inputGroup} style={{ marginTop: 12 }}>

@@ -314,6 +314,33 @@ export const migrations: Migration[] = [
       await addColumnSafe('task_photos', 'uploaded_by', 'TEXT');
     },
   },
+  {
+    version: 5,
+    up: async (db: SQLiteDatabase) => {
+      const addColumnSafe = async (table: string, col: string, def: string) => {
+        try {
+          await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${col} ${def};`);
+        } catch (_) {}
+      };
+
+      await addColumnSafe('projects', 'company_name', 'TEXT');
+      await addColumnSafe('projects', 'address', 'TEXT');
+
+      await addColumnSafe('stromkreise', 'x_norm', 'REAL');
+      await addColumnSafe('stromkreise', 'y_norm', 'REAL');
+      await addColumnSafe('stromkreise', 'short_label', 'TEXT');
+      await addColumnSafe('stromkreise', 'circuit_code', 'TEXT');
+      await addColumnSafe('stromkreise', 'full_name', 'TEXT');
+      await addColumnSafe('stromkreise', 'type', 'TEXT');
+      await addColumnSafe('stromkreise', 'status', 'TEXT');
+      await addColumnSafe('stromkreise', 'metadata', 'TEXT');
+
+      await addColumnSafe('tasks', 'x_norm', 'REAL');
+      await addColumnSafe('tasks', 'y_norm', 'REAL');
+      await addColumnSafe('tasks', 'render_x', 'REAL');
+      await addColumnSafe('tasks', 'render_y', 'REAL');
+    },
+  },
 ];
 
 export async function runMigrations(db: SQLiteDatabase): Promise<void> {

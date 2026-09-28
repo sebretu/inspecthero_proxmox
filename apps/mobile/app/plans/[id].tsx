@@ -16,7 +16,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import * as ImagePicker from 'expo-image-picker';
-import { getDatabase, withTransaction } from '../../src/db/database';
+import { getDatabase } from '../../src/db/database';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { useAuth } from '../../src/auth/useAuth';
 import { TileCacheService } from '../../src/features/tiles/TileCacheService';
@@ -30,6 +30,12 @@ interface PlanInfo {
   floor_id?: string;
   width: number;
   height: number;
+  gridW: number;
+  gridH: number;
+  tileSize: number;
+  maxZoom: number;
+  worldPxW: number;
+  worldPxH: number;
   image_url?: string;
   pdf_url?: string;
 }
@@ -38,8 +44,8 @@ interface TaskPin {
   id: string;
   title: string;
   description?: string;
-  pos_x: number;
-  pos_y: number;
+  x_norm: number;
+  y_norm: number;
   status: 'OPEN' | 'IN_PROGRESS' | 'DONE_WAITING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'open' | 'in_progress' | 'closed';
   priority?: string;
   version: number;
@@ -48,21 +54,16 @@ interface TaskPin {
 interface CircuitPin {
   id: string;
   circuit_name: string;
-  circuit_code?: string;
+  circuit_code: string;
   short_label?: string;
   full_name?: string;
-  type?: string;
-  marker_shape?: string;
-  color?: string;
-  phase?: number;
-  breaker_current?: number;
+  type: string;
   fuse_type?: string;
   cable_type?: string;
-  distribution_board?: string;
   status?: string;
   description?: string;
-  pos_x: number;
-  pos_y: number;
+  x_norm: number;
+  y_norm: number;
 }
 
 interface CablePin {
@@ -79,8 +80,6 @@ interface PlanSymbolPin {
   symbol_type: string;
   x_norm: number;
   y_norm: number;
-  pos_x: number;
-  pos_y: number;
   label?: string;
   loop_number?: string;
   address?: string;
@@ -121,40 +120,38 @@ export const ALL_SYMBOLS: SymbolDefinition[] = [
   { id: 'heizkreisverteiler', category: 'heating', name: 'Heizkreisverteiler (Rozdzielacz CO)', emoji: '🚰', color: '#0284C7', defaultLabel: 'HKV' },
   { id: 'pufferspeicher', category: 'heating', name: 'Pufferspeicher (Zasobnik)', emoji: '🛢️', color: '#64748B', defaultLabel: 'Speicher' },
 
-  // 3. Elektro & Gniazda
-  { id: 'socket', category: 'circuits', name: 'Gniazdo 230V 1-faz', emoji: '🔌', color: '#3B82F6', defaultLabel: 'Gniazdo' },
-  { id: 'socket_2x', category: 'circuits', name: 'Gniazdo podwójne 2x', emoji: '🔌', color: '#2563EB', defaultLabel: 'Gniazdo 2x' },
-  { id: 'cee', category: 'circuits', name: 'Gniazdo siłowe CEE 16A/32A', emoji: '⚡', color: '#EF4444', defaultLabel: 'CEE' },
-  { id: 'edv', category: 'circuits', name: 'Gniazdo EDV / LAN RJ45', emoji: '🌐', color: '#10B981', defaultLabel: 'EDV' },
-  { id: 'kabelauslass', category: 'circuits', name: 'Kabelauslass (Wypust)', emoji: '⚡', color: '#475569', defaultLabel: 'Wypust' },
-  { id: 'verteiler', category: 'circuits', name: 'Verteiler (Rozdzielnica UV/SV)', emoji: '📦', color: '#8B5CF6', defaultLabel: 'UV' },
+  // 3. Elektro & Gniazda (Stromkreise)
+  { id: 'socket', category: 'circuits', name: 'Gniazdo 230V', emoji: '🔌', color: '#EF4444', defaultLabel: 'Gniazdo' },
+  { id: 'socket_2x', category: 'circuits', name: 'Gniazdo 2x', emoji: '🔌', color: '#EF4444', defaultLabel: 'Gniazdo 2x' },
+  { id: 'cee', category: 'circuits', name: 'CEE Siłowe', emoji: '⚡', color: '#A855F7', defaultLabel: 'CEE' },
+  { id: 'edv', category: 'circuits', name: 'EDV / LAN RJ45', emoji: '🌐', color: '#EF4444', defaultLabel: 'EDV' },
+  { id: 'kabelauslass', category: 'circuits', name: 'Kabelauslass (Wypust)', emoji: '⚡', color: '#64748B', defaultLabel: 'Wypust' },
 
   // 4. Oświetlenie
-  { id: 'light', category: 'lighting', name: 'Lampa sufitowa (Licht)', emoji: '💡', color: '#EAB308', defaultLabel: 'Lampa' },
-  { id: 'wandleuchte', category: 'lighting', name: 'Kinkiet ścienny', emoji: '💡', color: '#CA8A04', defaultLabel: 'Kinkiet' },
-  { id: 'led_stripe', category: 'lighting', name: 'LED Stripe (Pasek LED)', emoji: '✨', color: '#FACC15', defaultLabel: 'LED' },
-  { id: 'switch', category: 'lighting', name: 'Włącznik / Przełącznik', emoji: '🔘', color: '#EAB308', defaultLabel: 'Włącznik' },
+  { id: 'light', category: 'lighting', name: 'Lampa / Oprawa', emoji: '💡', color: '#F59E0B', defaultLabel: 'Lampa' },
+  { id: 'wandleuchte', category: 'lighting', name: 'Kinkiet ścienny', emoji: '💡', color: '#D97706', defaultLabel: 'Kinkiet' },
+  { id: 'led_stripe', category: 'lighting', name: 'LED Stripe (Pasek LED)', emoji: '✨', color: '#EAB308', defaultLabel: 'LED' },
+  { id: 'switch', category: 'lighting', name: 'Włącznik / Przełącznik', emoji: '🔘', color: '#F59E0B', defaultLabel: 'Włącznik' },
 
   // 5. BMA & Brandschutz
-  { id: 'detector_blue', category: 'bma', name: 'D-Melder (Optyczna dymu)', emoji: '🚨', color: '#EF4444', defaultLabel: 'D-Melder' },
-  { id: 'detector_red', category: 'bma', name: 'ZWD-Melder (Dwuprzetwornikowa OT)', emoji: '🚨', color: '#DC2626', defaultLabel: 'ZWD-Melder' },
-  { id: 'thermo_melder', category: 'bma', name: 'Thermo-Melder (Termiczna T)', emoji: '🔥', color: '#B91C1C', defaultLabel: 'T-Melder' },
-  { id: 'handmelder', category: 'bma', name: 'Handmelder (ROP / Przycisk)', emoji: '🛑', color: '#EF4444', defaultLabel: 'ROP' },
-  { id: 'sirene', category: 'bma', name: 'Sirene / Sygnalizator', emoji: '📢', color: '#F97316', defaultLabel: 'Sirene' },
+  { id: 'detector_blue', category: 'bma', name: 'ZWD-Melder (Dwuprzetwornikowa OT)', emoji: '🚨', color: '#0284C7', defaultLabel: 'ZWD-Melder' },
+  { id: 'detector_red', category: 'bma', name: 'D-Melder (Optyczna dymu)', emoji: '🚨', color: '#DC2626', defaultLabel: 'D-Melder' },
+  { id: 'thermo_melder', category: 'bma', name: 'Thermo-Melder (Termiczna T)', emoji: '🔥', color: '#EA580C', defaultLabel: 'T-Melder' },
+  { id: 'handmelder', category: 'bma', name: 'Handmelder (ROP / Przycisk)', emoji: '🛑', color: '#DC2626', defaultLabel: 'ROP' },
+  { id: 'sirene', category: 'bma', name: 'Sirene / Sygnalizator', emoji: '📢', color: '#EA580C', defaultLabel: 'Sirene' },
   { id: 'koppler', category: 'bma', name: 'Linienkoppler / Moduł', emoji: '🔲', color: '#991B1B', defaultLabel: 'Koppler' },
   { id: 'bmz', category: 'bma', name: 'BMA-Zentrale (Centrala BMZ)', emoji: '🏢', color: '#7F1D1D', defaultLabel: 'BMZ' },
 
   // 6. Notlicht & Pikto
-  { id: 'notleuchte', category: 'notlicht', name: 'Notbeleuchtung (Awaryjna)', emoji: '🟢', color: '#16A34A', defaultLabel: 'Notlicht' },
-  { id: 'notlicht_pikto_right', category: 'notlicht', name: 'Pikto Wyjście w prawo ➡️', emoji: '➡️', color: '#16A34A', defaultLabel: 'Pikto ➡️' },
-  { id: 'notlicht_pikto_left', category: 'notlicht', name: 'Pikto Wyjście w lewo ⬅️', emoji: '⬅️', color: '#16A34A', defaultLabel: 'Pikto ⬅️' },
-  { id: 'notlicht_pikto_down', category: 'notlicht', name: 'Pikto Wyjście w dół ⬇️', emoji: '⬇️', color: '#16A34A', defaultLabel: 'Pikto ⬇️' },
-  { id: 'notlicht_pikto_up', category: 'notlicht', name: 'Pikto Wyjście w górę ⬆️', emoji: '⬆️', color: '#16A34A', defaultLabel: 'Pikto ⬆️' },
+  { id: 'notlicht_lampe', category: 'notlicht', name: 'Notbeleuchtung (Awaryjna)', emoji: '🟢', color: '#16A34A', defaultLabel: 'Notlicht' },
+  { id: 'notlicht_pikto_right', category: 'notlicht', name: 'Rettungszeichen ➡️', emoji: '➡️', color: '#16A34A', defaultLabel: 'Pikto ➡️' },
+  { id: 'notlicht_pikto_left', category: 'notlicht', name: 'Rettungszeichen ⬅️', emoji: '⬅️', color: '#16A34A', defaultLabel: 'Pikto ⬅️' },
+  { id: 'notlicht_pikto_down', category: 'notlicht', name: 'Rettungszeichen ⬇️', emoji: '⬇️', color: '#16A34A', defaultLabel: 'Pikto ⬇️' },
+  { id: 'notlicht_pikto_up', category: 'notlicht', name: 'Rettungszeichen ⬆️', emoji: '⬆️', color: '#16A34A', defaultLabel: 'Pikto ⬆️' },
 
   // 7. Kable & Trasy kablowe
   { id: 'kabeltrasse', category: 'cables', name: 'Kabeltrasse (Trasa / Drabinka)', emoji: '🪜', color: '#059669', defaultLabel: 'Trasa' },
   { id: 'kabelzug', category: 'cables', name: 'Kabelzug (Linia kablowa)', emoji: '〰️', color: '#38BDF8', defaultLabel: 'Kabel' },
-  { id: 'freie_leitung', category: 'cables', name: 'Freie Leitung (Wolny przewód)', emoji: '🔌', color: '#06B6D4', defaultLabel: 'Przewód' },
 
   // 8. Klapy rewizyjne & Inne
   { id: 'revisionsklappe', category: 'klappen', name: 'Revisionsklappe (Klapa rewizyjna)', emoji: '🔲', color: '#D97706', defaultLabel: 'Klapa' },
@@ -167,7 +164,7 @@ export default function InteractivePlanScreen() {
   const router = useRouter();
   const webViewRef = useRef<WebView>(null);
   const { t } = useLanguage();
-  const { isAdmin, session } = useAuth();
+  const { isAdmin, isMod, session } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<PlanInfo | null>(null);
@@ -203,7 +200,7 @@ export default function InteractivePlanScreen() {
   const [selectedSymbol, setSelectedSymbol] = useState<PlanSymbolPin | null>(null);
 
   // Add Object Modal (via Map Click)
-  const [newPinCoords, setNewPinCoords] = useState<{ x: number; y: number } | null>(null);
+  const [newPinNorm, setNewPinNorm] = useState<{ x_norm: number; y_norm: number } | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<SymbolCategory>('tasks');
   const [selectedSymbolType, setSelectedSymbolType] = useState<string>('task');
   const [objectTitle, setObjectTitle] = useState('');
@@ -211,7 +208,6 @@ export default function InteractivePlanScreen() {
   const [objectPowerKw, setObjectPowerKw] = useState('');
   const [objectZuleitung, setObjectZuleitung] = useState('');
   const [objectKlappeSize, setObjectKlappeSize] = useState('40x40');
-  const [objectTrasseSize, setObjectTrasseSize] = useState('200x60mm');
   const [attachedPhotoUrl, setAttachedPhotoUrl] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
@@ -228,23 +224,27 @@ export default function InteractivePlanScreen() {
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
       // 1. Fetch Plan from SQLite
-      let planRow: PlanInfo | null = null;
+      let planRow: any = null;
       if (id) {
-        planRow = await db.getFirstAsync<PlanInfo>(
+        planRow = await db.getFirstAsync(
           'SELECT id, project_id, floor_id, name, width, height, image_url, pdf_url FROM plans WHERE id = ? AND deleted_at IS NULL;',
           [id]
         );
       }
 
       if (!planRow && !id) {
-        planRow = await db.getFirstAsync<PlanInfo>(
+        planRow = await db.getFirstAsync(
           'SELECT id, project_id, floor_id, name, width, height, image_url, pdf_url FROM plans WHERE deleted_at IS NULL LIMIT 1;'
         );
       }
 
       const activePlanId = id || planRow?.id || 'pln-sample-001';
 
-      // 2. Fetch metadata from server
+      // 2. Fetch metadata from server to get EXACT grid and tile sizes
+      let tileSize = 256;
+      let maxZoom = 5;
+      let gridW = 9;
+      let gridH = 6;
       let fetchedWidth = planRow?.width || 1920;
       let fetchedHeight = planRow?.height || 1080;
       let activeProjectId = planRow?.project_id || '';
@@ -254,30 +254,17 @@ export default function InteractivePlanScreen() {
         const metaRes = await fetch(`${apiUrl}/api/tiles/${activePlanId}/meta${tokenParam}`);
         if (metaRes.ok) {
           const meta = await metaRes.json();
-          if (meta.imageWidth && meta.imageHeight) {
-            fetchedWidth = meta.imageWidth;
-            fetchedHeight = meta.imageHeight;
-          } else if (meta.gridW && meta.gridH && meta.tileSize) {
-            fetchedWidth = meta.gridW * meta.tileSize;
-            fetchedHeight = meta.gridH * meta.tileSize;
-          }
+          if (meta.tileSize) tileSize = meta.tileSize;
+          if (meta.maxZoom) maxZoom = meta.maxZoom;
+          if (meta.gridW) gridW = meta.gridW;
+          if (meta.gridH) gridH = meta.gridH;
+          if (meta.imageWidth) fetchedWidth = meta.imageWidth;
+          if (meta.imageHeight) fetchedHeight = meta.imageHeight;
         }
-      } catch (e) {
-        // offline fallback
-      }
+      } catch (e) {}
 
-      if (!activeProjectId && token) {
-        try {
-          const pRes = await fetch(`${apiUrl}/api/plans?id=${activePlanId}`, { headers });
-          if (pRes.ok) {
-            const pJson = await pRes.json();
-            const pData = Array.isArray(pJson) ? pJson[0] : (pJson?.data?.[0] || pJson?.data || pJson);
-            if (pData?.project_id) {
-              activeProjectId = pData.project_id;
-            }
-          }
-        } catch {}
-      }
+      const worldPxW = gridW * tileSize;
+      const worldPxH = gridH * tileSize;
 
       const activePlan: PlanInfo = {
         id: activePlanId,
@@ -286,6 +273,12 @@ export default function InteractivePlanScreen() {
         floor_id: planRow?.floor_id,
         width: fetchedWidth,
         height: fetchedHeight,
+        gridW,
+        gridH,
+        tileSize,
+        maxZoom,
+        worldPxW,
+        worldPxH,
         image_url: planRow?.image_url,
         pdf_url: planRow?.pdf_url,
       };
@@ -298,24 +291,25 @@ export default function InteractivePlanScreen() {
       const cacheBytes = await TileCacheService.getPlanCacheSize(activePlanId);
       setPlanCacheBytes(cacheBytes);
 
-      // Background cache tiles if online and not yet cached
-      if (token && !isCached) {
-        TileCacheService.prefetchPlanTiles(activePlanId, 4).then(async (res) => {
-          if (res.success) {
-            setIsLocalTileCached(true);
-            const b = await TileCacheService.getPlanCacheSize(activePlanId);
-            setPlanCacheBytes(b);
-          }
-        }).catch(() => {});
-      }
-
-      // 3. Fetch Tasks on Plan (SQLite fallback + live API sync)
+      // 3. Fetch Tasks on Plan
       let loadedTasks: TaskPin[] = [];
-      const localTaskRows = await db.getAllAsync<TaskPin>(
-        'SELECT id, title, description, pos_x, pos_y, status, priority, version FROM tasks WHERE plan_id = ? AND deleted_at IS NULL;',
+      const localTaskRows = (await db.getAllAsync(
+        'SELECT id, title, description, x_norm, y_norm, pos_x, pos_y, status, priority, version FROM tasks WHERE plan_id = ? AND deleted_at IS NULL;',
         [activePlanId]
-      );
-      loadedTasks = localTaskRows || [];
+      )) as any[];
+
+      if (localTaskRows && localTaskRows.length > 0) {
+        loadedTasks = localTaskRows.map((t) => ({
+          id: t.id,
+          title: t.title || 'Zadanie',
+          description: t.description || undefined,
+          x_norm: t.x_norm ?? (t.pos_x ? t.pos_x / worldPxW : 0.1),
+          y_norm: t.y_norm ?? (t.pos_y ? t.pos_y / worldPxH : 0.1),
+          status: t.status || 'open',
+          priority: t.priority || 'normal',
+          version: t.version || 1,
+        }));
+      }
 
       if (token) {
         try {
@@ -326,16 +320,14 @@ export default function InteractivePlanScreen() {
             const taskData = Array.isArray(tJson) ? tJson : (tJson?.data || []);
             if (Array.isArray(taskData) && taskData.length > 0) {
               loadedTasks = taskData.map((t: any) => {
-                const normX = t.render_x ?? t.x_norm;
-                const normY = t.render_y ?? t.y_norm;
-                const px = normX != null ? Math.round(normX * fetchedWidth) : (t.pos_x || 100);
-                const py = normY != null ? Math.round(normY * fetchedHeight) : (t.pos_y || 100);
+                const normX = t.render_x ?? t.x_norm ?? 0.1;
+                const normY = t.render_y ?? t.y_norm ?? 0.1;
                 return {
                   id: t.id,
                   title: t.title || 'Zadanie',
                   description: t.description || undefined,
-                  pos_x: px,
-                  pos_y: py,
+                  x_norm: normX,
+                  y_norm: normY,
                   status: t.status || 'open',
                   priority: t.priority || 'normal',
                   version: t.version || 1,
@@ -343,19 +335,31 @@ export default function InteractivePlanScreen() {
               });
             }
           }
-        } catch (taskErr) {
-          console.warn('[InteractivePlan] Tasks sync error:', taskErr);
-        }
+        } catch {}
       }
       setTasks(loadedTasks);
 
       // 4. Fetch Stromkreise (Circuits)
       let loadedCircuits: CircuitPin[] = [];
-      const localCircuitRows = await db.getAllAsync<CircuitPin>(
-        'SELECT id, circuit_name, fuse_type, pos_x, pos_y FROM stromkreise WHERE plan_id = ? AND deleted_at IS NULL;',
+      const localCircuitRows = (await db.getAllAsync(
+        'SELECT id, circuit_name, circuit_code, short_label, full_name, type, fuse_type, x_norm, y_norm, pos_x, pos_y, status FROM stromkreise WHERE plan_id = ? AND deleted_at IS NULL;',
         [activePlanId]
-      );
-      loadedCircuits = localCircuitRows || [];
+      )) as any[];
+
+      if (localCircuitRows && localCircuitRows.length > 0) {
+        loadedCircuits = localCircuitRows.map((c) => ({
+          id: c.id,
+          circuit_name: c.circuit_code || c.short_label || c.circuit_name || '1',
+          circuit_code: c.circuit_code || c.short_label || c.circuit_name || '1',
+          short_label: c.short_label || c.circuit_code,
+          full_name: c.full_name || c.circuit_name,
+          type: c.type || 'socket',
+          fuse_type: c.fuse_type || 'B16',
+          status: c.status || 'open',
+          x_norm: c.x_norm ?? (c.pos_x ? c.pos_x / worldPxW : 0.2),
+          y_norm: c.y_norm ?? (c.pos_y ? c.pos_y / worldPxH : 0.2),
+        }));
+      }
 
       if (token && activeProjectId) {
         try {
@@ -365,45 +369,56 @@ export default function InteractivePlanScreen() {
             const cJson = await cRes.json();
             const circData = Array.isArray(cJson) ? cJson : (cJson?.data || []);
             if (Array.isArray(circData) && circData.length > 0) {
-              loadedCircuits = circData.map((c: any) => {
-                const px = c.x_norm != null ? Math.round(c.x_norm * fetchedWidth) : (c.pos_x || 200);
-                const py = c.y_norm != null ? Math.round(c.y_norm * fetchedHeight) : (c.pos_y || 200);
-                return {
-                  id: c.id,
-                  circuit_name: c.circuit_code || c.short_label || c.full_name || '1',
-                  circuit_code: c.circuit_code || c.short_label || '1',
-                  short_label: c.short_label || c.circuit_code,
-                  full_name: c.full_name || c.circuit_name,
-                  type: c.type || 'socket',
-                  marker_shape: c.marker_shape || 'circle',
-                  color: c.color || '#0284C7',
-                  phase: c.phase || 1,
-                  breaker_current: c.breaker_current,
-                  fuse_type: c.breaker_current ? `${c.breaker_curve || 'B'}${c.breaker_current}A` : (c.fuse_type || 'B16'),
-                  cable_type: c.cable_type || c.cable || 'NYM-J 3x1.5',
-                  distribution_board: c.distribution_board || c.uv_name || 'UV-Plan',
-                  status: c.status || 'Gemeldet zur Ausführung',
-                  description: c.description || c.notes,
-                  pos_x: px,
-                  pos_y: py,
-                };
-              });
+              loadedCircuits = circData.map((c: any) => ({
+                id: c.id,
+                circuit_name: c.circuit_code || c.short_label || c.full_name || '1',
+                circuit_code: c.circuit_code || c.short_label || '1',
+                short_label: c.short_label || c.circuit_code,
+                full_name: c.full_name || c.circuit_name,
+                type: c.type || 'socket',
+                fuse_type: c.breaker_current ? `${c.breaker_curve || 'B'}${c.breaker_current}A` : (c.fuse_type || 'B16'),
+                cable_type: c.cable_type || c.cable || 'NYM-J 3x1.5',
+                status: c.status || 'open',
+                description: c.description || c.notes,
+                x_norm: c.x_norm ?? 0.2,
+                y_norm: c.y_norm ?? 0.2,
+              }));
             }
           }
-        } catch (circErr) {
-          console.warn('[InteractivePlan] Circuits sync error:', circErr);
-        }
+        } catch {}
       }
       setCircuits(loadedCircuits);
 
       // 5. Fetch Cables
-      const cableRows = await db.getAllAsync<CablePin>(
+      let loadedCables: CablePin[] = [];
+      const cableRows = (await db.getAllAsync(
         'SELECT id, cable_number, cable_type, length, status, points_json FROM cables WHERE plan_id = ? AND deleted_at IS NULL;',
         [activePlanId]
-      );
-      setCables(cableRows || []);
+      )) as any[];
+      loadedCables = cableRows || [];
 
-      // 6. Fetch Plan Symbols (Wärmepumpen, Heizung, BMA, Notlicht, Klappen, Foto-Pins, etc.)
+      if (token) {
+        try {
+          const cabRes = await fetch(`${apiUrl}/api/cables?planId=${activePlanId}`, { headers });
+          if (cabRes.ok) {
+            const cabJson = await cabRes.json();
+            const cabList = Array.isArray(cabJson) ? cabJson : (cabJson?.data || []);
+            if (Array.isArray(cabList) && cabList.length > 0) {
+              loadedCables = cabList.map((c: any) => ({
+                id: c.id,
+                cable_number: c.cable_number || c.label || 'Kabel',
+                cable_type: c.cable_type || 'NYM-J 3x1.5',
+                length: c.length || 0,
+                status: c.status || 'planned',
+                points_json: typeof c.points_json === 'string' ? c.points_json : JSON.stringify(c.points || c.path || []),
+              }));
+            }
+          }
+        } catch {}
+      }
+      setCables(loadedCables);
+
+      // 6. Fetch Plan Symbols (BMA, Wärmepumpen, Notlicht, Klappen, etc.)
       let loadedSymbols: PlanSymbolPin[] = [];
       const localSymbolRows = (await db.getAllAsync(
         'SELECT id, symbol_type, x_norm, y_norm, label, loop_number, address, description FROM plan_bma_symbols WHERE plan_id = ? AND deleted_at IS NULL;',
@@ -412,21 +427,15 @@ export default function InteractivePlanScreen() {
 
       if (localSymbolRows && localSymbolRows.length > 0) {
         loadedSymbols = localSymbolRows.map((s) => {
-          const px = Math.round(s.x_norm * fetchedWidth);
-          const py = Math.round(s.y_norm * fetchedHeight);
           let parsed: any = {};
           try {
-            if (s.description && s.description.startsWith('{')) {
-              parsed = JSON.parse(s.description);
-            }
+            if (s.description && s.description.startsWith('{')) parsed = JSON.parse(s.description);
           } catch {}
           return {
             id: s.id,
             symbol_type: s.symbol_type,
             x_norm: s.x_norm,
             y_norm: s.y_norm,
-            pos_x: px,
-            pos_y: py,
             label: s.label,
             loop_number: s.loop_number,
             address: s.address,
@@ -444,16 +453,11 @@ export default function InteractivePlanScreen() {
             const symList = symJson.symbols || [];
             if (Array.isArray(symList) && symList.length > 0) {
               loadedSymbols = symList.map((s: any) => {
-                const px = Math.round(s.x_norm * fetchedWidth);
-                const py = Math.round(s.y_norm * fetchedHeight);
                 let parsed: any = {};
                 try {
-                  if (s.description && s.description.startsWith('{')) {
-                    parsed = JSON.parse(s.description);
-                  }
+                  if (s.description && s.description.startsWith('{')) parsed = JSON.parse(s.description);
                 } catch {}
 
-                // Store in local SQLite
                 db.runAsync(
                   `INSERT INTO plan_bma_symbols (id, plan_id, symbol_type, x_norm, y_norm, label, loop_number, address, description, version)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
@@ -466,8 +470,6 @@ export default function InteractivePlanScreen() {
                   symbol_type: s.symbol_type,
                   x_norm: s.x_norm,
                   y_norm: s.y_norm,
-                  pos_x: px,
-                  pos_y: py,
                   label: s.label,
                   loop_number: s.loop_number,
                   address: s.address,
@@ -477,41 +479,17 @@ export default function InteractivePlanScreen() {
               });
             }
           }
-        } catch (symErr) {
-          console.warn('[InteractivePlan] Symbols API sync error:', symErr);
-        }
+        } catch {}
       }
       setSymbols(loadedSymbols);
 
-      // 7. Fetch Floors and Sibling Plans for Quick Switcher
-      let planOptions: FloorOption[] = [];
-      if (activePlan.project_id) {
-        const rows = await db.getAllAsync<{ id: string; name: string; floor_name?: string }>(`
-          SELECT p.id, p.name, COALESCE(f.name, p.name) as floor_name
-          FROM plans p
-          LEFT JOIN floors f ON p.floor_id = f.id
-          WHERE p.project_id = ? AND p.deleted_at IS NULL
-          ORDER BY p.name ASC;
-        `, [activePlan.project_id]);
-        if (rows && rows.length > 0) {
-          planOptions = rows.map((r) => ({
-            id: r.id,
-            name: r.floor_name || r.name,
-            plan_id: r.id,
-          }));
-        }
-      }
-      if (planOptions.length === 0) {
-        const allLocalPlans = await db.getAllAsync<{ id: string; name: string }>(
-          'SELECT id, name FROM plans WHERE deleted_at IS NULL ORDER BY name ASC LIMIT 15;'
+      // 7. Fetch Floors
+      if (activeProjectId) {
+        const floorRows = await db.getAllAsync<FloorOption>(
+          'SELECT f.id, f.name, (SELECT p.id FROM plans p WHERE p.floor_id = f.id AND p.deleted_at IS NULL LIMIT 1) as plan_id FROM floors f WHERE f.deleted_at IS NULL ORDER BY f.level_number ASC;'
         );
-        planOptions = (allLocalPlans || []).map((p) => ({
-          id: p.id,
-          name: p.name,
-          plan_id: p.id,
-        }));
+        setFloors(floorRows || []);
       }
-      setFloors(planOptions);
     } catch (err) {
       console.error('[InteractivePlan] Load error:', err);
     } finally {
@@ -560,7 +538,7 @@ export default function InteractivePlanScreen() {
           setSelectedCable(null);
         }
       } else if (data.type === 'MAP_CLICK') {
-        setNewPinCoords({ x: Math.round(data.x), y: Math.round(data.y) });
+        setNewPinNorm({ x_norm: Number(data.x_norm.toFixed(4)), y_norm: Number(data.y_norm.toFixed(4)) });
         const def = ALL_SYMBOLS.find((s) => s.id === selectedSymbolType) || ALL_SYMBOLS[0];
         setObjectTitle(def.defaultLabel || '');
         setObjectDesc('');
@@ -568,6 +546,39 @@ export default function InteractivePlanScreen() {
       }
     } catch (e) {
       console.warn('[InteractivePlan] Parse message error:', e);
+    }
+  };
+
+  // Execution actions for Circuit Pin
+  const updateCircuitStatus = async (circuitId: string, newStatus: string) => {
+    try {
+      const db = await getDatabase();
+      await db.runAsync('UPDATE stromkreise SET status = ? WHERE id = ?;', [newStatus, circuitId]);
+
+      setCircuits((prev) =>
+        prev.map((c) => (c.id === circuitId ? { ...c, status: newStatus } : c))
+      );
+      if (selectedCircuit?.id === circuitId) {
+        setSelectedCircuit((prev) => (prev ? { ...prev, status: newStatus } : null));
+      }
+
+      // Sync to API
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
+      const token = session?.access_token;
+      if (token) {
+        fetch(`${apiUrl}/api/stromkreise/execute`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ markerId: circuitId, status: newStatus }),
+        }).catch(() => {});
+      }
+
+      Alert.alert('Status zaktualizowany', `Nowy status obwodu: ${newStatus}`);
+    } catch (e: any) {
+      Alert.alert('Błąd', e?.message || 'Nie udało się zaktualizować statusu');
     }
   };
 
@@ -580,22 +591,15 @@ export default function InteractivePlanScreen() {
           Alert.alert('Brak uprawnień', 'Wymagany dostęp do aparatu');
           return;
         }
-        result = await ImagePicker.launchCameraAsync({
-          quality: 0.8,
-          allowsEditing: false,
-        });
+        result = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: false });
       } else {
-        result = await ImagePicker.launchImageLibraryAsync({
-          quality: 0.8,
-          allowsEditing: false,
-        });
+        result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false });
       }
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const localUri = result.assets[0].uri;
         setUploadingPhoto(true);
 
-        // Upload to server
         const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
         const token = session?.access_token;
         const formData = new FormData();
@@ -613,8 +617,7 @@ export default function InteractivePlanScreen() {
 
         if (uploadRes.ok) {
           const uJson = await uploadRes.json();
-          const photoUrl = uJson.url || uJson.file_url || localUri;
-          setAttachedPhotoUrl(photoUrl);
+          setAttachedPhotoUrl(uJson.url || uJson.file_url || localUri);
         } else {
           setAttachedPhotoUrl(localUri);
         }
@@ -627,19 +630,10 @@ export default function InteractivePlanScreen() {
   };
 
   const createObjectOnPlan = async () => {
-    if (!newPinCoords || !plan) return;
+    if (!newPinNorm || !plan) return;
     try {
       const db = await getDatabase();
       const now = new Date().toISOString();
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
-      const token = session?.access_token;
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
-
-      const x_norm = Number((newPinCoords.x / (plan.width || 1920)).toFixed(4));
-      const y_norm = Number((newPinCoords.y / (plan.height || 1080)).toFixed(4));
       const def = ALL_SYMBOLS.find((s) => s.id === selectedSymbolType) || ALL_SYMBOLS[0];
       const title = objectTitle.trim() || def.name;
 
@@ -649,8 +643,8 @@ export default function InteractivePlanScreen() {
           id: newTaskId,
           title: title,
           description: objectDesc.trim() || undefined,
-          pos_x: newPinCoords.x,
-          pos_y: newPinCoords.y,
+          x_norm: newPinNorm.x_norm,
+          y_norm: newPinNorm.y_norm,
           status: 'open',
           priority: 'normal',
           version: 1,
@@ -658,8 +652,8 @@ export default function InteractivePlanScreen() {
 
         await db.runAsync(`
           INSERT INTO tasks (
-            id, plan_id, title, description, status, priority, pos_x, pos_y, version, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?);
+            id, plan_id, title, description, status, priority, x_norm, y_norm, pos_x, pos_y, version, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?);
         `, [
           newTask.id,
           plan.id,
@@ -667,8 +661,10 @@ export default function InteractivePlanScreen() {
           newTask.description || null,
           newTask.status,
           newTask.priority || 'normal',
-          newTask.pos_x,
-          newTask.pos_y,
+          newTask.x_norm,
+          newTask.y_norm,
+          Math.round(newTask.x_norm * plan.worldPxW),
+          Math.round(newTask.y_norm * plan.worldPxH),
           now,
           now,
         ]);
@@ -680,7 +676,7 @@ export default function InteractivePlanScreen() {
           }
           true;
         `);
-      } else if (def.category === 'circuits' && ['socket', 'socket_2x', 'cee', 'edv', 'kabelauslass', 'verteiler'].includes(selectedSymbolType)) {
+      } else if (def.category === 'circuits') {
         const newCircId = `circ-${Date.now()}`;
         const newCirc: CircuitPin = {
           id: newCircId,
@@ -689,14 +685,15 @@ export default function InteractivePlanScreen() {
           full_name: objectDesc.trim() || undefined,
           type: selectedSymbolType,
           fuse_type: 'B16',
-          pos_x: newPinCoords.x,
-          pos_y: newPinCoords.y,
+          status: 'open',
+          x_norm: newPinNorm.x_norm,
+          y_norm: newPinNorm.y_norm,
         };
 
         await db.runAsync(`
-          INSERT INTO stromkreise (id, plan_id, circuit_name, fuse_type, pos_x, pos_y, version)
-          VALUES (?, ?, ?, ?, ?, ?, 1);
-        `, [newCirc.id, plan.id, newCirc.circuit_name, newCirc.fuse_type || 'B16', newCirc.pos_x, newCirc.pos_y]);
+          INSERT INTO stromkreise (id, plan_id, circuit_name, circuit_code, short_label, full_name, type, fuse_type, x_norm, y_norm, status, version)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', 1);
+        `, [newCirc.id, plan.id, newCirc.circuit_name, newCirc.circuit_code, newCirc.circuit_code, newCirc.full_name || null, newCirc.type, newCirc.fuse_type || 'B16', newCirc.x_norm, newCirc.y_norm]);
 
         setCircuits((prev) => [...prev, newCirc]);
         webViewRef.current?.injectJavaScript(`
@@ -706,27 +703,21 @@ export default function InteractivePlanScreen() {
           true;
         `);
       } else {
-        // Generic Plan Symbol (Heizung/Wärmepumpen, BMA, Notlicht, Klappen, Foto-Pins, etc.)
         const newSymId = `sym-${Date.now()}`;
         const descData: any = {};
         if (objectDesc.trim()) descData.notes = objectDesc.trim();
         if (objectPowerKw.trim()) descData.powerKw = objectPowerKw.trim();
         if (objectZuleitung.trim()) descData.zuleitung = objectZuleitung.trim();
         if (selectedSymbolType === 'revisionsklappe') descData.size = objectKlappeSize;
-        if (selectedSymbolType === 'kabeltrasse') descData.trasseSize = objectTrasseSize;
         if (attachedPhotoUrl) descData.photos = [attachedPhotoUrl];
-
-        const descString = Object.keys(descData).length > 0 ? JSON.stringify(descData) : null;
 
         const newSym: PlanSymbolPin = {
           id: newSymId,
           symbol_type: selectedSymbolType,
-          x_norm: x_norm,
-          y_norm: y_norm,
-          pos_x: newPinCoords.x,
-          pos_y: newPinCoords.y,
+          x_norm: newPinNorm.x_norm,
+          y_norm: newPinNorm.y_norm,
           label: title,
-          description: descString || undefined,
+          description: JSON.stringify(descData),
           parsed_desc: descData,
         };
 
@@ -734,22 +725,6 @@ export default function InteractivePlanScreen() {
           INSERT INTO plan_bma_symbols (id, plan_id, symbol_type, x_norm, y_norm, label, description, version)
           VALUES (?, ?, ?, ?, ?, ?, ?, 1);
         `, [newSym.id, plan.id, newSym.symbol_type, newSym.x_norm, newSym.y_norm, newSym.label || null, newSym.description || null]);
-
-        // Push to server API
-        if (token) {
-          fetch(`${apiUrl}/api/plans/${plan.id}/bma-symbols`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              id: newSym.id,
-              symbol_type: newSym.symbol_type,
-              x_norm: newSym.x_norm,
-              y_norm: newSym.y_norm,
-              label: newSym.label,
-              description: newSym.description,
-            }),
-          }).catch((err) => console.warn('[InteractivePlan] Symbol post error:', err));
-        }
 
         setSymbols((prev) => [...prev, newSym]);
         webViewRef.current?.injectJavaScript(`
@@ -760,7 +735,7 @@ export default function InteractivePlanScreen() {
         `);
       }
 
-      setNewPinCoords(null);
+      setNewPinNorm(null);
       setObjectTitle('');
       setObjectDesc('');
       setObjectPowerKw('');
@@ -776,19 +751,22 @@ export default function InteractivePlanScreen() {
     const counts: Record<SymbolCategory, number> = {
       tasks: tasks.length + symbols.filter((s) => ['photo_pin', 'montage_doku', 'damage'].includes(s.symbol_type)).length,
       heating: symbols.filter((s) => ['warmepumpe_aussen', 'warmepumpe_innen', 'infrarotheizung', 'geraet_box', 'temperaturfuehler', 'heizkreisverteiler', 'pufferspeicher'].includes(s.symbol_type)).length,
-      circuits: circuits.length + symbols.filter((s) => ['socket', 'socket_2x', 'cee', 'edv', 'kabelauslass', 'verteiler'].includes(s.symbol_type)).length,
+      circuits: circuits.length + symbols.filter((s) => ['socket', 'socket_2x', 'cee', 'edv', 'kabelauslass'].includes(s.symbol_type)).length,
       lighting: symbols.filter((s) => ['light', 'wandleuchte', 'led_stripe', 'switch'].includes(s.symbol_type)).length,
       bma: symbols.filter((s) => ['detector_blue', 'detector_red', 'thermo_melder', 'handmelder', 'sirene', 'koppler', 'bmz'].includes(s.symbol_type)).length,
-      notlicht: symbols.filter((s) => s.symbol_type.startsWith('notlicht') || s.symbol_type === 'notleuchte').length,
-      cables: cables.length + symbols.filter((s) => ['kabeltrasse', 'kabelzug', 'freie_leitung'].includes(s.symbol_type)).length,
+      notlicht: symbols.filter((s) => s.symbol_type.startsWith('notlicht')).length,
+      cables: cables.length + symbols.filter((s) => ['kabeltrasse', 'kabelzug'].includes(s.symbol_type)).length,
       klappen: symbols.filter((s) => ['revisionsklappe', 'abdeckung', 'anderungen'].includes(s.symbol_type)).length,
     };
     return counts;
   }, [tasks, circuits, cables, symbols]);
 
   const generateLeafletHtml = () => {
-    const width = plan?.width || 1920;
-    const height = plan?.height || 1080;
+    const worldPxW = plan?.worldPxW || 2304;
+    const worldPxH = plan?.worldPxH || 1536;
+    const maxZoom = plan?.maxZoom || 5;
+    const minZoom = 1;
+    const tileSize = plan?.tileSize || 256;
     const planId = plan?.id || id || '';
     const token = session?.access_token || '';
     const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
@@ -796,7 +774,6 @@ export default function InteractivePlanScreen() {
     const visibleTasks = layers.tasks ? tasks : [];
     const visibleCircuits = layers.circuits ? circuits : [];
     const visibleCables = layers.cables ? cables : [];
-
     const visibleSymbols = symbols.filter((s) => {
       const def = ALL_SYMBOLS.find((d) => d.id === s.symbol_type);
       const cat = def?.category || 'klappen';
@@ -843,9 +820,6 @@ export default function InteractivePlanScreen() {
             cursor: pointer;
             transition: transform 0.15s ease;
           }
-          .custom-pin:hover, .custom-pin:active {
-            transform: scale(1.2);
-          }
           .pin-OPEN, .pin-open { background-color: #0284C7; border-color: #38BDF8; }
           .pin-IN_PROGRESS, .pin-in_progress { background-color: #D97706; border-color: #FBBF24; }
           .pin-DONE_WAITING_APPROVAL, .pin-done_waiting_approval {
@@ -856,6 +830,42 @@ export default function InteractivePlanScreen() {
           .pin-APPROVED, .pin-approved, .pin-closed { background-color: #059669; border-color: #34D399; }
           .pin-REJECTED, .pin-rejected { background-color: #DC2626; border-color: #F87171; }
           
+          /* Web 1:1 Rectangular Stromkreis Badge */
+          .stromkreis-badge-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #FFFFFF;
+            color: #0F172A;
+            border-radius: 4px;
+            padding: 1px 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            font-weight: 900;
+            font-size: 11px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+            box-sizing: border-box;
+          }
+          .stromkreis-badge-container:hover, .stromkreis-badge-container:active {
+            transform: scale(1.2);
+          }
+          .sk-approved {
+            background-color: #16A34A !important;
+            color: #FFFFFF !important;
+            border: 1.5px solid #15803D !important;
+          }
+          .sk-pending {
+            background-color: #FEF08A !important;
+            color: #854D0E !important;
+            border: 1.5px solid #EAB308 !important;
+          }
+          .sk-socket { border: 2px solid #EF4444; color: #DC2626; }
+          .sk-light { border: 2px solid #F59E0B; color: #D97706; }
+          .sk-edv { border: 2px solid #EF4444; color: #DC2626; }
+          .sk-cee { border: 2px solid #A855F7; color: #7E22CE; }
+          .sk-special { border: 2px solid #8B5CF6; color: #6D28D9; }
+
           .svg-marker-container {
             position: relative;
             display: flex;
@@ -867,7 +877,7 @@ export default function InteractivePlanScreen() {
             transition: transform 0.15s ease;
           }
           .svg-marker-container:hover, .svg-marker-container:active {
-            transform: scale(1.22);
+            transform: scale(1.2);
           }
           .svg-marker-box {
             width: 100%;
@@ -884,7 +894,7 @@ export default function InteractivePlanScreen() {
 
           .pin-label {
             position: absolute;
-            bottom: -22px;
+            bottom: -20px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(15, 23, 42, 0.95);
@@ -929,19 +939,14 @@ export default function InteractivePlanScreen() {
       <body>
         <div id="map"></div>
         <script>
-          const width = ${width};
-          const height = ${height};
+          const worldPxW = ${worldPxW};
+          const worldPxH = ${worldPxH};
+          const maxZoom = ${maxZoom};
+          const minZoom = ${minZoom};
+          const tileSize = ${tileSize};
           const planId = "${planId}";
           const token = "${token}";
           const apiUrl = "${apiUrl}";
-          const maxZoom = 5;
-          const minZoom = 1;
-          const tileSize = 256;
-
-          const gridW = Math.ceil(width / tileSize);
-          const gridH = Math.ceil(height / tileSize);
-          const worldPxW = gridW * tileSize;
-          const worldPxH = gridH * tileSize;
 
           const sw = [-worldPxH / Math.pow(2, maxZoom), 0];
           const ne = [0, worldPxW / Math.pow(2, maxZoom)];
@@ -957,6 +962,18 @@ export default function InteractivePlanScreen() {
             maxBounds: bounds,
             maxBoundsViscosity: 0.8,
           });
+
+          function normToLatLng(x_norm, y_norm) {
+            const lat = -(y_norm * worldPxH) / Math.pow(2, maxZoom);
+            const lng = (x_norm * worldPxW) / Math.pow(2, maxZoom);
+            return [lat, lng];
+          }
+
+          function latLngToNorm(lat, lng) {
+            const x_norm = (lng * Math.pow(2, maxZoom)) / worldPxW;
+            const y_norm = (-lat * Math.pow(2, maxZoom)) / worldPxH;
+            return { x_norm: x_norm, y_norm: y_norm };
+          }
 
           function escapeHtml(str) {
             if (str === null || str === undefined) return '';
@@ -974,45 +991,12 @@ export default function InteractivePlanScreen() {
             }
           }
 
-          // DIN / VDE / CAD Vector SVG Symbol Generator
+          // DIN / CAD Vector SVG Symbol Generator
           function getVectorSvgHtml(type, color, rotation) {
             const rot = rotation || 0;
             const rotStyle = rot ? 'transform: rotate(' + rot + 'deg); transform-origin: center;' : '';
             const c = color || '#38BDF8';
 
-            if (type === 'sym_socket' || type === 'socket') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><path d="M 20 70 A 30 30 0 0 1 80 70" fill="none" stroke="' + c + '" stroke-width="9" stroke-linecap="round"/><line x1="16" y1="40" x2="84" y2="40" stroke="' + c + '" stroke-width="9" stroke-linecap="round"/><line x1="50" y1="40" x2="50" y2="10" stroke="' + c + '" stroke-width="9" stroke-linecap="round"/></svg>';
-            }
-            if (type === 'sym_socket_2x' || type === 'socket_2x') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><path d="M 15 70 A 35 35 0 0 1 85 70" fill="none" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/><line x1="10" y1="40" x2="90" y2="40" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/><line x1="38" y1="40" x2="38" y2="10" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/><line x1="62" y1="40" x2="62" y2="10" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/><text x="50" y="94" fill="' + c + '" font-size="22" font-weight="900" text-anchor="middle">2x</text></svg>';
-            }
-            if (type === 'sym_cee16' || type === 'cee16' || type === 'cee') {
-              return '<svg viewBox="0 0 100 110" style="width:100%;height:100%;' + rotStyle + '"><path d="M 25 70 A 25 25 0 0 1 75 70" fill="none" stroke="#DC2626" stroke-width="8" stroke-linecap="round"/><line x1="20" y1="45" x2="80" y2="45" stroke="#DC2626" stroke-width="8" stroke-linecap="round"/><line x1="50" y1="45" x2="50" y2="10" stroke="#DC2626" stroke-width="8" stroke-linecap="round"/><line x1="38" y1="36" x2="62" y2="28" stroke="#DC2626" stroke-width="7" stroke-linecap="round"/><line x1="38" y1="27" x2="62" y2="19" stroke="#DC2626" stroke-width="7" stroke-linecap="round"/><line x1="38" y1="18" x2="62" y2="10" stroke="#DC2626" stroke-width="7" stroke-linecap="round"/><text x="50" y="102" fill="#DC2626" font-weight="900" font-size="24" text-anchor="middle">16A</text></svg>';
-            }
-            if (type === 'sym_cee32' || type === 'cee32') {
-              return '<svg viewBox="0 0 100 110" style="width:100%;height:100%;' + rotStyle + '"><path d="M 25 70 A 25 25 0 0 1 75 70" fill="none" stroke="#9333EA" stroke-width="9" stroke-linecap="round"/><line x1="20" y1="45" x2="80" y2="45" stroke="#9333EA" stroke-width="9" stroke-linecap="round"/><line x1="50" y1="45" x2="50" y2="10" stroke="#9333EA" stroke-width="9" stroke-linecap="round"/><line x1="38" y1="36" x2="62" y2="28" stroke="#9333EA" stroke-width="8" stroke-linecap="round"/><line x1="38" y1="27" x2="62" y2="19" stroke="#9333EA" stroke-width="8" stroke-linecap="round"/><line x1="38" y1="18" x2="62" y2="10" stroke="#9333EA" stroke-width="8" stroke-linecap="round"/><text x="50" y="102" fill="#9333EA" font-weight="900" font-size="24" text-anchor="middle">32A</text></svg>';
-            }
-            if (type === 'sym_light' || type === 'light') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="34" fill="rgba(234,179,8,0.18)" stroke="#EAB308" stroke-width="8"/><line x1="26" y1="26" x2="74" y2="74" stroke="#EAB308" stroke-width="8" stroke-linecap="round"/><line x1="74" y1="26" x2="26" y2="74" stroke="#EAB308" stroke-width="8" stroke-linecap="round"/></svg>';
-            }
-            if (type === 'sym_wandleuchte' || type === 'wandleuchte') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><line x1="15" y1="50" x2="85" y2="50" stroke="#CA8A04" stroke-width="8" stroke-linecap="round"/><circle cx="50" cy="30" r="22" fill="rgba(234,179,8,0.25)" stroke="#CA8A04" stroke-width="7"/><line x1="36" y1="16" x2="64" y2="44" stroke="#CA8A04" stroke-width="6"/><line x1="64" y1="16" x2="36" y2="44" stroke="#CA8A04" stroke-width="6"/></svg>';
-            }
-            if (type === 'sym_led_stripe' || type === 'led_stripe') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="40" width="70" height="20" rx="6" fill="rgba(250,204,21,0.25)" stroke="#FACC15" stroke-width="6"/><circle cx="28" cy="50" r="4" fill="#FACC15"/><circle cx="50" cy="50" r="4" fill="#FACC15"/><circle cx="72" cy="50" r="4" fill="#FACC15"/></svg>';
-            }
-            if (type === 'sym_switch' || type === 'switch') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="32" fill="none" stroke="#F59E0B" stroke-width="8"/><line x1="50" y1="50" x2="78" y2="22" stroke="#F59E0B" stroke-width="8" stroke-linecap="round"/><circle cx="78" cy="22" r="5" fill="#F59E0B"/></svg>';
-            }
-            if (type === 'sym_edv' || type === 'edv') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="18" y="18" width="64" height="64" rx="10" fill="rgba(16,185,129,0.15)" stroke="#10B981" stroke-width="8"/><rect x="36" y="42" width="28" height="24" rx="4" fill="none" stroke="#10B981" stroke-width="6"/><line x1="50" y1="66" x2="50" y2="52" stroke="#10B981" stroke-width="6"/></svg>';
-            }
-            if (type === 'sym_kabelauslass' || type === 'kabelauslass') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="34" fill="none" stroke="#64748B" stroke-width="8"/><line x1="50" y1="16" x2="50" y2="50" stroke="#64748B" stroke-width="8"/><circle cx="50" cy="50" r="8" fill="#64748B"/></svg>';
-            }
-            if (type === 'sym_verteiler' || type === 'verteiler') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" fill="rgba(139,92,246,0.2)" stroke="#8B5CF6" stroke-width="8"/><line x1="15" y1="15" x2="85" y2="85" stroke="#8B5CF6" stroke-width="6"/><text x="50" y="80" fill="#8B5CF6" font-size="18" font-weight="900" text-anchor="middle">UV</text></svg>';
-            }
             if (type === 'detector_blue' || type === 'bma_smoke') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="42" fill="rgba(56,189,248,0.2)" stroke="#0284C7" stroke-width="8"/><circle cx="50" cy="50" r="22" fill="none" stroke="#0284C7" stroke-width="6"/><circle cx="50" cy="50" r="8" fill="#0284C7"/></svg>';
             }
@@ -1043,27 +1027,6 @@ export default function InteractivePlanScreen() {
             if (type === 'bmz') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="12" y="12" width="76" height="76" rx="8" fill="#B91C1C" stroke="#7F1D1D" stroke-width="8"/><text x="50" y="60" fill="#FFFFFF" font-size="24" font-weight="900" font-family="sans-serif" text-anchor="middle">BMZ</text></svg>';
             }
-            if (type === 'notlicht_pikto' || type === 'notleuchte' || type === 'notlicht_pikto_right' || type === 'notlicht_pikto_gross_right') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 30 50 L 55 30 L 55 42 L 75 42 L 75 58 L 55 58 L 55 70 Z" fill="#FFFFFF"/></svg>';
-            }
-            if (type === 'notlicht_pikto_left') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 70 50 L 45 30 L 45 42 L 25 42 L 25 58 L 45 58 L 45 70 Z" fill="#FFFFFF"/></svg>';
-            }
-            if (type === 'notlicht_pikto_down') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 50 70 L 30 45 L 42 45 L 42 25 L 58 25 L 58 45 L 70 45 Z" fill="#FFFFFF"/></svg>';
-            }
-            if (type === 'notlicht_pikto_up') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 50 25 L 30 50 L 42 50 L 42 70 L 58 70 L 58 50 L 70 50 Z" fill="#FFFFFF"/></svg>';
-            }
-            if (type === 'revisionsklappe') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" fill="rgba(245,158,11,0.15)" stroke="#D97706" stroke-width="7"/><line x1="15" y1="15" x2="85" y2="85" stroke="#D97706" stroke-width="6"/><line x1="15" y1="85" x2="85" y2="15" stroke="#D97706" stroke-width="6"/></svg>';
-            }
-            if (type === 'abdeckung') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" fill="rgba(100,116,139,0.3)" stroke="#64748B" stroke-width="6" stroke-dasharray="8,8"/></svg>';
-            }
-            if (type === 'anderungen') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><path d="M 20 50 A 15 15 0 0 1 40 30 A 20 20 0 0 1 70 30 A 15 15 0 0 1 85 50 A 15 15 0 0 1 70 70 A 20 20 0 0 1 35 70 A 15 15 0 0 1 20 50 Z" fill="rgba(220,38,38,0.2)" stroke="#DC2626" stroke-width="6"/></svg>';
-            }
             if (type === 'warmepumpe_aussen') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" rx="10" fill="rgba(2,132,199,0.15)" stroke="#0284C7" stroke-width="7"/><circle cx="50" cy="50" r="26" fill="none" stroke="#0284C7" stroke-width="5"/><path d="M 50 24 L 50 76 M 24 50 L 76 50 M 32 32 L 68 68 M 32 68 L 68 32" stroke="#0284C7" stroke-width="4"/></svg>';
             }
@@ -1085,33 +1048,61 @@ export default function InteractivePlanScreen() {
             if (type === 'pufferspeicher') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="25" y="20" width="50" height="60" rx="14" fill="rgba(100,116,139,0.25)" stroke="#64748B" stroke-width="7"/><line x1="25" y1="40" x2="75" y2="40" stroke="#64748B" stroke-width="5"/><line x1="25" y1="60" x2="75" y2="60" stroke="#64748B" stroke-width="5"/></svg>';
             }
-            if (type === 'kabeltrasse') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><line x1="15" y1="30" x2="85" y2="30" stroke="#059669" stroke-width="8"/><line x1="15" y1="70" x2="85" y2="70" stroke="#059669" stroke-width="8"/><line x1="30" y1="30" x2="30" y2="70" stroke="#059669" stroke-width="6"/><line x1="50" y1="30" x2="50" y2="70" stroke="#059669" stroke-width="6"/><line x1="70" y1="30" x2="70" y2="70" stroke="#059669" stroke-width="6"/></svg>';
+            if (type === 'light') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="34" fill="rgba(234,179,8,0.18)" stroke="#EAB308" stroke-width="8"/><line x1="26" y1="26" x2="74" y2="74" stroke="#EAB308" stroke-width="8" stroke-linecap="round"/><line x1="74" y1="26" x2="26" y2="74" stroke="#EAB308" stroke-width="8" stroke-linecap="round"/></svg>';
             }
-            if (type === 'kabelzug' || type === 'freie_leitung') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><path d="M 15 50 Q 35 25 50 50 T 85 50" fill="none" stroke="' + c + '" stroke-width="8" stroke-linecap="round"/><circle cx="15" cy="50" r="5" fill="' + c + '"/><circle cx="85" cy="50" r="5" fill="' + c + '"/></svg>';
+            if (type === 'wandleuchte') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><line x1="15" y1="50" x2="85" y2="50" stroke="#CA8A04" stroke-width="8" stroke-linecap="round"/><circle cx="50" cy="30" r="22" fill="rgba(234,179,8,0.25)" stroke="#CA8A04" stroke-width="7"/><line x1="36" y1="16" x2="64" y2="44" stroke="#CA8A04" stroke-width="6"/><line x1="64" y1="16" x2="36" y2="44" stroke="#CA8A04" stroke-width="6"/></svg>';
+            }
+            if (type === 'led_stripe') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="40" width="70" height="20" rx="4" fill="rgba(250,204,21,0.25)" stroke="#FACC15" stroke-width="6"/><circle cx="28" cy="50" r="4" fill="#FACC15"/><circle cx="50" cy="50" r="4" fill="#FACC15"/><circle cx="72" cy="50" r="4" fill="#FACC15"/></svg>';
+            }
+            if (type === 'switch') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="32" fill="none" stroke="#F59E0B" stroke-width="8"/><line x1="50" y1="50" x2="78" y2="22" stroke="#F59E0B" stroke-width="8" stroke-linecap="round"/><circle cx="78" cy="22" r="5" fill="#F59E0B"/></svg>';
+            }
+            if (type === 'notlicht_lampe') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="36" fill="rgba(22,163,74,0.2)" stroke="#16A34A" stroke-width="8"/><circle cx="50" cy="50" r="14" fill="#16A34A"/></svg>';
+            }
+            if (type === 'notlicht_pikto_right') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 30 50 L 55 30 L 55 42 L 75 42 L 75 58 L 55 58 L 55 70 Z" fill="#FFFFFF"/></svg>';
+            }
+            if (type === 'notlicht_pikto_left') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 70 50 L 45 30 L 45 42 L 25 42 L 25 58 L 45 58 L 45 70 Z" fill="#FFFFFF"/></svg>';
+            }
+            if (type === 'notlicht_pikto_down') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 50 70 L 30 45 L 42 45 L 42 25 L 58 25 L 58 45 L 70 45 Z" fill="#FFFFFF"/></svg>';
+            }
+            if (type === 'notlicht_pikto_up') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 50 25 L 30 50 L 42 50 L 42 70 L 58 70 L 58 50 L 70 50 Z" fill="#FFFFFF"/></svg>';
+            }
+            if (type === 'revisionsklappe') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" fill="rgba(245,158,11,0.15)" stroke="#D97706" stroke-width="7"/><line x1="15" y1="15" x2="85" y2="85" stroke="#D97706" stroke-width="6"/><line x1="15" y1="85" x2="85" y2="15" stroke="#D97706" stroke-width="6"/></svg>';
+            }
+            if (type === 'abdeckung') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" fill="rgba(100,116,139,0.3)" stroke="#64748B" stroke-width="6" stroke-dasharray="8,8"/></svg>';
+            }
+            if (type === 'anderungen') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><path d="M 20 50 A 15 15 0 0 1 40 30 A 20 20 0 0 1 70 30 A 15 15 0 0 1 85 50 A 15 15 0 0 1 70 70 A 20 20 0 0 1 35 70 A 15 15 0 0 1 20 50 Z" fill="rgba(220,38,38,0.2)" stroke="#DC2626" stroke-width="6"/></svg>';
             }
 
-            // Fallback CAD circle glyph
             return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="38" fill="none" stroke="' + c + '" stroke-width="8"/><circle cx="50" cy="50" r="12" fill="' + c + '"/></svg>';
           }
 
-          // Strict 90-degree orthogonal polyline generator
           function makeStrictOrthoPolyline(pts) {
             if (!pts || pts.length < 2) return pts;
             const res = [pts[0]];
             for (let i = 0; i < pts.length - 1; i++) {
               const pA = res[res.length - 1];
               const pB = pts[i + 1];
-              const dx = pB.x - pA.x;
-              const dy = pB.y - pA.y;
-              if (Math.abs(dx) < 1 || Math.abs(dy) < 1) {
+              const dx = pB.x_norm - pA.x_norm;
+              const dy = pB.y_norm - pA.y_norm;
+              if (Math.abs(dx) < 0.0001 || Math.abs(dy) < 0.0001) {
                 res.push(pB);
                 continue;
               }
               const corner = Math.abs(dx) >= Math.abs(dy)
-                ? { x: pB.x, y: pA.y }
-                : { x: pA.x, y: pB.y };
+                ? { x_norm: pB.x_norm, y_norm: pA.y_norm }
+                : { x_norm: pA.x_norm, y_norm: pB.y_norm };
               res.push(corner, pB);
             }
             return res;
@@ -1121,8 +1112,7 @@ export default function InteractivePlanScreen() {
 
           window.addTaskMarker = function(t) {
             if (!t) return;
-            const lat = -(t.pos_y || 400) / Math.pow(2, maxZoom);
-            const lng = (t.pos_x || 400) / Math.pow(2, maxZoom);
+            const ll = normToLatLng(t.x_norm || 0.1, t.y_norm || 0.1);
             const statusClass = 'pin-' + (t.status || 'OPEN');
             const safeTitle = escapeHtml(t.title || 'Zadanie');
 
@@ -1135,45 +1125,51 @@ export default function InteractivePlanScreen() {
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="custom-pin ' + statusClass + '" style="width: 32px; height: 32px;">' + statusIcon + '<span class="pin-label">' + safeTitle + '</span></div>',
+              html: '<div class="custom-pin ' + statusClass + '">' + statusIcon + '<span class="pin-label">' + safeTitle + '</span></div>',
               iconSize: [32, 32],
               iconAnchor: [16, 16],
             });
 
-            const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
-            marker.bindTooltip('<b>' + safeTitle + '</b><br/>Status: ' + st + (t.priority ? '<br/>Priorytet: ' + escapeHtml(t.priority) : ''), { direction: 'top', className: 'plan-tooltip' });
+            const marker = L.marker(ll, { icon: icon }).addTo(map);
+            marker.bindTooltip('<b>' + safeTitle + '</b><br/>Status: ' + st, { direction: 'top', className: 'plan-tooltip' });
             marker.on('click', function(e) {
               L.DomEvent.stopPropagation(e);
               send({ type: 'TASK_CLICK', id: t.id });
             });
           };
 
+          // 1:1 Web Stromkreise Marker Generator (Podłużny badge bez błyskawicy)
           window.addCircuitMarker = function(c) {
             if (!c) return;
-            const lat = -(c.pos_y || 500) / Math.pow(2, maxZoom);
-            const lng = (c.pos_x || 500) / Math.pow(2, maxZoom);
+            const ll = normToLatLng(c.x_norm || 0.2, c.y_norm || 0.2);
             const title = escapeHtml(c.circuit_code || c.circuit_name || c.short_label || '1');
-            const fuse = escapeHtml(c.fuse_type || (c.breaker_current ? (c.breaker_curve || 'B') + c.breaker_current + 'A' : 'B16'));
-            const cableType = escapeHtml(c.cable_type || 'NYM-J 3x1.5');
-            const status = escapeHtml(c.status || 'Gemeldet zur Ausführung');
-            const uv = escapeHtml(c.distribution_board || 'UV');
-            const badgeBg = c.color || '#0284C7';
+            const st = (c.status || 'open').toUpperCase();
+            const type = c.type || 'socket';
+
+            let skClass = 'sk-socket';
+            if (st === 'APPROVED' || st === 'DONE' || st === 'CLOSED') {
+              skClass = 'sk-approved';
+            } else if (st === 'PENDING_APPROVAL' || st === 'GEMELDET ZUR AUSFÜHRUNG') {
+              skClass = 'sk-pending';
+            } else if (type === 'light') {
+              skClass = 'sk-light';
+            } else if (type === 'edv') {
+              skClass = 'sk-edv';
+            } else if (type === 'cee') {
+              skClass = 'sk-cee';
+            } else if (type === 'special') {
+              skClass = 'sk-special';
+            }
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="circuit-circle-badge" style="background:' + badgeBg + '; border: 2px solid #FFFFFF; box-shadow: 0 3px 6px rgba(0,0,0,0.5); min-width: 28px; height: 28px; padding: 0 6px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #FFFFFF; font-weight: 900; font-size: 11px; letter-spacing: -0.3px; white-space: nowrap;"><span style="font-size:10px; margin-right:2px;">⚡</span>' + title + '</div>',
-              iconSize: [32, 28],
-              iconAnchor: [16, 14],
+              html: '<div class="stromkreis-badge-container ' + skClass + '">' + title + '</div>',
+              iconSize: [title.length > 3 ? 36 : 26, 20],
+              iconAnchor: [(title.length > 3 ? 36 : 26) / 2, 10],
             });
 
-            const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
-            const tooltipHtml = '<b>⚡ Stromkreis ' + title + '</b><br/>' +
-              '🔌 Kabel: ' + cableType + '<br/>' +
-              '🛡️ Sicherung: ' + fuse + (c.phase ? ' (L' + c.phase + ')' : '') + '<br/>' +
-              '🏢 Verteiler: ' + uv + '<br/>' +
-              '📊 Status: ' + status;
-
-            marker.bindTooltip(tooltipHtml, { direction: 'top', className: 'plan-tooltip' });
+            const marker = L.marker(ll, { icon: icon }).addTo(map);
+            marker.bindTooltip('<b>Stromkreis ' + title + '</b><br/>Status: ' + st, { direction: 'top', className: 'plan-tooltip' });
             marker.on('click', function(e) {
               L.DomEvent.stopPropagation(e);
               send({ type: 'CIRCUIT_CLICK', id: c.id });
@@ -1182,8 +1178,7 @@ export default function InteractivePlanScreen() {
 
           window.addPlanSymbolMarker = function(s) {
             if (!s) return;
-            const lat = -(s.pos_y || (s.y_norm * height)) / Math.pow(2, maxZoom);
-            const lng = (s.pos_x || (s.x_norm * width)) / Math.pow(2, maxZoom);
+            const ll = normToLatLng(s.x_norm || 0.3, s.y_norm || 0.3);
             const def = symbolMeta.find(function(d) { return d.id === s.symbol_type; }) || { emoji: '📍', color: '#38BDF8' };
             const mainLabel = escapeHtml(s.label || def.name || s.symbol_type);
             const subLabel = s.loop_number ? 'P' + s.loop_number + (s.address ? '/' + s.address : '') : (s.address || '');
@@ -1198,11 +1193,10 @@ export default function InteractivePlanScreen() {
               iconAnchor: [18, 18],
             });
 
-            const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
+            const marker = L.marker(ll, { icon: icon }).addTo(map);
             let tooltipContent = '<b>' + mainLabel + '</b>';
             if (s.loop_number) tooltipContent += '<br/>Pętla: ' + escapeHtml(s.loop_number);
             if (s.address) tooltipContent += '<br/>Adres: ' + escapeHtml(s.address);
-            if (s.description && !s.description.startsWith('{')) tooltipContent += '<br/>' + escapeHtml(s.description);
             marker.bindTooltip(tooltipContent, { direction: 'top', className: 'plan-tooltip' });
 
             marker.on('click', function(e) {
@@ -1221,8 +1215,11 @@ export default function InteractivePlanScreen() {
             if (pts && pts.length >= 2) {
               const orthoPts = makeStrictOrthoPolyline(pts);
               const latlngs = orthoPts.map(function(p) {
-                return [-p.y / Math.pow(2, maxZoom), p.x / Math.pow(2, maxZoom)];
+                const xn = p.x_norm != null ? p.x_norm : (p.x / worldPxW);
+                const yn = p.y_norm != null ? p.y_norm : (p.y / worldPxH);
+                return normToLatLng(xn, yn);
               });
+
               const isE30 = c.cable_type && (c.cable_type.includes('E30') || c.cable_type.includes('E90') || c.cable_type.includes('FE180'));
               const cableColor = isE30 ? '#F97316' : '#38BDF8';
               const poly = L.polyline(latlngs, {
@@ -1237,7 +1234,7 @@ export default function InteractivePlanScreen() {
               const lengthText = c.length ? c.length + 'm' : '';
               const fullLabel = cableTitle + (cableType ? ' • ' + cableType : '') + (lengthText ? ' • ' + lengthText : '');
 
-              poly.bindTooltip('<b>' + cableTitle + '</b><br/>Typ: ' + cableType + (lengthText ? '<br/>Długość: ' + lengthText : '') + (c.status ? '<br/>Status: ' + escapeHtml(c.status) : ''), {
+              poly.bindTooltip('<b>' + cableTitle + '</b><br/>Typ: ' + cableType + (lengthText ? '<br/>Długość: ' + lengthText : ''), {
                 sticky: true,
                 className: 'plan-tooltip'
               });
@@ -1267,9 +1264,7 @@ export default function InteractivePlanScreen() {
             const tokenParam = token ? '?token=' + encodeURIComponent(token) : '';
             const localTileDir = "${isLocalTileCached ? TileCacheService.getPlanTilesDir(planId) : ''}";
             const remoteUrl = apiUrl + '/api/tiles/' + planId + '/{z}/{x}/{y}.png' + tokenParam;
-            const tileUrl = localTileDir
-              ? localTileDir + '{z}/{x}/{y}.png'
-              : remoteUrl;
+            const tileUrl = localTileDir ? localTileDir + '{z}/{x}/{y}.png' : remoteUrl;
 
             const tileLayer = L.tileLayer(tileUrl, {
               minZoom: minZoom,
@@ -1295,10 +1290,9 @@ export default function InteractivePlanScreen() {
           map.fitBounds(bounds);
 
           map.on('click', function(e) {
-            const x = Math.round(e.latlng.lng * Math.pow(2, maxZoom));
-            const y = Math.round(-e.latlng.lat * Math.pow(2, maxZoom));
-            if (x >= 0 && x <= width && y >= 0 && y <= height) {
-              send({ type: 'MAP_CLICK', x: x, y: y });
+            const norm = latLngToNorm(e.latlng.lat, e.latlng.lng);
+            if (norm.x_norm >= 0 && norm.x_norm <= 1.05 && norm.y_norm >= 0 && norm.y_norm <= 1.05) {
+              send({ type: 'MAP_CLICK', x_norm: norm.x_norm, y_norm: norm.y_norm });
             }
           });
 
@@ -1409,20 +1403,20 @@ export default function InteractivePlanScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.toolChip, layers.heating && styles.toolChipActive]}
-            onPress={() => toggleLayer('heating')}
-          >
-            <Text style={[styles.toolChipText, layers.heating && styles.toolChipTextActive]}>
-              ❄️ Pompy Ciepła ({layerCounts.heating})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={[styles.toolChip, layers.circuits && styles.toolChipActive]}
             onPress={() => toggleLayer('circuits')}
           >
             <Text style={[styles.toolChipText, layers.circuits && styles.toolChipTextActive]}>
               ⚡ Obwody ({layerCounts.circuits})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.toolChip, layers.heating && styles.toolChipActive]}
+            onPress={() => toggleLayer('heating')}
+          >
+            <Text style={[styles.toolChipText, layers.heating && styles.toolChipTextActive]}>
+              ❄️ Pompy Ciepła ({layerCounts.heating})
             </Text>
           </TouchableOpacity>
 
@@ -1458,7 +1452,7 @@ export default function InteractivePlanScreen() {
             onPress={() => toggleLayer('cables')}
           >
             <Text style={[styles.toolChipText, layers.cables && styles.toolChipTextActive]}>
-              🪜 Trasy ({layerCounts.cables})
+              🪜 Kable ({layerCounts.cables})
             </Text>
           </TouchableOpacity>
 
@@ -1477,7 +1471,7 @@ export default function InteractivePlanScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#38BDF8" />
-          <Text style={styles.loadingText}>Ładowanie kafelków PDF i obiektów Leaflet...</Text>
+          <Text style={styles.loadingText}>Ładowanie kafelków i obiektów Leaflet...</Text>
         </View>
       ) : (
         <View style={styles.mapWrapper}>
@@ -1527,7 +1521,71 @@ export default function InteractivePlanScreen() {
         </View>
       )}
 
-      {/* 5. Bottom Generic Symbol Drawer (Wärmepumpen, BMA, Notlicht, Klappen, Foto-Pins) */}
+      {/* 5. Bottom Stromkreis Drawer (1:1 Web with Execution / Approval Buttons, no Sicherung/Verteiler clutter) */}
+      {selectedCircuit && (
+        <View style={styles.drawer}>
+          <View style={styles.drawerHandle} />
+          <View style={styles.drawerHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.circuitDrawerTitle}>
+                Stromkreis: {selectedCircuit.circuit_code || selectedCircuit.circuit_name}
+              </Text>
+              <Text style={styles.circuitDrawerSubtitle}>
+                Typ: {ALL_SYMBOLS.find((s) => s.id === selectedCircuit.type)?.name || selectedCircuit.type}
+                {selectedCircuit.cable_type ? ` • ${selectedCircuit.cable_type}` : ''}
+              </Text>
+              <View style={styles.statusBadgeRow}>
+                <Text style={styles.statusBadgeLabel}>
+                  Status: <Text style={styles.statusBadgeValue}>{selectedCircuit.status || 'Offen'}</Text>
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => setSelectedCircuit(null)} style={styles.drawerClose}>
+              <Text style={styles.drawerCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* User Execution and Admin Action Buttons */}
+          <View style={styles.circuitActionButtonsRow}>
+            {selectedCircuit.status !== 'APPROVED' && (
+              <TouchableOpacity
+                style={styles.executeBtn}
+                onPress={() => updateCircuitStatus(selectedCircuit.id, 'PENDING_APPROVAL')}
+              >
+                <Text style={styles.executeBtnText}>✓ Ausführung melden</Text>
+              </TouchableOpacity>
+            )}
+
+            {selectedCircuit.status === 'PENDING_APPROVAL' && (
+              <TouchableOpacity
+                style={styles.undoBtn}
+                onPress={() => updateCircuitStatus(selectedCircuit.id, 'open')}
+              >
+                <Text style={styles.undoBtnText}>↩ Zurückziehen</Text>
+              </TouchableOpacity>
+            )}
+
+            {(isAdmin || isMod) && (
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <TouchableOpacity
+                  style={styles.approveBtn}
+                  onPress={() => updateCircuitStatus(selectedCircuit.id, 'APPROVED')}
+                >
+                  <Text style={styles.approveBtnText}>✓ Freigeben (Zatwierdź)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.rejectBtn}
+                  onPress={() => updateCircuitStatus(selectedCircuit.id, 'REJECTED')}
+                >
+                  <Text style={styles.rejectBtnText}>✕ Ablehnen</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* 6. Bottom Generic Symbol Drawer (Pompy ciepła, BMA, Notlicht, Klapy) */}
       {selectedSymbol && (
         <View style={styles.drawer}>
           <View style={styles.drawerHandle} />
@@ -1549,62 +1607,13 @@ export default function InteractivePlanScreen() {
                   🔲 Wymiary klapy: {selectedSymbol.parsed_desc.size}
                 </Text>
               )}
-              {selectedSymbol.parsed_desc?.trasseSize && (
-                <Text style={[styles.drawerDesc, { color: '#059669', marginTop: 2 }]}>
-                  🪜 Rozmiar trasy: {selectedSymbol.parsed_desc.trasseSize}
-                </Text>
-              )}
               {selectedSymbol.parsed_desc?.notes && (
                 <Text style={[styles.drawerDesc, { marginTop: 4 }]}>
                   {selectedSymbol.parsed_desc.notes}
                 </Text>
               )}
-              {selectedSymbol.parsed_desc?.photos?.[0] && (
-                <Image
-                  source={{ uri: selectedSymbol.parsed_desc.photos[0] }}
-                  style={styles.drawerPhoto}
-                  resizeMode="cover"
-                />
-              )}
             </View>
             <TouchableOpacity onPress={() => setSelectedSymbol(null)} style={styles.drawerClose}>
-              <Text style={styles.drawerCloseText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* 6. Bottom Circuit Drawer */}
-      {selectedCircuit && (
-        <View style={styles.drawer}>
-          <View style={styles.drawerHandle} />
-          <View style={styles.drawerHeader}>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <Text style={[styles.drawerTitle, { color: '#38BDF8' }]}>
-                  ⚡ Stromkreis: {selectedCircuit.circuit_code || selectedCircuit.circuit_name}
-                </Text>
-                <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#38BDF8' }}>
-                  <Text style={{ color: '#38BDF8', fontSize: 11, fontWeight: '800' }}>
-                    {selectedCircuit.fuse_type || 'B16'} {selectedCircuit.phase ? `(L${selectedCircuit.phase})` : ''}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.drawerDesc}>
-                🔌 Kabel: {selectedCircuit.cable_type || 'NYM-J 3x1.5'} • 🏢 Verteiler: {selectedCircuit.distribution_board || 'UV-Plan'}
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                <Text style={{ color: '#22C55E', fontSize: 12, fontWeight: '700' }}>
-                  📊 Status: {selectedCircuit.status || 'Gemeldet zur Ausführung'}
-                </Text>
-              </View>
-              {selectedCircuit.full_name || selectedCircuit.description ? (
-                <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 4 }}>
-                  📝 {selectedCircuit.full_name || selectedCircuit.description}
-                </Text>
-              ) : null}
-            </View>
-            <TouchableOpacity onPress={() => setSelectedCircuit(null)} style={styles.drawerClose}>
               <Text style={styles.drawerCloseText}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -1646,12 +1655,12 @@ export default function InteractivePlanScreen() {
             <ScrollView style={{ maxHeight: SCREEN_HEIGHT * 0.6 }}>
               {[
                 { key: 'tasks', label: '📌 Zadania & Usterki', desc: 'Punkty zadań, usterki, foto-pins', count: layerCounts.tasks },
-                { key: 'heating', label: '❄️ Pompy Ciepła & Heizung', desc: 'Wärmepumpen (Innen/Außen), promienniki, sterowniki', count: layerCounts.heating },
-                { key: 'circuits', label: '⚡ Elektro & Obwody', desc: 'Gniazda 230V, CEE, EDV, rozdzielnice', count: layerCounts.circuits },
+                { key: 'circuits', label: '⚡ Elektro & Obwody', desc: 'Gniazda 230V, CEE, EDV, wypusty', count: layerCounts.circuits },
+                { key: 'heating', label: '❄️ Pompy Ciepła & Heizung', desc: 'Wärmepumpen, promienniki, sterowniki', count: layerCounts.heating },
                 { key: 'lighting', label: '💡 Oświetlenie & LED', desc: 'Oprawy, kinkiety, paski LED, włączniki', count: layerCounts.lighting },
                 { key: 'bma', label: '🚨 BMA & Pożarówka', desc: 'Czujki dymu, ROP, syreny, centrale', count: layerCounts.bma },
                 { key: 'notlicht', label: '🟢 Notbeleuchtung & Pikto', desc: 'Oprawy awaryjne, piktogramy ewakuacyjne', count: layerCounts.notlicht },
-                { key: 'cables', label: '🪜 Kable & Trasy Kablowe', desc: 'Trasy, korytka, drabinki, odcinki kabli', count: layerCounts.cables },
+                { key: 'cables', label: '🪜 Kable & Trasy Kablowe', desc: 'Trasy, korytka, odcinki kabli', count: layerCounts.cables },
                 { key: 'klappen', label: '🔲 Klapy Rewizyjne & Maski', desc: 'Revisionsklappen, maski tła, chmurki zmian', count: layerCounts.klappen },
               ].map((item) => {
                 const isActive = layers[item.key as SymbolCategory];
@@ -1685,54 +1694,54 @@ export default function InteractivePlanScreen() {
         </View>
       </Modal>
 
-      {/* 9. Modal: Add Pin / Object Placement Dialog */}
+      {/* 9. Modal: Add Pin Dialog */}
       <Modal
-        visible={!!newPinCoords}
+        visible={!!newPinNorm}
         transparent
         animationType="slide"
-        onRequestClose={() => setNewPinCoords(null)}
+        onRequestClose={() => setNewPinNorm(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.createPinModal}>
-            <Text style={styles.modalHeading}>📍 Wstaw Symbol / Obiekt na Planie</Text>
-            <Text style={styles.coordsText}>
-              Współrzędne: X={newPinCoords?.x}, Y={newPinCoords?.y}
-            </Text>
+          <View style={styles.addModalCard}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalHeading}>➕ Wstaw Obiekt na Planie</Text>
+              <TouchableOpacity onPress={() => setNewPinNorm(null)}>
+                <Text style={styles.drawerCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
-            {/* Category Switcher Tabs */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+            {/* Category Pills */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryPillsScroll}>
               {[
-                { id: 'tasks', label: '📌 Zadania' },
-                { id: 'heating', label: '❄️ Pompy Ciepła' },
-                { id: 'circuits', label: '🔌 Elektro' },
-                { id: 'lighting', label: '💡 Światło' },
-                { id: 'bma', label: '🚨 BMA' },
-                { id: 'notlicht', label: '🟢 Notlicht' },
-                { id: 'cables', label: '🪜 Trasy' },
-                { id: 'klappen', label: '🔲 Klapy' },
-              ].map((cat) => (
+                { id: 'tasks', name: 'Zadania', emoji: '📌' },
+                { id: 'circuits', name: 'Obwody', emoji: '⚡' },
+                { id: 'heating', name: 'Pompy Ciepła', emoji: '❄️' },
+                { id: 'lighting', name: 'Światło', emoji: '💡' },
+                { id: 'bma', name: 'BMA', emoji: '🚨' },
+                { id: 'notlicht', name: 'Notlicht', emoji: '🟢' },
+                { id: 'klappen', name: 'Klapy', emoji: '🔲' },
+              ].map((c) => (
                 <TouchableOpacity
-                  key={cat.id}
-                  style={[styles.categoryTab, selectedCategory === cat.id && styles.categoryTabActive]}
+                  key={c.id}
+                  style={[styles.categoryPill, selectedCategory === c.id && styles.categoryPillActive]}
                   onPress={() => {
-                    setSelectedCategory(cat.id as SymbolCategory);
-                    const firstInCat = ALL_SYMBOLS.find((s) => s.category === cat.id);
-                    if (firstInCat) {
-                      setSelectedSymbolType(firstInCat.id);
-                      setObjectTitle(firstInCat.defaultLabel || firstInCat.name);
+                    setSelectedCategory(c.id as SymbolCategory);
+                    const first = ALL_SYMBOLS.find((s) => s.category === c.id);
+                    if (first) {
+                      setSelectedSymbolType(first.id);
+                      setObjectTitle(first.defaultLabel || first.name);
                     }
                   }}
                 >
-                  <Text style={[styles.categoryTabText, selectedCategory === cat.id && styles.categoryTabTextActive]}>
-                    {cat.label}
+                  <Text style={[styles.categoryPillText, selectedCategory === c.id && styles.categoryPillTextActive]}>
+                    {c.emoji} {c.name}
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
-            {/* Symbol Type Selector */}
-            <Text style={styles.typeSelectorLabel}>WYBIERZ ELEMENT:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.symbolScroll}>
+            {/* Symbols Horizontal Grid */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.symbolsGridScroll}>
               {selectedCategorySymbols.map((sym) => (
                 <TouchableOpacity
                   key={sym.id}
@@ -1760,7 +1769,6 @@ export default function InteractivePlanScreen() {
                 onChangeText={setObjectTitle}
               />
 
-              {/* Special Inputs for Heating / Pompy Ciepła */}
               {selectedCategory === 'heating' && (
                 <View style={styles.rowInputs}>
                   <TextInput
@@ -1772,8 +1780,8 @@ export default function InteractivePlanScreen() {
                     onChangeText={setObjectPowerKw}
                   />
                   <TextInput
-                    style={[styles.input, { flex: 1, marginLeft: 6 }]}
-                    placeholder="Zasilanie (np. 400V 3x16A)"
+                    style={[styles.input, { flex: 1 }]}
+                    placeholder="Zasilanie (np. 400V)"
                     placeholderTextColor="#64748B"
                     value={objectZuleitung}
                     onChangeText={setObjectZuleitung}
@@ -1781,31 +1789,25 @@ export default function InteractivePlanScreen() {
                 </View>
               )}
 
-              {/* Special Inputs for Klapy Rewizyjne */}
               {selectedSymbolType === 'revisionsklappe' && (
-                <TextInput
-                  style={styles.input}
-                  placeholder="Wymiary klapy (np. 30x30, 40x40, 60x60)"
-                  placeholderTextColor="#64748B"
-                  value={objectKlappeSize}
-                  onChangeText={setObjectKlappeSize}
-                />
-              )}
-
-              {/* Special Inputs for Trasy Kablowe */}
-              {selectedSymbolType === 'kabeltrasse' && (
-                <TextInput
-                  style={styles.input}
-                  placeholder="Wymiary korytka / trasy (np. 200x60mm)"
-                  placeholderTextColor="#64748B"
-                  value={objectTrasseSize}
-                  onChangeText={setObjectTrasseSize}
-                />
+                <View style={styles.klappeSizeRow}>
+                  {['30x30', '40x40', '50x50', '60x60'].map((sz) => (
+                    <TouchableOpacity
+                      key={sz}
+                      style={[styles.klappeSizeChip, objectKlappeSize === sz && styles.klappeSizeChipActive]}
+                      onPress={() => setObjectKlappeSize(sz)}
+                    >
+                      <Text style={[styles.klappeSizeText, objectKlappeSize === sz && styles.klappeSizeTextActive]}>
+                        {sz}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               )}
 
               <TextInput
                 style={[styles.input, { height: 60, textAlignVertical: 'top' }]}
-                placeholder="Dodatkowy opis / specyfikacja techniczna..."
+                placeholder="Dodatkowy opis..."
                 placeholderTextColor="#64748B"
                 value={objectDesc}
                 onChangeText={setObjectDesc}
@@ -1849,7 +1851,7 @@ export default function InteractivePlanScreen() {
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelBtn}
-                onPress={() => setNewPinCoords(null)}
+                onPress={() => setNewPinNorm(null)}
               >
                 <Text style={styles.cancelBtnText}>Anuluj</Text>
               </TouchableOpacity>
@@ -1872,20 +1874,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#030712',
   },
-  headerLayersBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#1E293B',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#38BDF8',
-    marginRight: 8,
-  },
-  headerLayersBtnText: {
-    color: '#38BDF8',
-    fontSize: 12,
-    fontWeight: '800',
-  },
   headerOfflineBtn: {
     paddingHorizontal: 8,
     paddingVertical: 5,
@@ -1901,6 +1889,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
+  },
+  headerLayersBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: '#1E293B',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+    marginRight: 8,
+  },
+  headerLayersBtnText: {
+    color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: '800',
   },
   floorBar: {
     flexDirection: 'row',
@@ -1961,12 +1963,12 @@ const styles = StyleSheet.create({
     borderColor: '#334155',
   },
   toolChipActive: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
     borderColor: '#38BDF8',
   },
   toolChipText: {
-    color: '#64748B',
-    fontSize: 11,
+    color: '#94A3B8',
+    fontSize: 12,
     fontWeight: '700',
   },
   toolChipTextActive: {
@@ -1974,6 +1976,7 @@ const styles = StyleSheet.create({
   },
   mapWrapper: {
     flex: 1,
+    backgroundColor: '#030712',
   },
   webView: {
     flex: 1,
@@ -1985,16 +1988,17 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#0F172A',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     borderWidth: 1,
-    borderColor: '#38BDF8',
+    borderColor: '#334155',
     padding: 16,
+    paddingBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.6,
+    shadowOpacity: 0.5,
     shadowRadius: 12,
-    elevation: 12,
+    elevation: 20,
   },
   drawerHandle: {
     width: 40,
@@ -2008,71 +2012,141 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
   },
   drawerTitle: {
+    color: '#F8FAFC',
     fontSize: 16,
     fontWeight: '800',
-    color: '#F8FAFC',
     marginBottom: 4,
   },
-  drawerDesc: {
-    fontSize: 13,
-    color: '#94A3B8',
+  circuitDrawerTitle: {
+    color: '#38BDF8',
+    fontSize: 17,
+    fontWeight: '900',
+    marginBottom: 2,
   },
-  drawerPhoto: {
-    width: '100%',
-    height: 140,
+  circuitDrawerSubtitle: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  statusBadgeRow: {
+    marginTop: 2,
+  },
+  statusBadgeLabel: {
+    color: '#94A3B8',
+    fontSize: 12,
+  },
+  statusBadgeValue: {
+    color: '#34D399',
+    fontWeight: '800',
+  },
+  circuitActionButtonsRow: {
+    marginTop: 12,
+  },
+  executeBtn: {
+    backgroundColor: '#0284C7',
+    paddingVertical: 10,
     borderRadius: 8,
-    marginTop: 8,
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  executeBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  undoBtn: {
+    backgroundColor: '#334155',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  undoBtnText: {
+    color: '#F8FAFC',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  approveBtn: {
+    flex: 1,
+    backgroundColor: '#16A34A',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  approveBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  rejectBtn: {
+    flex: 1,
+    backgroundColor: '#DC2626',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  rejectBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  drawerDesc: {
+    color: '#94A3B8',
+    fontSize: 12,
   },
   drawerClose: {
     padding: 6,
   },
   drawerCloseText: {
     color: '#94A3B8',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
   },
   fullDetailsBtn: {
-    backgroundColor: '#1E293B',
-    paddingVertical: 12,
+    backgroundColor: '#0284C7',
+    paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#38BDF8',
-    marginTop: 8,
+    marginTop: 12,
   },
   fullDetailsBtnText: {
-    color: '#38BDF8',
+    color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.78)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     padding: 16,
   },
   layersModalCard: {
     backgroundColor: '#0F172A',
     borderRadius: 16,
-    padding: 20,
     borderWidth: 1,
-    borderColor: '#38BDF8',
+    borderColor: '#334155',
+    padding: 16,
   },
   modalHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
+  },
+  modalHeading: {
+    color: '#F8FAFC',
+    fontSize: 16,
+    fontWeight: '800',
   },
   layerItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    justifyContent: 'space-between',
     backgroundColor: '#1E293B',
+    padding: 10,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
@@ -2080,151 +2154,161 @@ const styles = StyleSheet.create({
   },
   layerItemRowActive: {
     borderColor: '#38BDF8',
-    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    backgroundColor: '#162238',
   },
   layerItemTitle: {
-    fontSize: 13,
-    fontWeight: '800',
     color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '700',
   },
   layerItemTitleActive: {
-    color: '#F8FAFC',
+    color: '#38BDF8',
   },
   layerItemDesc: {
-    fontSize: 11,
     color: '#64748B',
+    fontSize: 11,
     marginTop: 2,
   },
   toggleCheckbox: {
     width: 22,
     height: 22,
     borderRadius: 6,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#64748B',
     alignItems: 'center',
     justifyContent: 'center',
   },
   toggleCheckboxActive: {
-    backgroundColor: '#38BDF8',
+    backgroundColor: '#0284C7',
     borderColor: '#38BDF8',
   },
   toggleCheckMark: {
-    color: '#0F172A',
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '900',
-    fontSize: 13,
   },
-  createPinModal: {
+  addModalCard: {
     backgroundColor: '#0F172A',
     borderRadius: 16,
-    padding: 18,
     borderWidth: 1,
-    borderColor: '#38BDF8',
+    borderColor: '#334155',
+    padding: 16,
   },
-  modalHeading: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#F8FAFC',
-    marginBottom: 2,
-  },
-  coordsText: {
-    fontSize: 11,
-    color: '#38BDF8',
-    marginBottom: 8,
-    fontWeight: '700',
-  },
-  categoryScroll: {
+  categoryPillsScroll: {
     flexDirection: 'row',
     marginBottom: 10,
   },
-  categoryTab: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+  categoryPill: {
     backgroundColor: '#1E293B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
     marginRight: 6,
     borderWidth: 1,
     borderColor: '#334155',
   },
-  categoryTabActive: {
-    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+  categoryPillActive: {
+    backgroundColor: '#0284C7',
     borderColor: '#38BDF8',
   },
-  categoryTabText: {
-    fontSize: 11,
+  categoryPillText: {
+    color: '#94A3B8',
+    fontSize: 12,
     fontWeight: '700',
-    color: '#94A3B8',
   },
-  categoryTabTextActive: {
-    color: '#38BDF8',
+  categoryPillTextActive: {
+    color: '#FFFFFF',
   },
-  typeSelectorLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#94A3B8',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  symbolScroll: {
+  symbolsGridScroll: {
     flexDirection: 'row',
     marginBottom: 12,
   },
   symbolCard: {
     backgroundColor: '#1E293B',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderRadius: 8,
-    padding: 8,
-    alignItems: 'center',
     marginRight: 8,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#334155',
     minWidth: 80,
   },
   symbolCardActive: {
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
     borderColor: '#38BDF8',
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
   },
   symbolCardEmoji: {
-    fontSize: 18,
+    fontSize: 20,
     marginBottom: 4,
   },
   symbolCardText: {
-    fontSize: 10,
-    fontWeight: '700',
     color: '#94A3B8',
+    fontSize: 11,
+    fontWeight: '600',
     textAlign: 'center',
   },
   symbolCardTextActive: {
     color: '#38BDF8',
-  },
-  rowInputs: {
-    flexDirection: 'row',
+    fontWeight: '800',
   },
   input: {
     backgroundColor: '#1E293B',
     color: '#F8FAFC',
     borderRadius: 8,
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     fontSize: 13,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#334155',
-    marginBottom: 10,
+  },
+  rowInputs: {
+    flexDirection: 'row',
+    marginBottom: 2,
+  },
+  klappeSizeRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 8,
+  },
+  klappeSizeChip: {
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  klappeSizeChipActive: {
+    backgroundColor: '#D97706',
+    borderColor: '#F59E0B',
+  },
+  klappeSizeText: {
+    color: '#94A3B8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  klappeSizeTextActive: {
+    color: '#FFFFFF',
   },
   photoActionRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: 8,
-    marginBottom: 10,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   photoBtn: {
     backgroundColor: '#1E293B',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#334155',
   },
   photoBtnText: {
     color: '#38BDF8',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   previewContainer: {

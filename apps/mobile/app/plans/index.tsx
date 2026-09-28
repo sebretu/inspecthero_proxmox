@@ -40,6 +40,8 @@ interface BuildingGroup {
 interface ProjectGroup {
   id: string;
   name: string;
+  company_name?: string;
+  address?: string;
   buildings: BuildingGroup[];
   totalPlansCount: number;
   isFullyCached?: boolean;
@@ -84,11 +86,12 @@ export default function PlansListScreen() {
       const now = new Date().toISOString();
 
       for (const p of apiProjects) {
+        const compName = p.companies?.name || null;
         await db.runAsync(
-          `INSERT INTO projects (id, name, status, created_at, updated_at, version)
-           VALUES (?, ?, ?, ?, ?, 1)
-           ON CONFLICT(id) DO UPDATE SET name = excluded.name, status = excluded.status, updated_at = excluded.updated_at;`,
-          [p.id, p.name, p.status || 'ACTIVE', p.created_at || now, p.updated_at || now]
+          `INSERT INTO projects (id, name, company_name, address, status, created_at, updated_at, version)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+           ON CONFLICT(id) DO UPDATE SET name = excluded.name, company_name = excluded.company_name, address = excluded.address, updated_at = excluded.updated_at;`,
+          [p.id, p.name, compName, p.address || null, p.status || 'ACTIVE', p.created_at || now, p.updated_at || now]
         );
 
         // 2. Fetch buildings for this project
@@ -148,8 +151,8 @@ export default function PlansListScreen() {
       await syncPlansAndProjectsFromApi(db);
 
       // Query projects, buildings and plans
-      const projs = await db.getAllAsync<{ id: string; name: string }>(
-        "SELECT id, name FROM projects WHERE deleted_at IS NULL ORDER BY name ASC;"
+      const projs = await db.getAllAsync<{ id: string; name: string; company_name?: string; address?: string }>(
+        "SELECT id, name, company_name, address FROM projects WHERE deleted_at IS NULL ORDER BY name ASC;"
       );
 
       const allBuildings = await db.getAllAsync<{ id: string; project_id: string; name: string }>(
@@ -212,6 +215,8 @@ export default function PlansListScreen() {
         return {
           id: pr.id,
           name: pr.name,
+          company_name: pr.company_name,
+          address: pr.address,
           buildings: buildingsList,
           totalPlansCount: prPlans.length,
           isFullyCached: allPrPlansCached,
@@ -329,7 +334,7 @@ export default function PlansListScreen() {
   const q = search.toLowerCase().trim();
   const filteredGroups = projectGroups
     .map((g) => {
-      const matchesProjectName = g.name.toLowerCase().includes(q);
+      const matchesProjectName = g.name.toLowerCase().includes(q) || (g.company_name && g.company_name.toLowerCase().includes(q));
       const filteredBuildings = g.buildings
         .map((b) => {
           const matchesBuildingName = b.name.toLowerCase().includes(q);
@@ -495,7 +500,17 @@ export default function PlansListScreen() {
                   <View style={styles.accordionLeft}>
                     <Text style={styles.projectIcon}>📁</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.projectName}>{group.name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <Text style={styles.projectName}>{group.name}</Text>
+                        {group.company_name && (
+                          <View style={styles.companyBadge}>
+                            <Text style={styles.companyBadgeText}>{group.company_name}</Text>
+                          </View>
+                        )}
+                      </View>
+                      {group.address ? (
+                        <Text style={styles.projectAddressText}>📍 {group.address}</Text>
+                      ) : null}
                       <View style={styles.projectSubRow}>
                         <Text style={styles.projectSubtext}>
                           {group.buildings.length} {group.buildings.length === 1 ? 'budynek' : 'budynków'} • {group.totalPlansCount} rzutów
@@ -800,6 +815,24 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontSize: 15,
     fontWeight: '700',
+  },
+  companyBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+  },
+  companyBadgeText: {
+    color: '#38BDF8',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  projectAddressText: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 1,
   },
   projectSubRow: {
     flexDirection: 'row',
