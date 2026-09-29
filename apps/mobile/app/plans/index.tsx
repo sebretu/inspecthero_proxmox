@@ -151,7 +151,9 @@ export default function PlansListScreen() {
       };
     });
 
-    setProjectGroups(groups);
+    // Filter out empty test projects or projects without any plans
+    const validGroups = groups.filter((g) => g.totalPlansCount > 0);
+    setProjectGroups(validGroups);
   };
 
   const syncPlansAndProjectsFromApiBackground = async (db: any) => {

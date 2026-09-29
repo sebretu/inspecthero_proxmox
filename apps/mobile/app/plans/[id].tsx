@@ -1642,16 +1642,15 @@ export default function InteractivePlanScreen() {
             }
           };
 
-          // Tile Layer with 100% Robust Local Cache First and Remote Fallback
+          // Tile Layer with Local Cache First and Remote Fallback
           if (planId) {
+            const isCached = ${isLocalTileCached ? 'true' : 'false'};
             const tokenParam = token ? '?token=' + encodeURIComponent(token) : '';
             const localTileDir = "${TileCacheService.getPlanTilesDir(planId)}";
-            const relativeTileDir = "tiles/" + planId + "/";
-            const directRelDir = planId + "/";
             const remoteUrl = apiUrl + '/api/tiles/' + planId + '/{z}/{x}/{y}.png' + tokenParam;
             
-            // Primary URL: try local file URL
-            const primaryTileUrl = localTileDir + '{z}/{x}/{y}.png';
+            // Primary URL: If cached, load from local file. If not, load from server.
+            const primaryTileUrl = isCached ? (localTileDir + '{z}/{x}/{y}.png') : remoteUrl;
 
             const tileLayer = L.tileLayer(primaryTileUrl, {
               minZoom: minZoom,
@@ -1671,27 +1670,18 @@ export default function InteractivePlanScreen() {
               const coords = error.coords;
               const cur = error.tile.src || '';
 
-              // 1. If absolute file:// failed, try relative path
-              if (cur.indexOf('file://') === 0 || cur.indexOf(localTileDir) === 0) {
-                const rel1 = relativeTileDir + coords.z + '/' + coords.x + '/' + coords.y + '.png';
-                if (cur !== rel1) {
-                  error.tile.src = rel1;
-                  return;
+              // If local tile failed, attempt remote server
+              if (cur.indexOf('file:') === 0 || cur.indexOf('tiles/') !== -1) {
+                const fallbackRemote = apiUrl + '/api/tiles/' + planId + '/' + coords.z + '/' + coords.x + '/' + coords.y + '.png' + tokenParam;
+                if (cur !== fallbackRemote) {
+                  error.tile.src = fallbackRemote;
                 }
-              }
-
-              // 2. If relative failed, try direct planId/ path
-              if (cur.indexOf('tiles/') !== -1) {
-                const rel2 = directRelDir + coords.z + '/' + coords.x + '/' + coords.y + '.png';
-                if (cur !== rel2) {
-                  error.tile.src = rel2;
-                  return;
+              } else if (cur.indexOf(apiUrl) !== -1) {
+                // If remote server failed, attempt local file
+                const fallbackLocal = localTileDir + coords.z + '/' + coords.x + '/' + coords.y + '.png';
+                if (cur !== fallbackLocal) {
+                  error.tile.src = fallbackLocal;
                 }
-              }
-
-              // 3. If local failed and we are online, fallback to remote server
-              if (navigator.onLine && cur.indexOf(apiUrl) === -1) {
-                error.tile.src = apiUrl + '/api/tiles/' + planId + '/' + coords.z + '/' + coords.x + '/' + coords.y + '.png' + tokenParam;
               }
             });
           }

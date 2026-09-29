@@ -197,10 +197,15 @@ export class TileCacheService {
       const { data: { session } } = await authSupabase.auth.getSession();
       const token = session?.access_token;
       const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
       // 1. Fetch Plan Metadata
       const metaRes = await fetch(`${this.apiUrl}/api/tiles/${planId}/meta${tokenParam}`, {
-        signal: AbortSignal.timeout(4000),
+        headers,
+        signal: AbortSignal.timeout(15000),
       });
       if (!metaRes.ok) {
         throw new Error(`Failed to fetch plan metadata: HTTP ${metaRes.status}`);
@@ -295,7 +300,7 @@ export class TileCacheService {
             // Check if file exists to avoid re-downloading unchanged tile
             const fileInfo = await FileSystem.getInfoAsync(job.localPath);
             if (!fileInfo.exists) {
-              await FileSystem.downloadAsync(job.remoteUrl, job.localPath);
+              await FileSystem.downloadAsync(job.remoteUrl, job.localPath, { headers });
             }
           } catch (dlErr) {
             // Non-fatal, continue with next tile
