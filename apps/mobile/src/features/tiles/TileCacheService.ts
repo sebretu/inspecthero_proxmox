@@ -96,6 +96,18 @@ export class TileCacheService {
     }
   }
 
+  /**
+   * Save metadata for a plan to local filesystem
+   */
+  static async saveLocalMeta(planId: string, meta: any): Promise<void> {
+    try {
+      const planDir = this.getPlanTilesDir(planId);
+      await FileSystem.makeDirectoryAsync(planDir, { intermediates: true }).catch(() => {});
+      const metaPath = `${planDir}meta.json`;
+      await FileSystem.writeAsStringAsync(metaPath, JSON.stringify(meta)).catch(() => {});
+    } catch {}
+  }
+
   private static planSizeCache: Map<string, number> = new Map();
   private static totalCacheBytesCached: number = 0;
 

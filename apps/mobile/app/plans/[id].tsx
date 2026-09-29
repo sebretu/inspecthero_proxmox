@@ -374,10 +374,10 @@ export default function InteractivePlanScreen() {
       // 2. Fetch metadata (Check local meta.json first for instant offline rendering)
       let tileSize = 256;
       let maxZoom = 5;
-      let gridW = 9;
-      let gridH = 6;
       let fetchedWidth = planRow?.width || 1920;
       let fetchedHeight = planRow?.height || 1080;
+      let gridW = Math.ceil(fetchedWidth / tileSize);
+      let gridH = Math.ceil(fetchedHeight / tileSize);
       let activeProjectId = planRow?.project_id || '';
 
       const localMeta = await TileCacheService.getLocalMeta(activePlanId);
@@ -393,7 +393,8 @@ export default function InteractivePlanScreen() {
       try {
         const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
         const metaRes = await fetch(`${apiUrl}/api/tiles/${activePlanId}/meta${tokenParam}`, {
-          signal: AbortSignal.timeout(1500),
+          headers,
+          signal: AbortSignal.timeout(2000),
         });
         if (metaRes.ok) {
           const meta = await metaRes.json();
@@ -401,8 +402,21 @@ export default function InteractivePlanScreen() {
           if (meta.maxZoom) maxZoom = meta.maxZoom;
           if (meta.gridW) gridW = meta.gridW;
           if (meta.gridH) gridH = meta.gridH;
-          if (meta.imageWidth) fetchedWidth = meta.imageWidth;
-          if (meta.imageHeight) fetchedHeight = meta.imageHeight;
+          if (meta.imageWidth || meta.width) fetchedWidth = meta.imageWidth || meta.width;
+          if (meta.imageHeight || meta.height) fetchedHeight = meta.imageHeight || meta.height;
+
+          // Save exact metadata locally so offline mode is 100% accurate
+          TileCacheService.saveLocalMeta(activePlanId, {
+            tileSize,
+            maxZoom,
+            minZoom: meta.minZoom || 1,
+            gridW,
+            gridH,
+            imageWidth: fetchedWidth,
+            imageHeight: fetchedHeight,
+            limits: meta.limits,
+            activeVersionId: meta.activeVersionId,
+          });
         }
       } catch (e) {}
 
