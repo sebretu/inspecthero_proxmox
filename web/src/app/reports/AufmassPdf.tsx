@@ -210,7 +210,7 @@ export const AufmassPdf = ({ session, materials, labor, annotatedPhotos, planIma
     <Page size="A4" style={styles.page}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>{session.session_type === 'baubehinderung' ? 'Baubehinderung' : session.session_type === 'zusatz' ? 'Zusatzplanung' : session.session_type === 'bestellung' ? 'Bestellung' : session.session_type === 'fragen' ? 'Fragen' : 'Aufmaß'}</Text>
+          <Text style={styles.title}>{session.session_type === 'baubehinderung' ? 'Baubehinderung' : session.session_type === 'zusatz' ? 'Zusatzarbeit' : session.session_type === 'bestellung' ? 'Bestellung' : session.session_type === 'fragen' ? 'Fragen' : 'Aufmaß'}</Text>
           <Text style={styles.subtitle}>{projectName} • {session.name}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>

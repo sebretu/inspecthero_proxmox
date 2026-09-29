@@ -1,0 +1,58 @@
+{
+  "generated_at": "2026-07-22T10:10:37.694Z",
+  "embedding_version": "v2_single_symbol",
+  "source": "Supabase Storage: symbol_crops_v2/{plan_id}/{stromkreis_id}/256.png",
+  "total_processed": 1320,
+  "success": 1320,
+  "failed": 0,
+  "saved_to_db": 1320,
+  "save_failed": 0,
+  "embedding_dimension": 768,
+  "duplicate_embeddings": 0,
+  "null_vectors": 0,
+  "old_vs_new_comparison": {
+    "sample_size": 20,
+    "average_old_new_cosine": 0.4068
+  },
+  "class_separation": {
+    "new_embeddings": {
+      "avg_intra_class_similarity": 0.5163,
+      "avg_inter_class_similarity": 0.4418,
+      "separation_delta": 0.0745,
+      "intra_sample_count": 616,
+      "inter_sample_count": 25
+    },
+    "old_embeddings": {
+      "avg_intra_class_similarity": 0.356,
+      "avg_inter_class_similarity": 0.316,
+      "separation_delta": 0.0401
+    }
+  },
+  "class_distribution_v2": {
+    "edv": 132,
+    "socket": 991,
+    "light": 85,
+    "special": 39,
+    "cee": 56,
+    "text": 1,
+    "sym_socket": 14,
+    "sym_cee16": 1,
+    "sym_cee32": 1
+  },
+  "safety_checks": {
+    "stromkreise_modified": false,
+    "ground_truth_modified": false,
+    "old_embeddings_deleted": false,
+    "old_crops_deleted": false,
+    "production_embedding_field_overwritten": false
+  },
+  "acceptance_criteria": {
+    "embeddings_count_ok": true,
+    "embedding_dimension_ok": true,
+    "no_duplicate_embeddings": true,
+    "no_null_vectors": true,
+    "ground_truth_untouched": true,
+    "production_storage_untouched": true,
+    "old_pipeline_available": true
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "generated_at": "2026-07-24T05:54:02.709894",
+  "total_items": 1353,
+  "v1_baseline": {
+    "pipeline": "V1_OLD_Handcrafted",
+    "total_queries": 1353,
+    "precision1": 0.765,
+    "precision5": 0.6903,
+    "recall10": 0.0188,
+    "mrr": 0.8301,
+    "false_match_rate": 0.235,
+    "socket_to_edv_errors": 33,
+    "edv_to_socket_errors": 19,
+    "total_socket_edv_errors": 52,
+    "per_class_p1": {
+      "cee": 0.4839,
+      "edv": 0.7444,
+      "light": 0.2069,
+      "socket": 0.8711,
+      "special": 0.1905,
+      "sym_cee16": 0.4286,
+      "sym_cee32": 0.0,
+      "sym_socket": 0.2941,
+      "text": 0.0
+    }
+  },
+  "v2_legacy": {
+    "pipeline": "V2.1_Handcrafted",
+    "total_queries": 1319,
+    "precision1": 0.7263,
+    "precision5": 0.6795,
+    "recall10": 0.0137,
+    "mrr": 0.7996,
+    "false_match_rate": 0.2737,
+    "socket_to_edv_errors": 49,
+    "edv_to_socket_errors": 60,
+    "total_socket_edv_errors": 109,
+    "per_class_p1": {
+      "cee": 0.375,
+      "edv": 0.3712,
+      "light": 0.2588,
+      "socket": 0.8596,
+      "special": 0.2308,
+      "sym_cee16": 0.0,
+      "sym_cee32": 0.0,
+      "sym_socket": 0.4286,
+      "text": 0.0
+    }
+  },
+  "v4_graph_engine": {
+    "pipeline": "V4_GraphEngine",
+    "total_queries": 1353,
+    "precision1": 0.6992,
+    "precision5": 0.66,
+    "recall10": 0.0117,
+    "mrr": 0.7783,
+    "false_match_rate": 0.3008,
+    "socket_to_edv_errors": 58,
+    "edv_to_socket_errors": 68,
+    "total_socket_edv_errors": 126,
+    "per_class_p1": {
+      "cee": 0.2581,
+      "edv": 0.3759,
+      "light": 0.2184,
+      "socket": 0.8422,
+      "special": 0.3095,
+      "sym_cee16": 0.0,
+      "sym_cee32": 0.0,
+      "sym_socket": 0.2941,
+      "text": 0.0
+    }
+  },
+  "success_criteria_check": {
+    "p1_improved": false,
+    "p5_improved_or_equal": false,
+    "mrr_improved": false,
+    "fm_rate_reduced": false,
+    "socket_edv_errors_reduced": false,
+    "all_criteria_passed": false
+  },
+  "final_recommendation": "NO",
+  "upper_bound_analysis": {
+    "current_v1_baseline": 0.765,
+    "current_v4_precision1": 0.6992,
+    "gt_conflict_pairs_count": 63,
+    "gt_conflict_penalty_pct": 0.0466,
+    "heuristic_16x16_downsample_ceiling": 0.7688,
+    "theoretical_max_p1_with_current_gt": 0.8334,
+    "explanation": "V4 tight cropping (70% occupancy) removes surrounding context and background line noise. However, because the 768D embedding relies on a 16x16 downsampled grid thumbnail, scaling the symbol up causes the subtle internal text details ('EDV' vs blank socket) to be completely blurred into identical 16x16 pixel patterns. Therefore, tight crops increase socket<->edv similarity, dropping Precision@1 from 76.88% (V1) to 63.88% (V4)."
+  }
+}

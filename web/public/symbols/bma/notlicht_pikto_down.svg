@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Background Green ISO 7010 -->
+  <rect width="100" height="100" rx="6" fill="#006633"/>
+  <rect x="2" y="2" width="96" height="96" rx="4" fill="none" stroke="#ffffff" stroke-width="2"/>
+  <!-- Left side: Doorway & Figure -->
+  <rect x="10" y="14" width="36" height="72" rx="2" fill="#ffffff"/>
+  <circle cx="34" cy="27" r="5" fill="#006633"/>
+  <path d="M 31 34 L 25 43 L 19 53 L 25 53 L 28 45 L 34 42 L 38 53 L 42 64 L 37 64 L 33 55 L 29 48 L 25 57 L 21 68 L 16 68 L 24 53 Z" fill="#006633"/>
+  <path d="M 34 37 L 42 43 L 48 43 L 48 47 L 39 47 L 31 40 Z" fill="#006633"/>
+  <!-- Right side: Arrow pointing Down -->
+  <path d="M 68 24 L 78 24 L 78 56 L 88 56 L 73 80 L 58 56 L 68 56 Z" fill="#ffffff"/>
+</svg>

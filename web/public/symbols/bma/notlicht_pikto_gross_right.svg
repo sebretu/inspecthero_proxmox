@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" width="160" height="80">
+  <!-- Background Green ISO 7010 Safety Green -->
+  <rect width="160" height="80" rx="6" fill="#006633"/>
+  <!-- White Inner Border -->
+  <rect x="3" y="3" width="154" height="74" rx="4" fill="none" stroke="#ffffff" stroke-width="2.5"/>
+
+  <!-- Left: Running Figure into Door (ISO Exit) -->
+  <rect x="14" y="10" width="46" height="60" rx="2" fill="#ffffff"/>
+  <rect x="18" y="14" width="38" height="52" rx="1" fill="#006633"/>
+  <rect x="14" y="10" width="46" height="60" rx="2" fill="#ffffff"/>
+  <circle cx="43" cy="22" r="5.5" fill="#006633"/>
+  <path d="M 40 28 L 33 39 L 27 51 L 33 51 L 37 41 L 44 38 L 49 51 L 54 64 L 48 64 L 43 53 L 38 44 L 33 55 L 28 67 L 22 67 L 31 51 Z" fill="#006633"/>
+  <path d="M 43 32 L 53 39 L 61 39 L 61 44 L 50 44 L 40 35 Z" fill="#006633"/>
+  <path d="M 33 35 L 24 37 L 19 42 L 16 39 L 22 33 L 33 31 Z" fill="#006633"/>
+  <path d="M 34 53 L 27 65 L 18 68 L 16 63 L 23 61 L 29 50 Z" fill="#006633"/>
+  <path d="M 43 49 L 49 61 L 55 74 L 50 75 L 45 64 L 40 54 Z" fill="#006633"/>
+
+  <!-- Right: Exit Arrow (White Right) -->
+  <path d="M 78 35 L 116 35 L 116 23 L 144 40 L 116 57 L 116 45 L 78 45 Z" fill="#ffffff"/>
+</svg>

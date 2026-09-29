@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-07-24T06:03:10.046412",
+  "total_dimensions": 768,
+  "overall_attribution": {
+    "symbol_information_pct": 27.8,
+    "context_information_pct": 72.2
+  },
+  "subvector_breakdown": {
+    "line256_intensity_grid": {
+      "symbol_energy_pct": 28.4,
+      "context_energy_pct": 71.6
+    },
+    "green256_cad_channel": {
+      "symbol_energy_pct": 34.2,
+      "context_energy_pct": 65.8
+    },
+    "red128_cad_channel": {
+      "symbol_energy_pct": 18.9,
+      "context_energy_pct": 81.1
+    },
+    "edge64_sobel_map": {
+      "symbol_energy_pct": 22.1,
+      "context_energy_pct": 77.9
+    },
+    "proj64_projections": {
+      "symbol_energy_pct": 31.5,
+      "context_energy_pct": 68.5
+    }
+  },
+  "conclusion": "72.2% of the 768D feature vector is determined by the background context, outer wires, and surrounding CAD geometry rather than the target electrical symbol."
+}

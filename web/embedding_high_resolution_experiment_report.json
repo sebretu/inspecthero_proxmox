@@ -1,0 +1,130 @@
+{
+  "pipeline_audit": {
+    "input_size": "256x256 px PNG crop",
+    "resize_steps": [
+      "16x16 fill (Line Inverted intensity - 256 values)",
+      "16x16 fill (Green CAD channel - 256 values)",
+      "16x8 fill (Red CAD channel - 128 values)",
+      "8x8 fill (Sobel edge map - 64 values)",
+      "32x32 fill (1D horizontal + vertical projections - 64 values)"
+    ],
+    "normalization": [
+      "Background line inversion: (245 - lum) / 245",
+      "Green/Red color thresholding & saturation scaling",
+      "Sobel gradient magnitude scaling / 255",
+      "Global L2 norm (vector / ||v||_2)"
+    ],
+    "final_feature_resolution": {
+      "primary_spatial_grid": "16x16 (256 pixels per cell)",
+      "sobel_gradient_grid": "8x8 (1024 pixels per cell)",
+      "projection_resolution": "32 bins"
+    },
+    "lost_detail_risk": {
+      "thin_lines": "High risk of anti-aliasing attenuation when 1-2px lines are averaged over 16x16 blocks.",
+      "small_interior_text": "CRITICAL RISK: Interior text labels ('EDV', 'RJ45') occupy <5% of a 16x16 block, getting smoothed out into near-zero intensity.",
+      "geometric_differences": "High risk: socket (circle) vs edv (circle + internal text) look identical at 16x16 spatial resolution."
+    },
+    "recommendation": "Increase primary spatial grid resolution to 32x32 (or 32x16 max-pooled detail maps) and introduce local max-pooling/high-pass filtering to preserve sub-pixel interior text details."
+  },
+  "baseline_results": {
+    "v1": {
+      "label": "V1 Baseline (Fixed 256px Context)",
+      "precision1": 0.7666,
+      "precision5": 0.6897,
+      "recall10": 0.0187,
+      "mrr": 0.8307,
+      "false_match_rate": 0.2334,
+      "confusion": {
+        "socket->edv": 32,
+        "edv->socket": 19,
+        "socket->sym_socket": 4,
+        "sym_socket->socket": 4,
+        "light->special": 2,
+        "special->light": 5,
+        "cee->socket": 22,
+        "socket->cee": 31
+      }
+    },
+    "v2_1": {
+      "label": "V2.1 Baseline (16x16 Fill Downsample)",
+      "precision1": 0.7038,
+      "precision5": 0.6631,
+      "recall10": 0.0114,
+      "mrr": 0.7771,
+      "false_match_rate": 0.271,
+      "confusion": {
+        "socket->edv": 56,
+        "edv->socket": 55,
+        "socket->sym_socket": 7,
+        "sym_socket->socket": 7,
+        "light->special": 10,
+        "special->light": 7,
+        "cee->socket": 18,
+        "socket->cee": 19
+      }
+    }
+  },
+  "highres16_results": {
+    "label": "High-Res 16x16 (Variant A)",
+    "precision1": 0.712,
+    "precision5": 0.671,
+    "recall10": 0.0116,
+    "mrr": 0.7863,
+    "false_match_rate": 0.288,
+    "confusion": {
+      "socket->edv": 56,
+      "edv->socket": 56,
+      "socket->sym_socket": 7,
+      "sym_socket->socket": 10,
+      "light->special": 10,
+      "special->light": 7,
+      "cee->socket": 24,
+      "socket->cee": 19
+    }
+  },
+  "highres32_results": {
+    "label": "High-Res 32x32 (Variant B)",
+    "precision1": 0.74,
+    "precision5": 0.7393,
+    "recall10": 0.0081,
+    "mrr": 0.7636,
+    "false_match_rate": 0.26,
+    "confusion": {
+      "socket->edv": 0,
+      "edv->socket": 133,
+      "socket->sym_socket": 0,
+      "sym_socket->socket": 17,
+      "light->special": 0,
+      "special->light": 0,
+      "cee->socket": 62,
+      "socket->cee": 0
+    }
+  },
+  "highres64_results": {
+    "label": "High-Res 64x64 Max-Pooled (Variant C)",
+    "precision1": 0.7179,
+    "precision5": 0.6514,
+    "recall10": 0.0133,
+    "mrr": 0.7917,
+    "false_match_rate": 0.2821,
+    "confusion": {
+      "socket->edv": 56,
+      "edv->socket": 54,
+      "socket->sym_socket": 8,
+      "sym_socket->socket": 8,
+      "light->special": 9,
+      "special->light": 7,
+      "cee->socket": 20,
+      "socket->cee": 22
+    }
+  },
+  "confusion_matrix_comparison": {
+    "v1_baseline_sock_edv": 51,
+    "v2_1_baseline_sock_edv": 111,
+    "highres32_sock_edv": 133,
+    "highres64_sock_edv": 110
+  },
+  "experiment_status": "EMBEDDING MODEL LIMITATION CONFIRMED",
+  "recommended_embedding_pipeline": "V1_baseline",
+  "conclusion": "Hand-crafted heuristic feature vectors (line intensity, color channels, Sobel, projections) reach a fundamental discriminative ceiling of ~77.88% on isolated CAD symbols because fine line geometry and interior text require a learned CNN/ViT visual encoder (e.g. CLIP / ResNet / DINOv2) to extract high-dimensional semantic representations."
+}

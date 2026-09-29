@@ -21,6 +21,8 @@ type Point = { x: number; y: number };
 type CompletedMeasurement = {
   id: string;
   points: Point[];
+  label?: string;
+  segmentLabels?: Record<number, string>;
 };
 
 type ScaleData = {
@@ -90,14 +92,30 @@ export default function PlanMeasurementModule({
     }
   }, []);
 
-  // Inject CSS for Leaflet tooltip labels directly into <head>
-  // (Leaflet renders tooltips outside React DOM tree – CSS Modules don't reach them)
+  // Inject CSS for Leaflet tooltip labels and precision crosshair cursor directly into <head>
+  // (Leaflet renders tooltips and map containers outside React DOM tree – CSS Modules don't reach them)
   useEffect(() => {
     const id = "plan-measurement-label-styles";
-    if (document.getElementById(id)) return;
-    const style = document.createElement("style");
-    style.id = id;
+    let style = document.getElementById(id) as HTMLStyleElement;
+    if (!style) {
+      style = document.createElement("style");
+      style.id = id;
+      document.head.appendChild(style);
+    }
     style.textContent = `
+      .leaflet-container.leaflet-measuring-mode,
+      .leaflet-container.leaflet-measuring-mode .leaflet-pane,
+      .leaflet-container.leaflet-measuring-mode .leaflet-tile-pane,
+      .leaflet-container.leaflet-measuring-mode .leaflet-overlay-pane,
+      .leaflet-container.leaflet-measuring-mode .leaflet-marker-pane,
+      .leaflet-container.leaflet-measuring-mode .leaflet-interactive,
+      .leaflet-container.leaflet-measuring-mode .leaflet-image-layer,
+      .leaflet-container.leaflet-measuring-mode .leaflet-grab,
+      .leaflet-container.leaflet-measuring-mode svg,
+      .leaflet-container.leaflet-measuring-mode path {
+        cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23ffffff' stroke-width='3' opacity='0.9'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%232563eb' stroke-width='1.5'/%3E%3Cline x1='16' y1='2' x2='16' y2='10' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='16' y1='2' x2='16' y2='10' stroke='%232563eb' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='16' y1='22' x2='16' y2='30' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='16' y1='22' x2='16' y2='30' stroke='%232563eb' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='2' y1='16' x2='10' y2='16' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='2' y1='16' x2='10' y2='16' stroke='%232563eb' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='22' y1='16' x2='30' y2='16' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='22' y1='16' x2='30' y2='16' stroke='%232563eb' stroke-width='1.5' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%23ef4444' stroke='%23ffffff' stroke-width='0.75'/%3E%3C/svg%3E") 16 16, crosshair !important;
+      }
+
       .leaflet-tooltip.measure-label {
         background: rgba(15, 23, 42, 0.92) !important;
         color: #ffffff !important;
@@ -115,7 +133,6 @@ export default function PlanMeasurementModule({
         display: none !important;
       }
     `;
-    document.head.appendChild(style);
     return () => {
       const el = document.getElementById(id);
       if (el) el.remove();
@@ -129,6 +146,15 @@ export default function PlanMeasurementModule({
   const [activePoints, setActivePoints] = useState<Point[]>([]);
   const [hoverPoint, setHoverPoint] = useState<Point | null>(null);
   const [completedMeasurements, setCompletedMeasurements] = useState<CompletedMeasurement[]>([]);
+  const [clickRipples, setClickRipples] = useState<Array<{ id: number; point: Point }>>([]);
+
+  const triggerClickRipple = useCallback((point: Point) => {
+    const id = Date.now() + Math.random();
+    setClickRipples((prev) => [...prev, { id, point }]);
+    setTimeout(() => {
+      setClickRipples((prev) => prev.filter((r) => r.id !== id));
+    }, 500);
+  }, []);
 
   // Persistence state
   const [savedCount, setSavedCount] = useState<number | null>(null); // null = not yet checked
@@ -204,31 +230,124 @@ export default function PlanMeasurementModule({
 
 
 
-  // Load saved measurements from DB on mount
+  // 1. Fetch ground-truth saved measurements from DB on mount (accessible for all users)
   useEffect(() => {
     if (!planId) return;
+    let isMounted = true;
     (async () => {
-      const token = await getToken();
-      if (!token) return;
       try {
-        const res = await fetch(`/api/plans/${planId}/measurements`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const token = await getToken();
+        const headers: Record<string, string> = {};
+        if (token) headers.Authorization = `Bearer ${token}`;
+
+        const res = await fetch(`/api/plans/${planId}/measurements`, { headers });
         if (!res.ok) return;
         const json = await res.json();
-        const rows: Array<{ id: string; points: Array<{ x: number; y: number }>; label?: string }> =
+        if (!isMounted) return;
+
+        let rows: Array<{ id: string; points: Array<{ x: number; y: number }>; label?: string }> =
           json.measurements ?? [];
+        
+        if (rows.length === 0 && typeof window !== "undefined") {
+          try {
+            const local = localStorage.getItem(`plan_measurements_${planId}`);
+            if (local) {
+              const parsed = JSON.parse(local);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                rows = parsed;
+              }
+            }
+          } catch {}
+        }
+
         setSavedCount(rows.length);
         if (rows.length > 0) {
-          setCompletedMeasurements(
-            rows.map((r) => ({ id: r.id, points: r.points }))
-          );
+          const loadedMeasurements = rows.map((r) => {
+            let segmentLabels: Record<number, string> | undefined;
+            let label = r.label;
+            if (r.label && typeof r.label === "string" && r.label.trim().startsWith("{") && r.label.trim().endsWith("}")) {
+              try {
+                const parsed = JSON.parse(r.label);
+                if (typeof parsed === "object" && parsed !== null) {
+                  segmentLabels = parsed;
+                }
+              } catch {}
+            } else if (r.label) {
+              segmentLabels = { 0: r.label };
+            }
+            return { id: r.id, points: r.points, label, segmentLabels };
+          });
+          setCompletedMeasurements(loadedMeasurements);
+          onEnsureVisible?.();
         }
       } catch {
         // ignore
       }
     })();
-  }, [planId, getToken]);
+    return () => {
+      isMounted = false;
+    };
+  }, [planId, getToken, onEnsureVisible]);
+
+  // 2. Synchronize measurements list to database (shared for all users)
+  const syncMeasurementsToDb = useCallback(
+    async (measurementsList: CompletedMeasurement[]) => {
+      if (!planId) return;
+      setSaveStatus("saving");
+      const token = await getToken();
+      try {
+        const rowsToSave = measurementsList.map((m) => {
+          let label = m.label;
+          if (m.segmentLabels && Object.keys(m.segmentLabels).length > 0) {
+            label = JSON.stringify(m.segmentLabels);
+          }
+          return {
+            id: m.id,
+            points: m.points,
+            label: label ?? null,
+          };
+        });
+
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(`plan_measurements_${planId}`, JSON.stringify(rowsToSave));
+          } catch {}
+        }
+
+        if (rowsToSave.length === 0) {
+          await fetch(`/api/plans/${planId}/measurements`, {
+            method: "DELETE",
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          setSavedCount(0);
+          setSaveStatus("idle");
+          return;
+        }
+
+        const res = await fetch(`/api/plans/${planId}/measurements`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ measurements: rowsToSave }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          setSavedCount(json.saved ?? measurementsList.length);
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus("idle"), 2000);
+        } else {
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus("idle"), 2000);
+        }
+      } catch {
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
+      }
+    },
+    [planId, getToken]
+  );
 
   const onCountChangeRef = useRef(onCountChange);
   onCountChangeRef.current = onCountChange;
@@ -237,40 +356,22 @@ export default function PlanMeasurementModule({
     onCountChangeRef.current?.(completedMeasurements.length);
   }, [completedMeasurements.length]);
 
-  // Save measurements to DB
+  // Manual save trigger (if user clicks the button)
   const handleSaveMeasurements = useCallback(async () => {
-    if (!planId || completedMeasurements.length === 0) return;
-    setSaveStatus("saving");
-    const token = await getToken();
-    if (!token) { setSaveStatus("error"); return; }
-    try {
-      const res = await fetch(`/api/plans/${planId}/measurements`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ measurements: completedMeasurements }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const json = await res.json();
-      setSavedCount(json.saved ?? completedMeasurements.length);
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2500);
-    } catch {
-      setSaveStatus("error");
-      setTimeout(() => setSaveStatus("idle"), 3000);
-    }
-  }, [planId, completedMeasurements, getToken]);
+    await syncMeasurementsToDb(completedMeasurements);
+  }, [syncMeasurementsToDb, completedMeasurements]);
 
   // Delete all saved measurements from DB
   const handleDeleteSaved = useCallback(async () => {
     if (!planId) return;
     const token = await getToken();
-    if (!token) return;
     try {
       await fetch(`/api/plans/${planId}/measurements`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       setSavedCount(0);
+      setCompletedMeasurements([]);
     } catch {
       // ignore
     }
@@ -373,10 +474,26 @@ export default function PlanMeasurementModule({
 
   useEffect(() => {
     const isAct = activeMode !== "none";
-    if (map) (map as any)._isMeasuring = isAct;
+    if (map) {
+      (map as any)._isMeasuring = isAct;
+      const container = map.getContainer();
+      if (container) {
+        if (isAct) {
+          container.classList.add("leaflet-measuring-mode");
+        } else {
+          container.classList.remove("leaflet-measuring-mode");
+        }
+      }
+    }
     if (typeof window !== "undefined") (window as any)._isMeasurementActive = isAct;
     return () => {
-      if (map) (map as any)._isMeasuring = false;
+      if (map) {
+        (map as any)._isMeasuring = false;
+        const container = map.getContainer();
+        if (container) {
+          container.classList.remove("leaflet-measuring-mode");
+        }
+      }
       if (typeof window !== "undefined") (window as any)._isMeasurementActive = false;
     };
   }, [map, activeMode]);
@@ -434,12 +551,15 @@ export default function PlanMeasurementModule({
         if (activeMode === "measure") {
           if (activePoints.length === 0) {
             setActivePoints([point]);
+            triggerClickRipple(point);
           } else {
             const lastPt = activePoints[activePoints.length - 1];
             const nextPt = getProjectedPoint(lastPt, point);
             setActivePoints((prev) => [...prev, nextPt]);
+            triggerClickRipple(nextPt);
           }
         } else if (activeMode === "calibrate") {
+          triggerClickRipple(point);
           setCalibrationPoints((prev) => {
             const next = [...prev, point];
             if (next.length === 2) {
@@ -462,10 +582,15 @@ export default function PlanMeasurementModule({
           });
 
           if (dedupedPoints.length >= 2) {
-            setCompletedMeasurements((prev) => [
-              ...prev,
-              { id: `m_${Date.now()}_${Math.random()}`, points: dedupedPoints },
-            ]);
+            const newM: CompletedMeasurement = {
+              id: `m_${Date.now()}_${Math.random()}`,
+              points: dedupedPoints,
+            };
+            setCompletedMeasurements((prev) => {
+              const next = [...prev, newM];
+              syncMeasurementsToDb(next);
+              return next;
+            });
           }
           setActivePoints([]);
           setHoverPoint(null);
@@ -476,11 +601,12 @@ export default function PlanMeasurementModule({
       mousemove: (e: any) => {
         if (activeMode === "none") return;
         const point = latLngToPlanPoint(e.latlng);
+        setHoverPoint(point);
+      },
 
-        if (activeMode === "measure" && activePoints.length > 0) {
-          setHoverPoint(point);
-        } else if (activeMode === "calibrate" && calibrationPoints.length === 1) {
-          setHoverPoint(point);
+      mouseout: () => {
+        if (activeMode !== "none" && activePoints.length === 0 && calibrationPoints.length === 0) {
+          setHoverPoint(null);
         }
       },
     });
@@ -517,12 +643,37 @@ export default function PlanMeasurementModule({
   const [hoveredMeasurementId, setHoveredMeasurementId] = useState<string | null>(null);
   const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null);
 
+  // Update an individual segment label on a completed measurement
+  const handleUpdateMeasurementLabel = useCallback((id: string, segIdx: number, newText: string) => {
+    setCompletedMeasurements((prev) => {
+      const next = prev.map((m) => {
+        if (m.id !== id) return m;
+        const updated = { ...m };
+        const segLabels = { ...(m.segmentLabels || {}) };
+        if (!newText.trim()) {
+          delete segLabels[segIdx];
+        } else {
+          segLabels[segIdx] = newText.trim();
+        }
+        updated.segmentLabels = segLabels;
+        updated.label = Object.keys(segLabels).length > 0 ? JSON.stringify(segLabels) : undefined;
+        return updated;
+      });
+      syncMeasurementsToDb(next);
+      return next;
+    });
+  }, [syncMeasurementsToDb]);
+
   // Delete an individual completed measurement
   const handleDeleteSingleMeasurement = useCallback((id: string) => {
-    setCompletedMeasurements((prev) => prev.filter((m) => m.id !== id));
+    setCompletedMeasurements((prev) => {
+      const next = prev.filter((m) => m.id !== id);
+      syncMeasurementsToDb(next);
+      return next;
+    });
     if (selectedMeasurementId === id) setSelectedMeasurementId(null);
     if (hoveredMeasurementId === id) setHoveredMeasurementId(null);
-  }, [selectedMeasurementId, hoveredMeasurementId]);
+  }, [syncMeasurementsToDb, selectedMeasurementId, hoveredMeasurementId]);
 
   // Finish active measurement path
   const handleFinishActiveMeasurement = useCallback(() => {
@@ -532,15 +683,20 @@ export default function PlanMeasurementModule({
       return getSegmentPxDistance(activePoints[i - 1], p) >= 2;
     });
     if (dedupedPoints.length >= 2) {
-      setCompletedMeasurements((prev) => [
-        ...prev,
-        { id: `m_${Date.now()}_${Math.random()}`, points: dedupedPoints },
-      ]);
+      const newM: CompletedMeasurement = {
+        id: `m_${Date.now()}_${Math.random()}`,
+        points: dedupedPoints,
+      };
+      setCompletedMeasurements((prev) => {
+        const next = [...prev, newM];
+        syncMeasurementsToDb(next);
+        return next;
+      });
     }
     setActivePoints([]);
     setHoverPoint(null);
     setTargetDistanceInput("");
-  }, [activePoints]);
+  }, [activePoints, syncMeasurementsToDb]);
 
   // Undo the last placed point in current drawing
   const handleUndoPoint = useCallback(() => {
@@ -557,9 +713,22 @@ export default function PlanMeasurementModule({
   const handleUndoMeasurement = useCallback(() => {
     setCompletedMeasurements((prev) => {
       if (prev.length === 0) return prev;
-      return prev.slice(0, -1);
+      const next = prev.slice(0, -1);
+      syncMeasurementsToDb(next);
+      return next;
     });
-  }, []);
+  }, [syncMeasurementsToDb]);
+
+  const handleClearAll = () => {
+    setCompletedMeasurements([]);
+    setActivePoints([]);
+    setHoverPoint(null);
+    setCalibrationPoints([]);
+    setSelectedMeasurementId(null);
+    setHoveredMeasurementId(null);
+    setTargetDistanceInput("");
+    syncMeasurementsToDb([]);
+  };
 
   // Keyboard shortcuts (Ctrl+Z, Backspace, Delete, Enter)
   useEffect(() => {
@@ -604,15 +773,6 @@ export default function PlanMeasurementModule({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeMode, activePoints.length, completedMeasurements.length, selectedMeasurementId, handleUndoPoint, handleUndoMeasurement, handleDeleteSingleMeasurement, handleFinishActiveMeasurement]);
 
-  const handleClearAll = () => {
-    setCompletedMeasurements([]);
-    setActivePoints([]);
-    setHoverPoint(null);
-    setCalibrationPoints([]);
-    setSelectedMeasurementId(null);
-    setHoveredMeasurementId(null);
-    setTargetDistanceInput("");
-  };
 
   // Compute live active path distances (including projected fixed distance)
   const activePathPoints = useMemo(() => {
@@ -639,27 +799,37 @@ export default function PlanMeasurementModule({
     key: string;
     latlng: any;
     text: string;
+    defaultText?: string;
+    isCustom?: boolean;
     measurementId?: string;
+    segmentIndex?: number;
     isRemovable?: boolean;
+    isEditable?: boolean;
   };
 
   function MeasurementLabels({
     labels,
     onDeleteMeasurement,
+    onUpdateLabel,
   }: {
     labels: LabelEntry[];
     onDeleteMeasurement?: (id: string) => void;
+    onUpdateLabel?: (id: string, segIdx: number, newText: string) => void;
   }) {
     const m = useMap();
+    const [editingKey, setEditingKey] = React.useState<string | null>(null);
+    const [editingValue, setEditingValue] = React.useState<string>("");
+    const inputRef = React.useRef<HTMLInputElement>(null);
+
     const [positions, setPositions] = React.useState<
-      Array<{ key: string; x: number; y: number; text: string; measurementId?: string; isRemovable?: boolean }>
+      Array<LabelEntry & { x: number; y: number }>
     >([]);
 
     const recalc = React.useCallback(() => {
       setPositions(
         labels.map((l) => {
           const pt = m.latLngToContainerPoint(l.latlng);
-          return { key: l.key, x: pt.x, y: pt.y, text: l.text, measurementId: l.measurementId, isRemovable: l.isRemovable };
+          return { ...l, x: pt.x, y: pt.y };
         })
       );
     }, [m, labels]);
@@ -672,8 +842,38 @@ export default function PlanMeasurementModule({
       };
     }, [m, recalc]);
 
+    useEffect(() => {
+      if (editingKey && inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.select();
+      }
+    }, [editingKey]);
+
     const container = m.getContainer();
     if (!container || typeof document === "undefined") return null;
+
+    const startEditing = (p: LabelEntry) => {
+      setEditingKey(p.key);
+      setEditingValue(p.text);
+    };
+
+    const saveEditing = (p: LabelEntry) => {
+      if (p.measurementId != null && p.segmentIndex != null && onUpdateLabel) {
+        onUpdateLabel(p.measurementId, p.segmentIndex, editingValue);
+      }
+      setEditingKey(null);
+    };
+
+    const cancelEditing = () => {
+      setEditingKey(null);
+    };
+
+    const resetToAuto = (p: LabelEntry) => {
+      if (p.measurementId != null && p.segmentIndex != null && onUpdateLabel) {
+        onUpdateLabel(p.measurementId, p.segmentIndex, "");
+      }
+      setEditingKey(null);
+    };
 
     return ReactDOM.createPortal(
       <>
@@ -681,6 +881,132 @@ export default function PlanMeasurementModule({
           const isHovered = hoveredMeasurementId && hoveredMeasurementId === p.measurementId;
           const isSelected = selectedMeasurementId && selectedMeasurementId === p.measurementId;
           const isHighlighted = isHovered || isSelected;
+          const isEditing = editingKey === p.key;
+
+          if (isEditing) {
+            return (
+              <div
+                key={p.key}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+                style={{
+                  position: "absolute",
+                  left: p.x,
+                  top: p.y,
+                  transform: "translate(-50%, -50%)",
+                  background: "rgba(15, 23, 42, 0.96)",
+                  border: "1.5px solid #3b82f6",
+                  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.45)",
+                  padding: "3px 6px",
+                  borderRadius: 8,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  zIndex: 1010,
+                  userSelect: "none",
+                }}
+              >
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    saveEditing(p);
+                  }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 4, margin: 0 }}
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={editingValue}
+                    onChange={(e) => setEditingValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Escape") cancelEditing();
+                    }}
+                    placeholder="np. 20cm"
+                    style={{
+                      width: 76,
+                      padding: "2px 6px",
+                      fontSize: 12,
+                      fontWeight: 800,
+                      borderRadius: 4,
+                      border: "1px solid #60a5fa",
+                      background: "#1e293b",
+                      color: "#ffffff",
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    title={t("planMeasurement", "saveLabel", "Zatwierdź (Enter)")}
+                    style={{
+                      background: "#16a34a",
+                      border: "none",
+                      color: "#ffffff",
+                      borderRadius: 4,
+                      width: 20,
+                      height: 20,
+                      fontSize: 11,
+                      fontWeight: 900,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  >
+                    ✓
+                  </button>
+                  {p.isCustom && (
+                    <button
+                      type="button"
+                      title={t("planMeasurement", "resetLabel", "Przywróć zmierzony wymiar")}
+                      onClick={() => resetToAuto(p)}
+                      style={{
+                        background: "#eab308",
+                        border: "none",
+                        color: "#1e293b",
+                        borderRadius: 4,
+                        width: 20,
+                        height: 20,
+                        fontSize: 11,
+                        fontWeight: 900,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >
+                      ↺
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    title={t("planMeasurement", "cancelLabel", "Anuluj (Esc)")}
+                    onClick={cancelEditing}
+                    style={{
+                      background: "rgba(255,255,255,0.2)",
+                      border: "none",
+                      color: "#ffffff",
+                      borderRadius: 4,
+                      width: 20,
+                      height: 20,
+                      fontSize: 11,
+                      fontWeight: 900,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  >
+                    ✕
+                  </button>
+                </form>
+              </div>
+            );
+          }
 
           return (
             <div
@@ -697,42 +1023,64 @@ export default function PlanMeasurementModule({
                   setSelectedMeasurementId((prev) => (prev === p.measurementId ? null : p.measurementId!));
                 }
               }}
+              onDoubleClick={(e) => {
+                if (p.isEditable) {
+                  e.stopPropagation();
+                  startEditing(p);
+                }
+              }}
               style={{
                 position: "absolute",
                 left: p.x,
                 top: p.y,
                 transform: "translate(-50%, -50%)",
-                background: isHighlighted ? "rgba(220, 38, 38, 0.95)" : "transparent",
-                color: isHighlighted ? "#ffffff" : "#3730a3",
-                textShadow: isHighlighted
+                background: isHighlighted
+                  ? "rgba(220, 38, 38, 0.95)"
+                  : p.isCustom
+                  ? "rgba(16, 185, 129, 0.95)"
+                  : "transparent",
+                color: isHighlighted || p.isCustom ? "#ffffff" : "#3730a3",
+                textShadow: isHighlighted || p.isCustom
                   ? "none"
                   : "0 0 3px #ffffff, 0 0 6px #ffffff, 0 0 9px #ffffff, -1px -1px 0 #ffffff, 1px -1px 0 #ffffff, -1px 1px 0 #ffffff, 1px 1px 0 #ffffff",
                 fontSize: 12,
                 fontWeight: 800,
-                padding: isHighlighted ? "3px 8px" : "1px 4px",
+                padding: isHighlighted || p.isCustom ? "3px 8px" : "1px 4px",
                 borderRadius: 6,
                 whiteSpace: "nowrap",
-                pointerEvents: p.isRemovable ? "auto" : "none",
+                pointerEvents: p.isRemovable || p.isEditable ? "auto" : "none",
                 zIndex: isHighlighted ? 1005 : 1000,
-                boxShadow: isHighlighted ? "0 0 12px rgba(239, 68, 68, 0.6)" : "none",
+                boxShadow: isHighlighted
+                  ? "0 0 12px rgba(239, 68, 68, 0.6)"
+                  : p.isCustom
+                  ? "0 2px 8px rgba(16, 185, 129, 0.4)"
+                  : "none",
                 fontFamily: "inherit",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 5,
-                border: isHighlighted ? "1px solid #f87171" : "none",
+                border: isHighlighted
+                  ? "1px solid #f87171"
+                  : p.isCustom
+                  ? "1px solid #34d399"
+                  : "none",
                 transition: "all 0.15s ease",
                 userSelect: "none",
-                cursor: p.isRemovable ? "pointer" : "default",
+                cursor: p.isEditable ? "pointer" : "default",
               }}
+              title={p.isEditable ? "Kliknij dwukrotnie lub kliknij ✏️, aby edytować wymiar" : undefined}
             >
               <span>{p.text}</span>
-              {isHighlighted && p.isRemovable && p.measurementId && onDeleteMeasurement && (
+              {p.isCustom && !isHighlighted && (
+                <span style={{ fontSize: 9, opacity: 0.9, fontWeight: 700 }}>✎</span>
+              )}
+              {isHighlighted && p.isEditable && (
                 <button
                   type="button"
-                  title={t("planMeasurement", "deleteSingleMeasurement", "Usuń ten pomiar")}
+                  title={t("planMeasurement", "editLabel", "Edytuj ten wymiar")}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDeleteMeasurement(p.measurementId!);
+                    startEditing(p);
                   }}
                   style={{
                     background: "rgba(255,255,255,0.3)",
@@ -760,10 +1108,160 @@ export default function PlanMeasurementModule({
                     (e.currentTarget as HTMLElement).style.transform = "scale(1)";
                   }}
                 >
+                  ✏️
+                </button>
+              )}
+              {isHighlighted && p.isRemovable && p.measurementId && onDeleteMeasurement && (
+                <button
+                  type="button"
+                  title={t("planMeasurement", "deleteSingleMeasurement", "Usuń ten pomiar")}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.nativeEvent) {
+                      e.nativeEvent.stopImmediatePropagation?.();
+                      e.nativeEvent.stopPropagation?.();
+                    }
+                    onDeleteMeasurement(p.measurementId!);
+                  }}
+                  style={{
+                    background: "#ef4444",
+                    border: "1px solid #ffffff",
+                    color: "#ffffff",
+                    borderRadius: "50%",
+                    width: 18,
+                    height: 18,
+                    fontSize: 11,
+                    fontWeight: 900,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    padding: 0,
+                    lineHeight: 1,
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+                    transition: "all 0.1s ease",
+                    zIndex: 1020,
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.background = "#dc2626";
+                    (e.currentTarget as HTMLElement).style.transform = "scale(1.2)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.background = "#ef4444";
+                    (e.currentTarget as HTMLElement).style.transform = "scale(1)";
+                  }}
+                >
                   ✕
                 </button>
               )}
             </div>
+          );
+        })}
+      </>,
+      container
+    );
+  }
+
+  // ── Precision Target Reticle & Click Ripples ────────────────────────
+  function PrecisionTargetReticle({
+    targetPoint,
+    mode,
+    activeCount,
+    liveDistText,
+    shiftActive,
+  }: {
+    targetPoint: Point | null;
+    mode: "measure" | "calibrate";
+    activeCount: number;
+    liveDistText: string | null;
+    shiftActive: boolean;
+  }) {
+    const m = useMap();
+    const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+
+    const updatePos = useCallback(() => {
+      if (!targetPoint) {
+        setPos(null);
+        return;
+      }
+      const latlng = planPointToLatLng(targetPoint);
+      const containerPt = m.latLngToContainerPoint(latlng);
+      setPos({ x: containerPt.x, y: containerPt.y });
+    }, [m, targetPoint]);
+
+    useEffect(() => {
+      updatePos();
+      m.on("move zoom zoomend moveend", updatePos);
+      return () => {
+        m.off("move zoom zoomend moveend", updatePos);
+      };
+    }, [m, updatePos]);
+
+    const container = m.getContainer();
+    if (!container || !pos || typeof document === "undefined") return null;
+
+    let badgeText = "";
+    if (mode === "measure") {
+      if (activeCount === 0) {
+        badgeText = t("planMeasurement", "reticleStart", "📍 Kliknij punkt początkowy");
+      } else if (liveDistText) {
+        badgeText = `📏 ${liveDistText}${shiftActive ? " (45°)" : ""}`;
+      } else {
+        badgeText = t("planMeasurement", "reticleNext", "🎯 Kliknij punkt końcowy");
+      }
+    } else if (mode === "calibrate") {
+      if (activeCount === 0) {
+        badgeText = t("planMeasurement", "reticleCal1", "🎯 Wskaż 1. punkt odniesienia");
+      } else {
+        badgeText = `🎯 ${liveDistText ?? ""} (Wskaż 2. punkt odniesienia)`;
+      }
+    }
+
+    return ReactDOM.createPortal(
+      <div
+        className={styles.reticleContainer}
+        style={{
+          left: pos.x,
+          top: pos.y,
+        }}
+      >
+        <div className={styles.reticleCrosshairH} />
+        <div className={styles.reticleCrosshairV} />
+        <div className={styles.reticleRing} />
+        <div className={styles.reticleCenterDot} />
+        {badgeText && (
+          <div className={styles.reticleBadge}>
+            <span>{badgeText}</span>
+          </div>
+        )}
+      </div>,
+      container
+    );
+  }
+
+  function ClickRipplesOverlay({
+    ripples,
+  }: {
+    ripples: Array<{ id: number; point: Point }>;
+  }) {
+    const m = useMap();
+    const container = m.getContainer();
+    if (!container || typeof document === "undefined" || ripples.length === 0) return null;
+
+    return ReactDOM.createPortal(
+      <>
+        {ripples.map((r) => {
+          const pt = m.latLngToContainerPoint(planPointToLatLng(r.point));
+          return (
+            <div
+              key={r.id}
+              className={styles.clickRipple}
+              style={{ left: pt.x, top: pt.y }}
+            />
           );
         })}
       </>,
@@ -791,9 +1289,13 @@ export default function PlanMeasurementModule({
         className={`${styles.btn} ${activeMode === "measure" ? styles.btnActive : ""}`}
         onClick={() => {
           if (activeMode === "measure") {
+            if (activePoints.length >= 2) {
+              handleFinishActiveMeasurement();
+            } else {
+              setActivePoints([]);
+              setHoverPoint(null);
+            }
             setActiveMode("none");
-            setActivePoints([]);
-            setHoverPoint(null);
           } else {
             onEnsureVisible?.();
             setActiveMode("measure");
@@ -971,9 +1473,46 @@ export default function PlanMeasurementModule({
     </div>
   );
 
+  const liveTargetPoint: Point | null = useMemo(() => {
+    if (activeMode === "none" || !hoverPoint) return null;
+    if (activeMode === "measure" && activePoints.length > 0) {
+      const lastPt = activePoints[activePoints.length - 1];
+      return getProjectedPoint(lastPt, hoverPoint);
+    }
+    return hoverPoint;
+  }, [activeMode, hoverPoint, activePoints, getProjectedPoint]);
+
+  const liveDistanceText = useMemo(() => {
+    if (!liveTargetPoint) return null;
+    if (activeMode === "measure" && activePoints.length > 0) {
+      const lastPt = activePoints[activePoints.length - 1];
+      const distPx = getSegmentPxDistance(lastPt, liveTargetPoint);
+      return formatDistance(distPx, scaleData?.pixelsPerMeter ?? null, language, scaleData?.unit);
+    }
+    if (activeMode === "calibrate" && calibrationPoints.length === 1) {
+      const distPx = getSegmentPxDistance(calibrationPoints[0], liveTargetPoint);
+      return `${Math.round(distPx)} px`;
+    }
+    return null;
+  }, [liveTargetPoint, activeMode, activePoints, calibrationPoints, scaleData, language]);
+
   return (
     <>
       <MapEventsHandler />
+
+      {/* Target Crosshair Reticle Follower */}
+      {activeMode !== "none" && (
+        <PrecisionTargetReticle
+          targetPoint={liveTargetPoint}
+          mode={activeMode}
+          activeCount={activeMode === "measure" ? activePoints.length : calibrationPoints.length}
+          liveDistText={liveDistanceText}
+          shiftActive={shiftPressed}
+        />
+      )}
+
+      {/* Click ripple animations for tactile visual feedback */}
+      <ClickRipplesOverlay ripples={clickRipples} />
 
       {/* If external toolbar slot exists next to Plan selector, portal there! Otherwise render inside map */}
       {externalToolbarSlot && typeof document !== "undefined" ? (
@@ -1179,15 +1718,21 @@ export default function PlanMeasurementModule({
           const segPx = getSegmentPxDistance(prevP, p);
           if (segPx < 2) return; // skip zero/near-zero segments
           const midP = { x: (prevP.x + p.x) / 2, y: (prevP.y + p.y) / 2 };
-          const text = formatDistance(segPx, scaleData?.pixelsPerMeter ?? null, language, scaleData?.unit);
-          const numericVal = parseFloat(text.replace(",", ".").split(" ")[0]);
-          if (isNaN(numericVal) || numericVal === 0) return; // skip zero-value labels
+          const autoText = formatDistance(segPx, scaleData?.pixelsPerMeter ?? null, language, scaleData?.unit);
+          const customText = m.segmentLabels?.[idx];
+          const text = customText || autoText;
+          const isCustom = Boolean(customText && customText !== autoText);
+
           labels.push({
             key: `${m.id}_seg_${idx}`,
             latlng: planPointToLatLng(midP),
             text,
+            defaultText: autoText,
+            isCustom,
             measurementId: m.id,
+            segmentIndex: idx,
             isRemovable: true,
+            isEditable: true,
           });
         });
 
@@ -1222,7 +1767,11 @@ export default function PlanMeasurementModule({
                 }}
               />
             ))}
-            <MeasurementLabels labels={labels} onDeleteMeasurement={handleDeleteSingleMeasurement} />
+            <MeasurementLabels
+              labels={labels}
+              onDeleteMeasurement={handleDeleteSingleMeasurement}
+              onUpdateLabel={handleUpdateMeasurementLabel}
+            />
           </React.Fragment>
         );
       })}

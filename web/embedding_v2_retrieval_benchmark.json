@@ -1,0 +1,34 @@
+{
+  "total_queries": 1320,
+  "old_precision_1": 0.7788,
+  "new_precision_1": 0.7212,
+  "old_precision_5": 0.6992,
+  "new_precision_5": 0.6802,
+  "old_recall_10": 0.0163,
+  "new_recall_10": 0.0136,
+  "old_mrr": 0.8384,
+  "new_mrr": 0.7969,
+  "old_false_match_rate": 0.2212,
+  "new_false_match_rate": 0.2788,
+  "precision_1_delta_pct": -7.39,
+  "confusion_old": {
+    "socket->edv": 34,
+    "edv->socket": 18,
+    "socket->sym_socket": 4,
+    "sym_socket->socket": 5,
+    "light->special": 1,
+    "special->light": 4,
+    "cee->socket": 19,
+    "socket->cee": 25
+  },
+  "confusion_new": {
+    "socket->edv": 56,
+    "edv->socket": 56,
+    "socket->sym_socket": 7,
+    "sym_socket->socket": 7,
+    "light->special": 10,
+    "special->light": 7,
+    "cee->socket": 18,
+    "socket->cee": 19
+  }
+}

@@ -219,7 +219,7 @@ export default function AufmassClient() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-black uppercase tracking-tighter text-ui-text">
-            {t("nav", "aufmass", "Aufmaß & Zusatzplanung")}
+            {t("nav", "aufmass", "Aufmaß & Zusatzarbeit")}
           </h1>
           <p className="text-[11px] font-bold text-ui-muted/50 uppercase tracking-widest mt-1">
             {t("aufmass", "subtitle", "All Measurement and Planning Sessions")}
@@ -277,7 +277,7 @@ export default function AufmassClient() {
                 {session.description || t("aufmass", "noDescription", "No description provided.")}
               </p>
               <div className="text-[10px] font-bold text-ui-accent uppercase tracking-widest">
-                {t("aufmass", "type", "Type")}: {session.session_type === 'zusatz' ? t("aufmass", "zusatz", "Zusatzplanung") : session.session_type === 'baubehinderung' ? t("aufmass", "baubehinderung", "Baubehinderung") : session.session_type === 'bestellung' ? t("aufmass", "bestellung", "Bestellung") : session.session_type === 'fragen' ? t("aufmass", "fragen", "Fragen") : t("aufmass", "aufmass", "Aufmaß")}
+                {t("aufmass", "type", "Type")}: {session.session_type === 'zusatz' ? t("aufmass", "zusatz", "Zusatzarbeit") : session.session_type === 'baubehinderung' ? t("aufmass", "baubehinderung", "Baubehinderung") : session.session_type === 'bestellung' ? t("aufmass", "bestellung", "Bestellung") : session.session_type === 'fragen' ? t("aufmass", "fragen", "Fragen") : t("aufmass", "aufmass", "Aufmaß")}
               </div>
 
               <div className="flex gap-3 mt-2 pt-4 border-t border-ui-border/50">
@@ -383,7 +383,7 @@ export default function AufmassClient() {
                   className="w-full bg-ui-bg border border-ui-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-ui-accent transition-all text-ui-text"
                 >
                   <option value="aufmass">{t("aufmass", "aufmass", "Aufmaß")}</option>
-                  <option value="zusatz">{t("aufmass", "zusatz", "Zusatzplanung")}</option>
+                  <option value="zusatz">{t("aufmass", "zusatz", "Zusatzarbeit")}</option>
                   <option value="baubehinderung">{t("aufmass", "baubehinderung", "Baubehinderung")}</option>
                   <option value="bestellung">{t("aufmass", "bestellung", "Bestellung")}</option>
                   <option value="fragen">{t("aufmass", "fragen", "Fragen")}</option>

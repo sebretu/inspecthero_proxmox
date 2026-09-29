@@ -3,25 +3,12 @@ import { getSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { createClient } from "@supabase/supabase-js";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const auth = req.headers.authorization || "";
-  const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7) : null;
-
-  if (!token) return res.status(401).json({ error: "Missing Bearer token" });
-
-  const supabase = createClient(url, anon, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-
-  const { data: { user }, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !user) return res.status(401).json({ error: "AUTH_INVALID" });
-
   const planId = req.query.id as string;
   if (!planId) return res.status(400).json({ error: "Missing planId" });
 
   const adminClient = getSupabaseAdminClient();
 
+  // GET: Fetch all saved measurements for this plan (accessible to all users viewing the plan)
   if (req.method === "GET") {
     const { data, error } = await adminClient
       .from("plan_measurements")
@@ -29,7 +16,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq("plan_id", planId)
       .order("created_at", { ascending: true });
 
-    // If table doesn't exist yet, return empty array instead of 500
     if (error) {
       if (error.message?.includes("does not exist") || error.code === "42P01") {
         return res.status(200).json({ measurements: [], tableNotReady: true });
@@ -39,9 +25,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ measurements: data ?? [] });
   }
 
+  // Extract user ID if token provided
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const auth = req.headers.authorization || "";
+  const token = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7) : null;
+
+  let userId: string | null = null;
+  if (token) {
+    try {
+      const supabase = createClient(url, anon, {
+        global: { headers: { Authorization: `Bearer ${token}` } },
+      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) userId = user.id;
+    } catch {}
+  }
+
+  // POST: Save or replace all measurements for this plan
   if (req.method === "POST") {
     const { measurements } = req.body as {
-      measurements: Array<{ id: string; points: Array<{ x: number; y: number }>; label?: string }>;
+      measurements: Array<{ id?: string; points: Array<{ x: number; y: number }>; label?: string }>;
     };
 
     if (!Array.isArray(measurements)) {
@@ -55,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (delErr) {
       if (delErr.message?.includes("does not exist") || delErr.code === "42P01") {
-        return res.status(503).json({ error: "Tabela plan_measurements nie istnieje. Wykonaj migrację SQL w Supabase." });
+        return res.status(503).json({ error: "Tabela plan_measurements nie istnieje." });
       }
       return res.status(500).json({ error: delErr.message });
     }
@@ -64,24 +68,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ saved: 0 });
     }
 
-    const rows = measurements.map((m) => ({
-      plan_id: planId,
-      label: m.label ?? null,
-      points: m.points,
-      created_by: user.id,
-    }));
+    const rows = measurements.map((m) => {
+      const row: any = {
+        plan_id: planId,
+        label: m.label ?? null,
+        points: Array.isArray(m.points) ? m.points : [],
+      };
+      if (userId) row.created_by = userId;
+      if (m.id && typeof m.id === "string" && !m.id.startsWith("m_")) {
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m.id);
+        if (isUuid) row.id = m.id;
+      }
+      return row;
+    });
 
-    const { error: insErr } = await adminClient.from("plan_measurements").insert(rows);
-    if (insErr) return res.status(500).json({ error: insErr.message });
+    let { data: inserted, error: insErr } = await adminClient
+      .from("plan_measurements")
+      .insert(rows)
+      .select("id, label, points, created_at");
 
-    return res.status(200).json({ saved: rows.length });
+    if (insErr) {
+      if (insErr.message?.includes("created_by") || insErr.code === "23502") {
+        const rowsNoCreatedBy = rows.map((r) => {
+          const copy = { ...r };
+          delete copy.created_by;
+          return copy;
+        });
+        const retry = await adminClient.from("plan_measurements").insert(rowsNoCreatedBy).select("id, label, points, created_at");
+        if (!retry.error) {
+          return res.status(200).json({ saved: (retry.data ?? rows).length, measurements: retry.data ?? [] });
+        }
+      }
+      return res.status(500).json({ error: insErr.message });
+    }
+
+    return res.status(200).json({ saved: (inserted ?? rows).length, measurements: inserted ?? [] });
   }
 
+  // DELETE: Delete all measurements for this plan, or a single measurement if measurementId is specified
   if (req.method === "DELETE") {
-    const { error } = await adminClient
-      .from("plan_measurements")
-      .delete()
-      .eq("plan_id", planId);
+    const measurementId = (req.query.measurementId as string) || req.body?.id;
+    let query = adminClient.from("plan_measurements").delete().eq("plan_id", planId);
+    if (measurementId) {
+      query = query.eq("id", measurementId);
+    }
+    const { error } = await query;
 
     if (error) return res.status(500).json({ error: error.message });
     return res.status(200).json({ deleted: true });

@@ -1,0 +1,6 @@
+◇ injected env (14) from ../../../inspecthero-web.env // tip: ◈ encrypted .env [www.dotenvx.com]
+=== stromkreis_type enum values ===
+[ 'socket', 'light', 'edv', 'cee', 'special', 'reserve' ]
+
+=== stromkreis_shape enum values ===
+[ 'circle', 'triangle', 'square', 'rhombus', 'hexagon' ]

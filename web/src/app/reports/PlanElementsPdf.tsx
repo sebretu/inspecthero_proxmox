@@ -124,7 +124,7 @@ export type ExportPlanData = {
         points: Array<{ x_norm: number; y_norm: number }>;
         distanceMeters?: number | null;
         totalDistanceMeters?: number | null;
-        segments?: Array<{ distMeters?: number | null; distPx?: number }>;
+        segments?: Array<{ distMeters?: number | null; distPx?: number; label?: string | null }>;
         label?: string | null;
     }>;
     klappen: Array<{
@@ -271,7 +271,10 @@ export type PlanElementsPdfProps = {
     };
 };
 
-function formatSegText(distM?: number | null, distPx?: number): string | null {
+function formatSegText(distM?: number | null, distPx?: number, customLabel?: string | null): string | null {
+    if (customLabel && typeof customLabel === 'string' && customLabel.trim()) {
+        return customLabel.trim();
+    }
     if (distM != null && !isNaN(distM) && distM > 0) {
         return distM >= 1 ? `${distM.toFixed(2)} m` : `${(distM * 100).toFixed(0)} cm`;
     }
@@ -1367,6 +1370,11 @@ export default function PlanElementsPdf({
                                         <Text style={[styles.badgeText, { color: '#92400e' }]}>{translations.klappenTitle || 'Revisionsklappen'}: {plan.klappen.length}</Text>
                                     </View>
                                 )}
+                                {options.includeMeasurements && plan.measurements && plan.measurements.length > 0 && (
+                                    <View style={[styles.badge, { backgroundColor: '#f3e8ff', borderColor: '#9333ea' }]}>
+                                        <Text style={[styles.badgeText, { color: '#6b21a8' }]}>{translations.measurementsTitle || 'Messungen'}: {plan.measurements.length}</Text>
+                                    </View>
+                                )}
                                 {showBma && (
                                     <>
                                         {redCount > 0 && (
@@ -1453,24 +1461,24 @@ export default function PlanElementsPdf({
                                     height: CONTAINER_H,
                                 }}
                             >
-                                {/* 1. Measurements Vector Polyline + Dimensions directly on EVERY segment */}
-                                {options.includeMeasurements && plan.measurements.map((m) => {
+                                {/* 1. CAD-style Measurements Vector Polyline + Dimensions directly on EVERY segment */}
+                                {options.includeMeasurements && plan.measurements && plan.measurements.map((m) => {
                                     if (!m.points || m.points.length < 2) return null;
                                     const dPath = `M ${m.points.map(p => `${mapX(p.x_norm)} ${mapY(p.y_norm)}`).join(' L ')}`;
 
                                     return (
                                         <G key={m.id}>
-                                            {/* White halo line */}
+                                            {/* White halo line for contrast on colored plan backgrounds */}
                                             <Path
                                                 d={dPath}
                                                 stroke="#ffffff"
-                                                strokeWidth={MEAS_STROKE + 2.5}
-                                                strokeOpacity={0.95}
+                                                strokeWidth={MEAS_STROKE + 1.2}
+                                                strokeOpacity={0.9}
                                                 fill="none"
                                                 strokeLinecap="round"
                                                 strokeLinejoin="round"
                                             />
-                                            {/* Main measurement dashed line */}
+                                            {/* Main CAD dimension line (solid, clean, 1.5px) */}
                                             <Path
                                                 d={dPath}
                                                 stroke={COLORS.meas}
@@ -1478,20 +1486,7 @@ export default function PlanElementsPdf({
                                                 fill="none"
                                                 strokeLinecap="round"
                                                 strokeLinejoin="round"
-                                                strokeDasharray="8,5"
                                             />
-                                            {/* Vertex dots */}
-                                            {m.points.map((p, i) => (
-                                                <Circle
-                                                    key={i}
-                                                    cx={mapX(p.x_norm)}
-                                                    cy={mapY(p.y_norm)}
-                                                    r={3}
-                                                    fill={COLORS.meas}
-                                                    stroke="#ffffff"
-                                                    strokeWidth={1}
-                                                />
-                                            ))}
                                             {/* Dimensions directly on EVERY segment */}
                                             {m.points.slice(1).map((pB, segIdx) => {
                                                 const pA = m.points[segIdx];
@@ -1503,28 +1498,35 @@ export default function PlanElementsPdf({
                                                 const midY = Math.round((y1 + y2) / 2);
 
                                                 const segData = m.segments?.[segIdx];
-                                                const segDistText = formatSegText(segData?.distMeters ?? m.distanceMeters, segData?.distPx);
+                                                const segDistText = formatSegText(
+                                                    segData?.distMeters ?? m.distanceMeters,
+                                                    segData?.distPx,
+                                                    segData?.label || (segIdx === 0 && m.label && !m.label.trim().startsWith('{') ? m.label : null)
+                                                );
                                                 if (!segDistText) return null;
+
+                                                const textWidth = Math.max(32, segDistText.length * 7.5 + 10);
+                                                const textHeight = 16;
 
                                                 return (
                                                     <G key={`${m.id}_seg_${segIdx}`}>
-                                                        <SvgText
-                                                            x={midX}
-                                                            y={midY - 4}
+                                                        <Rect
+                                                            x={midX - textWidth / 2}
+                                                            y={midY - textHeight / 2}
+                                                            width={textWidth}
+                                                            height={textHeight}
+                                                            rx={3}
                                                             fill="#ffffff"
-                                                            stroke="#ffffff"
-                                                            strokeWidth={4}
-                                                            textAnchor="middle"
-                                                            style={{ fontSize: 13, fontWeight: 'bold' }}
-                                                        >
-                                                            {segDistText}
-                                                        </SvgText>
+                                                            fillOpacity={0.95}
+                                                            stroke={COLORS.meas}
+                                                            strokeWidth={0.8}
+                                                        />
                                                         <SvgText
                                                             x={midX}
-                                                            y={midY - 4}
-                                                            fill="#4c1d95"
+                                                            y={midY + 3.5}
+                                                            fill="#581c87"
                                                             textAnchor="middle"
-                                                            style={{ fontSize: 13, fontWeight: 'bold' }}
+                                                            style={{ fontSize: 10, fontWeight: 'bold' }}
                                                         >
                                                             {segDistText}
                                                         </SvgText>

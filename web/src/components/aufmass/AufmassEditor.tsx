@@ -284,7 +284,7 @@ export default function AufmassEditor({ photoUrl, taskId, photoId, projectId, on
       <div className="h-16 border-b border-white/5 bg-slate-900/60 flex items-center justify-between px-6 shrink-0">
          <div className="flex items-center gap-4">
             <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-3">
-               {t("nav", "aufmass", "Aufmaß & Zusatzplanung")} 
+               {t("nav", "aufmass", "Aufmaß & Zusatzarbeit")} 
                <span className="text-slate-500 font-normal flex items-center gap-2 text-[10px]">
                  | {sessionId ? t("aufmass", "activeSession", "Active Session") : t("aufmass", "initializing", "Initializing...")}
                  

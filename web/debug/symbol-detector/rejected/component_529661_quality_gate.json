@@ -1,0 +1,12 @@
+{
+  "id": "component_529661",
+  "bbox": {
+    "minX": 4530,
+    "minY": 636,
+    "width": 26,
+    "height": 2
+  },
+  "pixelCount": 28,
+  "compactness": 0.5384614349112625,
+  "reasonRejected": "+ compact_bbox, + valid_compactness, - elongated_wall"
+}

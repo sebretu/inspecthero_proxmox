@@ -1,0 +1,377 @@
+{
+  "total_failures": 407,
+  "failure_categories_breakdown": {
+    "GT_ambiguity": {
+      "count": 212,
+      "percentage": 0.5209
+    },
+    "visually_identical_symbols": {
+      "count": 111,
+      "percentage": 0.2727
+    },
+    "embedding_feature_bottleneck": {
+      "count": 84,
+      "percentage": 0.2064
+    },
+    "remaining_wires": {
+      "count": 0,
+      "percentage": 0.0
+    },
+    "crop_failure": {
+      "count": 0,
+      "percentage": 0.0
+    }
+  },
+  "sample_failures": [
+    {
+      "query_id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "query_class": "light",
+      "matched_class": "cee",
+      "similarity": 0.8259000182151794,
+      "category": "embedding_feature_bottleneck"
+    },
+    {
+      "query_id": "efc45ac0-8665-42bd-90a7-7569c7efe2f0",
+      "query_class": "socket",
+      "matched_class": "cee",
+      "similarity": 0.8848000168800354,
+      "category": "embedding_feature_bottleneck"
+    },
+    {
+      "query_id": "187e613e-c27b-4ed2-afa4-04e1af3b5871",
+      "query_class": "socket",
+      "matched_class": "special",
+      "similarity": 0.9193999767303467,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "9b56c90f-099a-4c43-9873-e0ec2e709c02",
+      "query_class": "socket",
+      "matched_class": "cee",
+      "similarity": 0.9995999932289124,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "1794b102-a3af-45dc-a53a-a05fad5f7aeb",
+      "query_class": "special",
+      "matched_class": "cee",
+      "similarity": 1.0,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "fd94a274-a10b-4389-bfb7-82105d171d32",
+      "query_class": "socket",
+      "matched_class": "edv",
+      "similarity": 1.0,
+      "category": "visually_identical_symbols"
+    },
+    {
+      "query_id": "8389335c-803d-4e4a-9a08-43438d366f3f",
+      "query_class": "special",
+      "matched_class": "socket",
+      "similarity": 0.9970999956130981,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "5647f680-0b77-4715-baae-d3e57704a2ff",
+      "query_class": "socket",
+      "matched_class": "sym_socket",
+      "similarity": 0.9456999897956848,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "b9486dc7-fbc1-4bea-8fcf-b2ec4d1e8d8d",
+      "query_class": "edv",
+      "matched_class": "socket",
+      "similarity": 1.0,
+      "category": "visually_identical_symbols"
+    },
+    {
+      "query_id": "b6d0a335-9bca-45ca-bd2f-78cefb18c01e",
+      "query_class": "light",
+      "matched_class": "socket",
+      "similarity": 0.9972000122070312,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "2e314349-4e0a-452a-9486-59fc0c484ebe",
+      "query_class": "socket",
+      "matched_class": "light",
+      "similarity": 1.0,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "f464a2a6-14e2-42bd-9d12-bbc44bfea013",
+      "query_class": "socket",
+      "matched_class": "cee",
+      "similarity": 0.9013000130653381,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "4d315ba1-a623-45c5-942c-d587ea27bb24",
+      "query_class": "socket",
+      "matched_class": "edv",
+      "similarity": 0.989300012588501,
+      "category": "visually_identical_symbols"
+    },
+    {
+      "query_id": "137975e3-045c-4f19-87b2-888995ae3dd5",
+      "query_class": "light",
+      "matched_class": "socket",
+      "similarity": 1.0,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "4084965f-880d-4b30-9093-ab7ca2a705b0",
+      "query_class": "cee",
+      "matched_class": "socket",
+      "similarity": 0.0,
+      "category": "embedding_feature_bottleneck"
+    },
+    {
+      "query_id": "e8acad15-c6a7-4013-a890-830f7f7ad16d",
+      "query_class": "light",
+      "matched_class": "socket",
+      "similarity": 0.9995999932289124,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "7f766d30-1ca4-4f30-8732-1f935a9bd41d",
+      "query_class": "edv",
+      "matched_class": "socket",
+      "similarity": 0.0,
+      "category": "embedding_feature_bottleneck"
+    },
+    {
+      "query_id": "4744aa5e-bc8d-4a26-ac62-933c309dec5f",
+      "query_class": "socket",
+      "matched_class": "sym_socket",
+      "similarity": 1.0,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "a6f96a45-93c4-4b1c-91f9-31566109f223",
+      "query_class": "edv",
+      "matched_class": "socket",
+      "similarity": 0.9205999970436096,
+      "category": "visually_identical_symbols"
+    },
+    {
+      "query_id": "a9575184-9d6e-4b91-a221-8810184452aa",
+      "query_class": "edv",
+      "matched_class": "socket",
+      "similarity": 1.0,
+      "category": "visually_identical_symbols"
+    },
+    {
+      "query_id": "0a834635-2153-485b-a960-9e3e3fe894c8",
+      "query_class": "edv",
+      "matched_class": "socket",
+      "similarity": 0.9933000206947327,
+      "category": "visually_identical_symbols"
+    },
+    {
+      "query_id": "a9e23d1e-67d2-4263-b7ff-70c08939c2ff",
+      "query_class": "text",
+      "matched_class": "socket",
+      "similarity": 0.8036999702453613,
+      "category": "embedding_feature_bottleneck"
+    },
+    {
+      "query_id": "4379ea3e-8596-4190-9c93-7195251c5c95",
+      "query_class": "light",
+      "matched_class": "edv",
+      "similarity": 0.9768999814987183,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "4b4cd384-688a-41aa-8289-5d731f690078",
+      "query_class": "light",
+      "matched_class": "cee",
+      "similarity": 1.0,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "fdf0e05c-6086-4cd6-b70d-f8dc0c061254",
+      "query_class": "edv",
+      "matched_class": "socket",
+      "similarity": 1.0,
+      "category": "visually_identical_symbols"
+    },
+    {
+      "query_id": "9b98298c-4a74-4f73-9629-718a6fab769b",
+      "query_class": "socket",
+      "matched_class": "cee",
+      "similarity": 0.8889999985694885,
+      "category": "embedding_feature_bottleneck"
+    },
+    {
+      "query_id": "9fa3ebad-29a5-4bee-9a7e-411885e86f7f",
+      "query_class": "socket",
+      "matched_class": "edv",
+      "similarity": 0.9939000010490417,
+      "category": "visually_identical_symbols"
+    },
+    {
+      "query_id": "06593d0d-d2f1-4ea5-bc65-a123ea916bcc",
+      "query_class": "cee",
+      "matched_class": "socket",
+      "similarity": 0.9923999905586243,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "96b9f535-3b3e-47d7-8d1f-06f2047714f5",
+      "query_class": "socket",
+      "matched_class": "light",
+      "similarity": 0.9998999834060669,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "eaacabe4-f78d-4d1e-8957-42d7adeeb58c",
+      "query_class": "socket",
+      "matched_class": "cee",
+      "similarity": 0.9923999905586243,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "bea04074-0fab-4534-a83e-590aeb7e2b3f",
+      "query_class": "cee",
+      "matched_class": "socket",
+      "similarity": 0.0,
+      "category": "embedding_feature_bottleneck"
+    },
+    {
+      "query_id": "9a3b592f-911e-4e24-ab7c-5f5b8c8748e5",
+      "query_class": "socket",
+      "matched_class": "cee",
+      "similarity": 1.0,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "b24d8b67-a3cb-42fa-989c-2ae5a8471ada",
+      "query_class": "socket",
+      "matched_class": "cee",
+      "similarity": 0.8939999938011169,
+      "category": "embedding_feature_bottleneck"
+    },
+    {
+      "query_id": "d0a2d2d0-0ba9-4335-981b-79e3c921fe74",
+      "query_class": "socket",
+      "matched_class": "edv",
+      "similarity": 1.0,
+      "category": "visually_identical_symbols"
+    },
+    {
+      "query_id": "229c4a0f-3173-45cb-95c9-50b56ca445ca",
+      "query_class": "edv",
+      "matched_class": "socket",
+      "similarity": 0.9032999873161316,
+      "category": "visually_identical_symbols"
+    },
+    {
+      "query_id": "31b05d45-62b4-4f5a-a0a3-7639dae3d67e",
+      "query_class": "cee",
+      "matched_class": "socket",
+      "similarity": 1.0,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "ce36e494-1cc5-4f13-8b1e-45e4dc5fb10a",
+      "query_class": "cee",
+      "matched_class": "socket",
+      "similarity": 0.9987000226974487,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "73635e01-03b8-45be-9058-77d5b40a7070",
+      "query_class": "socket",
+      "matched_class": "light",
+      "similarity": 0.9995999932289124,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "b8a7cbf4-069b-4cde-aebe-98b4a3e82fdd",
+      "query_class": "sym_socket",
+      "matched_class": "socket",
+      "similarity": 0.0,
+      "category": "embedding_feature_bottleneck"
+    },
+    {
+      "query_id": "5be14b35-cbe2-43c0-a8bb-38636361e2a4",
+      "query_class": "cee",
+      "matched_class": "socket",
+      "similarity": 0.9998999834060669,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "89613e82-8a8e-492e-b71a-fee0d3e9df1b",
+      "query_class": "cee",
+      "matched_class": "light",
+      "similarity": 1.0,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "b1ea940a-360d-43fc-9ce2-a3aebf6c1ce7",
+      "query_class": "socket",
+      "matched_class": "light",
+      "similarity": 0.9998000264167786,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "ed909962-0c17-4a36-8509-7a50759d2517",
+      "query_class": "special",
+      "matched_class": "socket",
+      "similarity": 0.9308000206947327,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "e932e4eb-370a-40d8-8187-682fb5ff1b97",
+      "query_class": "cee",
+      "matched_class": "socket",
+      "similarity": 1.0,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "d10b4dba-b40a-4e0f-b6c4-d819b240b3c3",
+      "query_class": "cee",
+      "matched_class": "socket",
+      "similarity": 0.9157999753952026,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "2b085099-96b1-4641-b5aa-2c1218f9c5f8",
+      "query_class": "cee",
+      "matched_class": "sym_cee32",
+      "similarity": 1.0,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "ada958fe-706b-4be0-b03e-7d3bc8cb72c4",
+      "query_class": "cee",
+      "matched_class": "special",
+      "similarity": 0.9009000062942505,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "5afdef16-c149-4ea0-8e67-58820f597c8e",
+      "query_class": "special",
+      "matched_class": "socket",
+      "similarity": 0.8938999772071838,
+      "category": "embedding_feature_bottleneck"
+    },
+    {
+      "query_id": "c3130692-0e44-4e46-afbd-c55902b8cf80",
+      "query_class": "socket",
+      "matched_class": "cee",
+      "similarity": 0.9998999834060669,
+      "category": "GT_ambiguity"
+    },
+    {
+      "query_id": "6b2c53c5-8211-4c70-921e-14adc4f19181",
+      "query_class": "sym_socket",
+      "matched_class": "socket",
+      "similarity": 1.0,
+      "category": "GT_ambiguity"
+    }
+  ]
+}

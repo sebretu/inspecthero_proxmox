@@ -1,0 +1,770 @@
+{
+  "total_items": 1354,
+  "cross_class_high_similarity_pairs": 63,
+  "same_class_low_similarity_pairs": 435481,
+  "class_distribution": {
+    "light": 87,
+    "socket": 1002,
+    "special": 42,
+    "cee": 62,
+    "edv": 133,
+    "text": 1,
+    "sym_socket": 17,
+    "sym_cee16": 7,
+    "sym_cee32": 3
+  },
+  "cross_class_samples": [
+    {
+      "id": "96ea813c-2c13-40b9-b4dc-d0df87cafb56",
+      "class": "socket",
+      "nearest_id": "0a26e42b-6b64-4f07-9a6f-d06e2165d3fc",
+      "nearest_class": "sym_cee16",
+      "similarity": 0.939,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "b8a7cbf4-069b-4cde-aebe-98b4a3e82fdd",
+      "class": "sym_socket",
+      "nearest_id": "552fa756-5619-4d62-bde0-e30ea82161ae",
+      "nearest_class": "sym_cee16",
+      "similarity": 1.0,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "b8a7cbf4-069b-4cde-aebe-98b4a3e82fdd",
+      "class": "sym_socket",
+      "nearest_id": "d67a4108-e003-4c1a-b818-3d6c845fe086",
+      "nearest_class": "sym_cee16",
+      "similarity": 1.0,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "b8a7cbf4-069b-4cde-aebe-98b4a3e82fdd",
+      "class": "sym_socket",
+      "nearest_id": "823a76f6-126b-4fea-a785-d91aa348836b",
+      "nearest_class": "sym_cee16",
+      "similarity": 0.9997,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "ae6746b6-4bd3-4e6e-bfb0-8130b8855c67",
+      "class": "socket",
+      "nearest_id": "60c85fd6-8bf3-4acd-9b97-feb71bf8bca6",
+      "nearest_class": "cee",
+      "similarity": 1.0,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "ae6746b6-4bd3-4e6e-bfb0-8130b8855c67",
+      "class": "socket",
+      "nearest_id": "4b371502-3fae-43ef-8b9f-8e574cb2d068",
+      "nearest_class": "cee",
+      "similarity": 0.99,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "ae6746b6-4bd3-4e6e-bfb0-8130b8855c67",
+      "class": "socket",
+      "nearest_id": "266542d1-d249-46fa-b2e6-235c6b3b2f87",
+      "nearest_class": "cee",
+      "similarity": 0.99,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "4b371502-3fae-43ef-8b9f-8e574cb2d068",
+      "class": "cee",
+      "nearest_id": "ae6746b6-4bd3-4e6e-bfb0-8130b8855c67",
+      "nearest_class": "socket",
+      "similarity": 0.99,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "4b371502-3fae-43ef-8b9f-8e574cb2d068",
+      "class": "cee",
+      "nearest_id": "1d7ef0d9-ac42-4ec0-a8ae-a8e9e29a97c1",
+      "nearest_class": "socket",
+      "similarity": 0.99,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "4b371502-3fae-43ef-8b9f-8e574cb2d068",
+      "class": "cee",
+      "nearest_id": "2aab1702-e546-4bab-a0cd-20a4ac60aff1",
+      "nearest_class": "socket",
+      "similarity": 0.9598,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "0a26e42b-6b64-4f07-9a6f-d06e2165d3fc",
+      "class": "sym_cee16",
+      "nearest_id": "96ea813c-2c13-40b9-b4dc-d0df87cafb56",
+      "nearest_class": "socket",
+      "similarity": 0.939,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "0a26e42b-6b64-4f07-9a6f-d06e2165d3fc",
+      "class": "sym_cee16",
+      "nearest_id": "a2cd83b9-3937-4a75-b5fb-651c937bbad7",
+      "nearest_class": "socket",
+      "similarity": 0.9326,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "09fcea73-ffd1-4d2d-8c64-1b0054da3792",
+      "class": "cee",
+      "nearest_id": "1d7ef0d9-ac42-4ec0-a8ae-a8e9e29a97c1",
+      "nearest_class": "socket",
+      "similarity": 0.9438,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "09fcea73-ffd1-4d2d-8c64-1b0054da3792",
+      "class": "cee",
+      "nearest_id": "ae6746b6-4bd3-4e6e-bfb0-8130b8855c67",
+      "nearest_class": "socket",
+      "similarity": 0.9438,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "1d7ef0d9-ac42-4ec0-a8ae-a8e9e29a97c1",
+      "class": "socket",
+      "nearest_id": "60c85fd6-8bf3-4acd-9b97-feb71bf8bca6",
+      "nearest_class": "cee",
+      "similarity": 1.0,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "1d7ef0d9-ac42-4ec0-a8ae-a8e9e29a97c1",
+      "class": "socket",
+      "nearest_id": "266542d1-d249-46fa-b2e6-235c6b3b2f87",
+      "nearest_class": "cee",
+      "similarity": 0.99,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "1d7ef0d9-ac42-4ec0-a8ae-a8e9e29a97c1",
+      "class": "socket",
+      "nearest_id": "4b371502-3fae-43ef-8b9f-8e574cb2d068",
+      "nearest_class": "cee",
+      "similarity": 0.99,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "6d23471b-de44-4c1c-8899-d4cdaf4984d2",
+      "class": "sym_cee16",
+      "nearest_id": "60eae7cc-2aef-4c39-bad2-20f03b3203ff",
+      "nearest_class": "sym_socket",
+      "similarity": 1.0,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "6d23471b-de44-4c1c-8899-d4cdaf4984d2",
+      "class": "sym_cee16",
+      "nearest_id": "75908256-266f-46bd-9009-5cdb02f0d2eb",
+      "nearest_class": "sym_socket",
+      "similarity": 0.973,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "60c85fd6-8bf3-4acd-9b97-feb71bf8bca6",
+      "class": "cee",
+      "nearest_id": "ae6746b6-4bd3-4e6e-bfb0-8130b8855c67",
+      "nearest_class": "socket",
+      "similarity": 1.0,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "60c85fd6-8bf3-4acd-9b97-feb71bf8bca6",
+      "class": "cee",
+      "nearest_id": "1d7ef0d9-ac42-4ec0-a8ae-a8e9e29a97c1",
+      "nearest_class": "socket",
+      "similarity": 1.0,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "60c85fd6-8bf3-4acd-9b97-feb71bf8bca6",
+      "class": "cee",
+      "nearest_id": "2aab1702-e546-4bab-a0cd-20a4ac60aff1",
+      "nearest_class": "socket",
+      "similarity": 0.9598,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "60eae7cc-2aef-4c39-bad2-20f03b3203ff",
+      "class": "sym_socket",
+      "nearest_id": "6d23471b-de44-4c1c-8899-d4cdaf4984d2",
+      "nearest_class": "sym_cee16",
+      "similarity": 1.0,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "60eae7cc-2aef-4c39-bad2-20f03b3203ff",
+      "class": "sym_socket",
+      "nearest_id": "823a76f6-126b-4fea-a785-d91aa348836b",
+      "nearest_class": "sym_cee16",
+      "similarity": 0.9489,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "60eae7cc-2aef-4c39-bad2-20f03b3203ff",
+      "class": "sym_socket",
+      "nearest_id": "d67a4108-e003-4c1a-b818-3d6c845fe086",
+      "nearest_class": "sym_cee16",
+      "similarity": 0.9475,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "60eae7cc-2aef-4c39-bad2-20f03b3203ff",
+      "class": "sym_socket",
+      "nearest_id": "552fa756-5619-4d62-bde0-e30ea82161ae",
+      "nearest_class": "sym_cee16",
+      "similarity": 0.9475,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "266542d1-d249-46fa-b2e6-235c6b3b2f87",
+      "class": "cee",
+      "nearest_id": "1d7ef0d9-ac42-4ec0-a8ae-a8e9e29a97c1",
+      "nearest_class": "socket",
+      "similarity": 0.99,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "266542d1-d249-46fa-b2e6-235c6b3b2f87",
+      "class": "cee",
+      "nearest_id": "ae6746b6-4bd3-4e6e-bfb0-8130b8855c67",
+      "nearest_class": "socket",
+      "similarity": 0.99,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "266542d1-d249-46fa-b2e6-235c6b3b2f87",
+      "class": "cee",
+      "nearest_id": "2aab1702-e546-4bab-a0cd-20a4ac60aff1",
+      "nearest_class": "socket",
+      "similarity": 0.9598,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "73371916-f24b-4e2d-8e2b-4434b3a7549f",
+      "class": "sym_socket",
+      "nearest_id": "39686a0c-fdde-46b9-9934-8781222b8fb9",
+      "nearest_class": "socket",
+      "similarity": 0.9267,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "d67a4108-e003-4c1a-b818-3d6c845fe086",
+      "class": "sym_cee16",
+      "nearest_id": "8f62cf82-0b8b-424a-97ed-a2a28bb0a45a",
+      "nearest_class": "sym_socket",
+      "similarity": 1.0,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "d67a4108-e003-4c1a-b818-3d6c845fe086",
+      "class": "sym_cee16",
+      "nearest_id": "b8a7cbf4-069b-4cde-aebe-98b4a3e82fdd",
+      "nearest_class": "sym_socket",
+      "similarity": 1.0,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "2aab1702-e546-4bab-a0cd-20a4ac60aff1",
+      "class": "socket",
+      "nearest_id": "266542d1-d249-46fa-b2e6-235c6b3b2f87",
+      "nearest_class": "cee",
+      "similarity": 0.9598,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "2aab1702-e546-4bab-a0cd-20a4ac60aff1",
+      "class": "socket",
+      "nearest_id": "60c85fd6-8bf3-4acd-9b97-feb71bf8bca6",
+      "nearest_class": "cee",
+      "similarity": 0.9598,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "2aab1702-e546-4bab-a0cd-20a4ac60aff1",
+      "class": "socket",
+      "nearest_id": "4b371502-3fae-43ef-8b9f-8e574cb2d068",
+      "nearest_class": "cee",
+      "similarity": 0.9598,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "823a76f6-126b-4fea-a785-d91aa348836b",
+      "class": "sym_cee16",
+      "nearest_id": "8f62cf82-0b8b-424a-97ed-a2a28bb0a45a",
+      "nearest_class": "sym_socket",
+      "similarity": 0.9997,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "823a76f6-126b-4fea-a785-d91aa348836b",
+      "class": "sym_cee16",
+      "nearest_id": "b8a7cbf4-069b-4cde-aebe-98b4a3e82fdd",
+      "nearest_class": "sym_socket",
+      "similarity": 0.9997,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "ded732e3-2aea-4159-a0d8-b6459fd8be53",
+      "class": "socket",
+      "nearest_id": "fdb54a45-21c9-480c-9afc-9c1957466972",
+      "nearest_class": "edv",
+      "similarity": 0.911,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "4b172a7d-bf13-414d-bd03-3f625bacb5bb",
+      "class": "socket",
+      "nearest_id": "df81b5da-6c02-496d-a4cc-c5044ec40bb4",
+      "nearest_class": "light",
+      "similarity": 0.9278,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "df81b5da-6c02-496d-a4cc-c5044ec40bb4",
+      "class": "light",
+      "nearest_id": "4b172a7d-bf13-414d-bd03-3f625bacb5bb",
+      "nearest_class": "socket",
+      "similarity": 0.9278,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "552fa756-5619-4d62-bde0-e30ea82161ae",
+      "class": "sym_cee16",
+      "nearest_id": "8f62cf82-0b8b-424a-97ed-a2a28bb0a45a",
+      "nearest_class": "sym_socket",
+      "similarity": 1.0,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "552fa756-5619-4d62-bde0-e30ea82161ae",
+      "class": "sym_cee16",
+      "nearest_id": "b8a7cbf4-069b-4cde-aebe-98b4a3e82fdd",
+      "nearest_class": "sym_socket",
+      "similarity": 1.0,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "552fa756-5619-4d62-bde0-e30ea82161ae",
+      "class": "sym_cee16",
+      "nearest_id": "60eae7cc-2aef-4c39-bad2-20f03b3203ff",
+      "nearest_class": "sym_socket",
+      "similarity": 0.9475,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "75908256-266f-46bd-9009-5cdb02f0d2eb",
+      "class": "sym_socket",
+      "nearest_id": "6d23471b-de44-4c1c-8899-d4cdaf4984d2",
+      "nearest_class": "sym_cee16",
+      "similarity": 0.973,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "75908256-266f-46bd-9009-5cdb02f0d2eb",
+      "class": "sym_socket",
+      "nearest_id": "823a76f6-126b-4fea-a785-d91aa348836b",
+      "nearest_class": "sym_cee16",
+      "similarity": 0.9319,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "75908256-266f-46bd-9009-5cdb02f0d2eb",
+      "class": "sym_socket",
+      "nearest_id": "d67a4108-e003-4c1a-b818-3d6c845fe086",
+      "nearest_class": "sym_cee16",
+      "similarity": 0.9305,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "75908256-266f-46bd-9009-5cdb02f0d2eb",
+      "class": "sym_socket",
+      "nearest_id": "552fa756-5619-4d62-bde0-e30ea82161ae",
+      "nearest_class": "sym_cee16",
+      "similarity": 0.9305,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "69a81a37-eaf1-46d2-9afc-54d5399190a1",
+      "class": "cee",
+      "nearest_id": "ebd1d0f3-07bc-48e8-940a-4d040a2368a8",
+      "nearest_class": "socket",
+      "similarity": 0.962,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "ebd1d0f3-07bc-48e8-940a-4d040a2368a8",
+      "class": "socket",
+      "nearest_id": "69a81a37-eaf1-46d2-9afc-54d5399190a1",
+      "nearest_class": "cee",
+      "similarity": 0.962,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    },
+    {
+      "id": "ebd1d0f3-07bc-48e8-940a-4d040a2368a8",
+      "class": "socket",
+      "nearest_id": "56f744a9-9260-40aa-b0a1-c13a70747334",
+      "nearest_class": "cee",
+      "similarity": 0.9581,
+      "issue": "CROSS_CLASS_HIGH_SIM"
+    }
+  ],
+  "same_class_low_sim_samples": [
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "bdaf0db1-77a4-4346-9512-27eb0c2864ac",
+      "similarity": 0.3922,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "b6d0a335-9bca-45ca-bd2f-78cefb18c01e",
+      "similarity": 0.397,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "137975e3-045c-4f19-87b2-888995ae3dd5",
+      "similarity": 0.4641,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "4b4cd384-688a-41aa-8289-5d731f690078",
+      "similarity": 0.3644,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "efb7003c-014a-4b95-8819-b9c017837a88",
+      "similarity": 0.1135,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "5e33f562-f2bf-4270-b2cd-2cbdc2004d5a",
+      "similarity": 0.2031,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "15526e35-806e-40f6-ad7f-4eb68ba831f6",
+      "similarity": 0.1672,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "713c8332-eb86-4259-bee8-5e05df883266",
+      "similarity": 0.493,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "52f487cd-2f33-4fb2-a0b5-ee9deed0d3c1",
+      "similarity": 0.3675,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "67720ca0-bfad-4266-b928-848784fce548",
+      "similarity": 0.3133,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "ee00eacc-dd0e-44e4-8a87-8840ba1d8f34",
+      "similarity": 0.4011,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "af6c3538-9b60-46cb-abe5-d21ee960254e",
+      "similarity": 0.4445,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "c6e7abdf-7153-47cd-81e5-d65c3cb382a2",
+      "similarity": 0.3345,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "a2ddd2ab-2afa-4a45-ab02-9aaa24667087",
+      "similarity": 0.3617,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "aec6c89e-1671-425b-b593-e01f4f6d0064",
+      "similarity": 0.3133,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "022da18d-c546-4574-ba3e-20bcb7a405dd",
+      "similarity": 0.4766,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "2abe11ee-88a4-4a1e-8914-e247450f7dc8",
+      "similarity": 0.3959,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "c6ddea4c-ce6d-4571-b94b-e0a57f3d69bf",
+      "similarity": 0.3518,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "09917bfa-6f7d-4072-95cb-20a9e8129a5e",
+      "similarity": 0.4612,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "278e25bb-107f-4f9d-bd83-8eacd1cf61ca",
+      "similarity": 0.3482,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "c5b2fae2-93f6-438f-81b7-4957bb3aa5b4",
+      "similarity": 0.419,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "cfe11d66-c499-4892-8832-b7e701f1c6f5",
+      "similarity": 0.2769,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "849d3999-0fac-49c6-adab-c7e9daf706d3",
+      "similarity": 0.4667,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "024ed4e7-3df8-4060-af97-8bc7831755da",
+      "similarity": 0.4123,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "3a6f2488-bf4e-4014-8dbc-0e7d53367a7e",
+      "similarity": 0.3796,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "afd48ac1-d556-4e1e-ba27-69a435bf6b31",
+      "similarity": 0.4036,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "6a50a349-a829-4f5e-ac81-2833b0688ccf",
+      "similarity": 0.486,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "7b1e8f69-9f1c-4dc6-8970-4e4f7da2689e",
+      "similarity": 0.3523,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "c99ba244-6412-4a54-b6aa-a63fc4c8e52b",
+      "similarity": 0.381,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "71b2b771-1091-4a62-8d31-9c7f1b6eb5ad",
+      "similarity": 0.3698,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "a1827ee5-8454-4020-af1f-8d74571a6563",
+      "similarity": 0.2593,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "df81b5da-6c02-496d-a4cc-c5044ec40bb4",
+      "similarity": 0.2514,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "b79e41bf-e53b-43f3-b3ec-af57fb09760c",
+      "similarity": 0.2774,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "751b791c-7564-496f-a807-3e9b5a5f794a",
+      "similarity": 0.2711,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "37e867ff-d2f4-4da4-b0ec-bee005a373b8",
+      "similarity": 0.3679,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "bdab6029-ac0a-4f9c-8172-3c348d6697d3",
+      "similarity": 0.4912,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "f794e614-aaee-4ce4-8fd9-7aa72ca334f4",
+      "similarity": 0.4814,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "1c3acaf3-6577-4f98-908e-a3853b644ec5",
+      "similarity": 0.3163,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "def0f041-de46-441f-a0ae-cc48741158c3",
+      "similarity": 0.2739,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "1085e99e-0134-460c-8ce7-70f65e618d1f",
+      "similarity": 0.3529,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "83d5a15f-a078-4513-965f-38091f028f90",
+      "similarity": 0.3217,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "88c59e8f-5101-4754-ae4c-560a4b1f1763",
+      "similarity": 0.3482,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "7c5a5783-ec98-4a94-a856-618f2f6f666d",
+      "similarity": 0.3091,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "a5eec7df-3890-4037-a74a-7a959b949f81",
+      "similarity": 0.3916,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "fc941e4a-f8f0-4e6d-8bb9-956522c10bb4",
+      "similarity": 0.38,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "e3d8a01d-067f-45ee-8a8c-b228189fec8b",
+      "similarity": 0.3502,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "fb0b2051-5552-4c56-9638-8a8dc1175f5e",
+      "similarity": 0.2051,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "184b6328-c98c-40c4-8315-2748b9dc2429",
+      "similarity": 0.1173,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "e43e0ea0-8a6f-422c-af0a-bfa06fa1f543",
+      "similarity": 0.3963,
+      "issue": "SAME_CLASS_LOW_SIM"
+    },
+    {
+      "id": "e78300ae-eda5-4083-bde9-40c69ec543dd",
+      "class": "light",
+      "nearest_id": "aa009367-949f-4fad-988d-a2615fd83f41",
+      "similarity": 0.3748,
+      "issue": "SAME_CLASS_LOW_SIM"
+    }
+  ]
+}

@@ -247,7 +247,7 @@ export default function UnifiedLayout({ children }: { children: React.ReactNode 
     );
 
     if (isAdmin) {
-      base.push({ href: "/aufmass", label: t("nav", "aufmass", "Aufmaß") });
+      base.push({ href: "/aufmass", label: t("nav", "aufmass", "Aufmaß & Zusatzarbeit") });
     }
 
     // Add Employee Management for jozef@demo.pl or moderators/admins

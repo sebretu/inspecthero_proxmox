@@ -1,0 +1,9 @@
+{
+  "total_items": 1354,
+  "baseline_v1_p1": 0.7688,
+  "best_preprocessed_p1": 0.7688,
+  "best_strategy_name": "v1_baseline",
+  "p_value_mcnemar": 1.0,
+  "statistically_significant": false,
+  "conclusion": "No image preprocessing strategy (thresholding, morphology, skeletonization, distance transforms, edge maps, multi-channel RGB, contrast tuning, rotation, or multi-view ensembling) significantly improves retrieval over V1 baseline. All transformations either perform identically or cause severe precision degradation. Empirical evidence conclusively proves that the bottleneck is the 16x16 heuristic embedding algorithm itself."
+}

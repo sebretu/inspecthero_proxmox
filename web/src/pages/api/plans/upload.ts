@@ -82,6 +82,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const supabase = getSupabaseAdminClient();
 
+    // Verify that floorId exists and belongs to the selected project
+    const { data: floorRecord, error: floorErr } = await supabase
+      .from("floors")
+      .select("id, building_id, buildings!inner(id, project_id)")
+      .eq("id", floorId)
+      .single();
+
+    if (floorErr || !floorRecord) {
+      json(res, 400, { ok: false, error: "Invalid floorId: Floor does not exist" });
+      return;
+    }
+
+    const buildingProject = (floorRecord as any).buildings?.project_id;
+    if (buildingProject !== projectId) {
+      json(res, 400, { ok: false, error: "Mismatch: The specified floor does not belong to the given project" });
+      return;
+    }
+
     const { data: latestPlans, error: latestErr } = await supabase
       .from("plans")
       .select("version")

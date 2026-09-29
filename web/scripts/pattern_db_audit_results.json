@@ -1,0 +1,365 @@
+{
+  "totalCropsApproved": 1354,
+  "cropsWithEmbedding": 1354,
+  "classCounts": {
+    "edv": 133,
+    "socket": 1002,
+    "light": 87,
+    "special": 42,
+    "text": 1,
+    "cee": 62,
+    "sym_socket": 17,
+    "sym_cee16": 7,
+    "sym_cee32": 3
+  },
+  "intraMeans": {
+    "edv": 0.4963882531034251,
+    "socket": 0.4043106799544098,
+    "light": 0.4367668140570507,
+    "special": 0.475318290965982,
+    "text": 1,
+    "cee": 0.36313112233031203,
+    "sym_socket": 0.46666863763731536,
+    "sym_cee16": 0.7996637249469598,
+    "sym_cee32": 0
+  },
+  "interMatrixMeans": {
+    "edv": {
+      "edv": 0.4964,
+      "socket": 0.4159,
+      "light": 0.4337,
+      "special": 0.4583,
+      "text": 0.3086,
+      "cee": 0.3961,
+      "sym_socket": 0.445,
+      "sym_cee16": 0.5012,
+      "sym_cee32": 0.1915
+    },
+    "socket": {
+      "edv": 0.4159,
+      "socket": 0.4043,
+      "light": 0.4171,
+      "special": 0.4321,
+      "text": 0.335,
+      "cee": 0.372,
+      "sym_socket": 0.4219,
+      "sym_cee16": 0.4378,
+      "sym_cee32": 0.1777
+    },
+    "light": {
+      "edv": 0.4337,
+      "socket": 0.4171,
+      "light": 0.4368,
+      "special": 0.4528,
+      "text": 0.3457,
+      "cee": 0.3883,
+      "sym_socket": 0.4426,
+      "sym_cee16": 0.4701,
+      "sym_cee32": 0.1853
+    },
+    "special": {
+      "edv": 0.4583,
+      "socket": 0.4321,
+      "light": 0.4528,
+      "special": 0.4753,
+      "text": 0.3566,
+      "cee": 0.4088,
+      "sym_socket": 0.4582,
+      "sym_cee16": 0.4824,
+      "sym_cee32": 0.1933
+    },
+    "text": {
+      "edv": 0.3086,
+      "socket": 0.335,
+      "light": 0.3457,
+      "special": 0.3566,
+      "text": 1,
+      "cee": 0.3136,
+      "sym_socket": 0.3343,
+      "sym_cee16": 0.2814,
+      "sym_cee32": 0.1186
+    },
+    "cee": {
+      "edv": 0.3961,
+      "socket": 0.372,
+      "light": 0.3883,
+      "special": 0.4088,
+      "text": 0.3136,
+      "cee": 0.3631,
+      "sym_socket": 0.4018,
+      "sym_cee16": 0.4249,
+      "sym_cee32": 0.1625
+    },
+    "sym_socket": {
+      "edv": 0.445,
+      "socket": 0.4219,
+      "light": 0.4426,
+      "special": 0.4582,
+      "text": 0.3343,
+      "cee": 0.4018,
+      "sym_socket": 0.4667,
+      "sym_cee16": 0.5383,
+      "sym_cee32": 0.1762
+    },
+    "sym_cee16": {
+      "edv": 0.5012,
+      "socket": 0.4378,
+      "light": 0.4701,
+      "special": 0.4824,
+      "text": 0.2814,
+      "cee": 0.4249,
+      "sym_socket": 0.5383,
+      "sym_cee16": 0.7997,
+      "sym_cee32": 0.1899
+    },
+    "sym_cee32": {
+      "edv": 0.1915,
+      "socket": 0.1777,
+      "light": 0.1853,
+      "special": 0.1933,
+      "text": 0.1186,
+      "cee": 0.1625,
+      "sym_socket": 0.1762,
+      "sym_cee16": 0.1899,
+      "sym_cee32": 0
+    }
+  },
+  "confusionMatrix": {
+    "edv": {
+      "edv": 771,
+      "socket": 390,
+      "light": 40,
+      "special": 37,
+      "text": 0,
+      "cee": 76,
+      "sym_socket": 8,
+      "sym_cee16": 4,
+      "sym_cee32": 4
+    },
+    "socket": {
+      "edv": 938,
+      "socket": 7487,
+      "light": 600,
+      "special": 281,
+      "text": 0,
+      "cee": 431,
+      "sym_socket": 166,
+      "sym_cee16": 28,
+      "sym_cee32": 89
+    },
+    "light": {
+      "edv": 121,
+      "socket": 456,
+      "light": 132,
+      "special": 47,
+      "text": 0,
+      "cee": 66,
+      "sym_socket": 26,
+      "sym_cee16": 14,
+      "sym_cee32": 8
+    },
+    "special": {
+      "edv": 115,
+      "socket": 184,
+      "light": 43,
+      "special": 30,
+      "text": 1,
+      "cee": 37,
+      "sym_socket": 5,
+      "sym_cee16": 3,
+      "sym_cee32": 2
+    },
+    "text": {
+      "edv": 0,
+      "socket": 5,
+      "light": 1,
+      "special": 1,
+      "text": 0,
+      "cee": 2,
+      "sym_socket": 1,
+      "sym_cee16": 0,
+      "sym_cee32": 0
+    },
+    "cee": {
+      "edv": 123,
+      "socket": 290,
+      "light": 32,
+      "special": 26,
+      "text": 0,
+      "cee": 131,
+      "sym_socket": 12,
+      "sym_cee16": 5,
+      "sym_cee32": 1
+    },
+    "sym_socket": {
+      "edv": 23,
+      "socket": 78,
+      "light": 12,
+      "special": 4,
+      "text": 0,
+      "cee": 4,
+      "sym_socket": 25,
+      "sym_cee16": 24,
+      "sym_cee32": 0
+    },
+    "sym_cee16": {
+      "edv": 6,
+      "socket": 10,
+      "light": 0,
+      "special": 0,
+      "text": 0,
+      "cee": 0,
+      "sym_socket": 24,
+      "sym_cee16": 30,
+      "sym_cee32": 0
+    },
+    "sym_cee32": {
+      "edv": 2,
+      "socket": 25,
+      "light": 2,
+      "special": 1,
+      "text": 0,
+      "cee": 0,
+      "sym_socket": 0,
+      "sym_cee16": 0,
+      "sym_cee32": 0
+    }
+  },
+  "top10SmallestGapsInDB": [
+    {
+      "cropId": "883f0132-d4cf-4669-b6cb-3e4a67c6d5ff",
+      "cropType": "socket",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 1,
+      "secondSim": 1,
+      "gap": 0
+    },
+    {
+      "cropId": "0aa4302e-24fa-4839-a9ab-1c2d95da178c",
+      "cropType": "socket",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 1,
+      "secondSim": 1,
+      "gap": 0
+    },
+    {
+      "cropId": "91eae2b9-eec6-4a19-b416-de2a48b47159",
+      "cropType": "socket",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 0.691,
+      "secondSim": 0.691,
+      "gap": 0
+    },
+    {
+      "cropId": "fe27ba7c-a4e2-4ebb-b938-44d78d8bcb72",
+      "cropType": "socket",
+      "bestType": "sym_socket",
+      "secondType": "sym_cee16",
+      "bestSim": 0.8495,
+      "secondSim": 0.8495,
+      "gap": 0
+    },
+    {
+      "cropId": "a66dc851-1c98-4b8a-9619-972e5167c921",
+      "cropType": "socket",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 1,
+      "secondSim": 1,
+      "gap": 0
+    },
+    {
+      "cropId": "868e2cb4-52b8-4664-b2e7-cdab1908306e",
+      "cropType": "socket",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 0.7552,
+      "secondSim": 0.7552,
+      "gap": 0
+    },
+    {
+      "cropId": "3233e68e-5b39-44e8-9bde-536d91a8ee68",
+      "cropType": "socket",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 1,
+      "secondSim": 1,
+      "gap": 0
+    },
+    {
+      "cropId": "933f6c1f-1c14-4a31-a079-f262404612d3",
+      "cropType": "socket",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 1,
+      "secondSim": 1,
+      "gap": 0
+    },
+    {
+      "cropId": "5afdef16-c149-4ea0-8e67-58820f597c8e",
+      "cropType": "special",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 0.8102,
+      "secondSim": 0.8102,
+      "gap": 0
+    },
+    {
+      "cropId": "90d28460-7941-4766-9c33-146c2731c4c4",
+      "cropType": "socket",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 1,
+      "secondSim": 1,
+      "gap": 0
+    },
+    {
+      "cropId": "7dc08540-89cb-42a2-a487-bf77f279a039",
+      "cropType": "socket",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 1,
+      "secondSim": 1,
+      "gap": 0
+    },
+    {
+      "cropId": "705bd606-0b5e-4e4c-8041-046f65ddf3af",
+      "cropType": "special",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 0.7806,
+      "secondSim": 0.7806,
+      "gap": 0
+    },
+    {
+      "cropId": "07522fb3-8b43-4dea-8868-cab6bed2b35e",
+      "cropType": "socket",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 1,
+      "secondSim": 1,
+      "gap": 0
+    },
+    {
+      "cropId": "4215f807-32ec-444d-bc51-24ee4245e253",
+      "cropType": "socket",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 1,
+      "secondSim": 1,
+      "gap": 0
+    },
+    {
+      "cropId": "e6f92bf8-33d3-4654-b145-9201f2d64214",
+      "cropType": "socket",
+      "bestType": "socket",
+      "secondType": "socket",
+      "bestSim": 0.9959,
+      "secondSim": 0.9959,
+      "gap": 0
+    }
+  ]
+}

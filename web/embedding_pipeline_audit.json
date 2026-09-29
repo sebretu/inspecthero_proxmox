@@ -1,0 +1,27 @@
+{
+  "input_size": "256x256 px PNG crop",
+  "resize_steps": [
+    "16x16 fill (Line Inverted intensity - 256 values)",
+    "16x16 fill (Green CAD channel - 256 values)",
+    "16x8 fill (Red CAD channel - 128 values)",
+    "8x8 fill (Sobel edge map - 64 values)",
+    "32x32 fill (1D horizontal + vertical projections - 64 values)"
+  ],
+  "normalization": [
+    "Background line inversion: (245 - lum) / 245",
+    "Green/Red color thresholding & saturation scaling",
+    "Sobel gradient magnitude scaling / 255",
+    "Global L2 norm (vector / ||v||_2)"
+  ],
+  "final_feature_resolution": {
+    "primary_spatial_grid": "16x16 (256 pixels per cell)",
+    "sobel_gradient_grid": "8x8 (1024 pixels per cell)",
+    "projection_resolution": "32 bins"
+  },
+  "lost_detail_risk": {
+    "thin_lines": "High risk of anti-aliasing attenuation when 1-2px lines are averaged over 16x16 blocks.",
+    "small_interior_text": "CRITICAL RISK: Interior text labels ('EDV', 'RJ45') occupy <5% of a 16x16 block, getting smoothed out into near-zero intensity.",
+    "geometric_differences": "High risk: socket (circle) vs edv (circle + internal text) look identical at 16x16 spatial resolution."
+  },
+  "recommendation": "Increase primary spatial grid resolution to 32x32 (or 32x16 max-pooled detail maps) and introduce local max-pooling/high-pass filtering to preserve sub-pixel interior text details."
+}

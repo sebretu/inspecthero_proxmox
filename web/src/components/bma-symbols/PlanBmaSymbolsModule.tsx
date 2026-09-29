@@ -411,6 +411,7 @@ export default function PlanBmaSymbolsModule({
   projectId,
   isWhiteSchemaMode = false,
   onToggleWhiteSchemaMode,
+  hideToolbars = false,
 }: {
   planId: string;
   meta: Meta;
@@ -422,6 +423,7 @@ export default function PlanBmaSymbolsModule({
   projectId?: string;
   isWhiteSchemaMode?: boolean;
   onToggleWhiteSchemaMode?: () => void;
+  hideToolbars?: boolean;
 }) {
   const { t } = useLanguage();
   const map = useMap();
@@ -5228,30 +5230,14 @@ export default function PlanBmaSymbolsModule({
     <>
       <MapEventsHandler />
 
-      {/* Toolbar Portal - Only for Admin / Moderator */}
-      {isAdminOrMod && (
-        toolbarSlot && typeof document !== "undefined" ? (
-          ReactDOM.createPortal(buttonContent, toolbarSlot)
-        ) : (
-          <div className={styles.container}>
-            <div ref={toolbarRef} className={styles.toolbar}>
-              {buttonContent}
-            </div>
-          </div>
-        )
+      {/* Toolbar Portal - Only for Admin / Moderator when slot exists and toolbars not hidden */}
+      {!hideToolbars && isAdminOrMod && toolbarSlot && typeof document !== "undefined" && (
+        ReactDOM.createPortal(buttonContent, toolbarSlot)
       )}
 
-      {/* Quick Symbols Bar - Portaled if slot exists, else floating overlay bar */}
-      {isAdminOrMod && (
-        quickBarSlot && typeof document !== "undefined" ? (
-          ReactDOM.createPortal(quickBarContent, quickBarSlot)
-        ) : (
-          <div className={styles.container} style={{ top: 60, left: 16, right: 16, pointerEvents: "none", zIndex: 999 }}>
-            <div style={{ pointerEvents: "auto", maxWidth: "100%", overflowX: "auto" }}>
-              {quickBarContent}
-            </div>
-          </div>
-        )
+      {/* Quick Symbols Bar - Portaled if slot exists and toolbars not hidden */}
+      {!hideToolbars && isAdminOrMod && quickBarSlot && typeof document !== "undefined" && (
+        ReactDOM.createPortal(quickBarContent, quickBarSlot)
       )}
 
       {/* Hint banner / floating control bar when placing */}

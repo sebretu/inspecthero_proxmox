@@ -45,18 +45,21 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { session_id, photo_id, article_number, item_name, quantity, unit, price, notes } = body;
 
-    if (!session_id || !item_name) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    if (!session_id) {
+      return NextResponse.json({ error: 'Missing required session_id' }, { status: 400 });
     }
+
+    const qty = quantity !== undefined && quantity !== null && quantity !== "" ? Number(quantity) : null;
+    const finalPrice = price !== undefined && price !== null && price !== "" ? Number(price) : null;
 
     const { data, error } = await supabase.from('aufmass_materials').insert([{
       session_id,
       photo_id: photo_id || null,
       article_number,
-      item_name,
-      quantity: quantity || 1,
+      item_name: item_name !== undefined && item_name !== null ? item_name : '',
+      quantity: isNaN(qty as number) ? null : qty,
       unit: unit || 'st.',
-      price,
+      price: isNaN(finalPrice as number) ? null : finalPrice,
       notes
     }]).select().single();
 
@@ -79,9 +82,21 @@ export async function PATCH(req: Request) {
         const updates: any = {};
         if (article_number !== undefined) updates.article_number = article_number;
         if (item_name !== undefined) updates.item_name = item_name;
-        if (quantity !== undefined) updates.quantity = quantity;
+        if (quantity !== undefined) {
+          if (quantity === "" || quantity === null || Number.isNaN(Number(quantity))) {
+            updates.quantity = null;
+          } else {
+            updates.quantity = Number(quantity);
+          }
+        }
         if (unit !== undefined) updates.unit = unit;
-        if (price !== undefined) updates.price = price;
+        if (price !== undefined) {
+          if (price === "" || price === null || Number.isNaN(Number(price))) {
+            updates.price = null;
+          } else {
+            updates.price = Number(price);
+          }
+        }
         if (notes !== undefined) updates.notes = notes;
 
         const { data, error } = await supabase.from('aufmass_materials').update(updates).eq('id', id).select().single();

@@ -1,0 +1,106 @@
+{
+  "generated_at": "2026-07-23T18:43:44.351188",
+  "total_queries": 1354,
+  "experiment_status": "COMPLETED",
+  "target_precision1_achieved": false,
+  "best_pipeline": "V1_OLD",
+  "best_precision1": 0.7688,
+  "final_decision": "OLD",
+  "pipeline_results": {
+    "V1_OLD": {
+      "pipeline": "V1_OLD_Handcrafted",
+      "precision1": 0.7688,
+      "precision5": 0.6908,
+      "recall10": 0.0188,
+      "mrr": 0.8325,
+      "false_match_rate": 0.2312,
+      "socket_edv_error": 51,
+      "confusion": {
+        "socket->edv": 32,
+        "edv->socket": 19,
+        "socket->sym_socket": 3,
+        "sym_socket->socket": 4,
+        "light->special": 2,
+        "special->light": 5,
+        "cee->socket": 19,
+        "socket->cee": 33
+      }
+    },
+    "V2_1": {
+      "pipeline": "V2.1_Handcrafted",
+      "precision1": 0.7227,
+      "precision5": 0.6791,
+      "recall10": 0.0137,
+      "mrr": 0.7983,
+      "false_match_rate": 0.2773,
+      "socket_edv_error": 109,
+      "confusion": {
+        "socket->edv": 54,
+        "edv->socket": 55,
+        "socket->sym_socket": 9,
+        "sym_socket->socket": 7,
+        "light->special": 10,
+        "special->light": 7,
+        "cee->socket": 21,
+        "socket->cee": 24
+      }
+    },
+    "MODEL_A_MobileNetV3": {
+      "pipeline": "MobileNetV3",
+      "precision1": 0.7334,
+      "precision5": 0.6798,
+      "recall10": 0.0152,
+      "mrr": 0.8046,
+      "false_match_rate": 0.2666,
+      "socket_edv_error": 110,
+      "confusion": {
+        "socket->edv": 48,
+        "edv->socket": 62,
+        "socket->sym_socket": 5,
+        "sym_socket->socket": 7,
+        "light->special": 7,
+        "special->light": 7,
+        "cee->socket": 20,
+        "socket->cee": 20
+      }
+    },
+    "MODEL_B_ResNet18": {
+      "pipeline": "ResNet18",
+      "precision1": 0.7297,
+      "precision5": 0.6848,
+      "recall10": 0.0157,
+      "mrr": 0.8049,
+      "false_match_rate": 0.2703,
+      "socket_edv_error": 108,
+      "confusion": {
+        "socket->edv": 43,
+        "edv->socket": 65,
+        "socket->sym_socket": 9,
+        "sym_socket->socket": 7,
+        "light->special": 10,
+        "special->light": 8,
+        "cee->socket": 22,
+        "socket->cee": 18
+      }
+    },
+    "MODEL_FINE_TUNED_ResNet18": {
+      "pipeline": "FineTuned_ResNet18",
+      "precision1": 0.7504,
+      "precision5": 0.7105,
+      "recall10": 0.0176,
+      "mrr": 0.8172,
+      "false_match_rate": 0.2496,
+      "socket_edv_error": 102,
+      "confusion": {
+        "socket->edv": 48,
+        "edv->socket": 54,
+        "socket->sym_socket": 12,
+        "sym_socket->socket": 9,
+        "light->special": 9,
+        "special->light": 11,
+        "cee->socket": 17,
+        "socket->cee": 13
+      }
+    }
+  }
+}

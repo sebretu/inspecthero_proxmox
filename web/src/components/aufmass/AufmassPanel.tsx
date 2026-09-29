@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiGet, apiPost, apiPatch, apiDelete } from '@/lib/apiClient';
 import { Plus, Trash2, Save, FileText, Package, Users } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -26,12 +26,24 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
   }, [sessionType, photoId]);
   
   // States
-  // description is now a prop
   const [materials, setMaterials] = useState<any[]>([]);
   const [labor, setLabor] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [sessionMaterialsList, setSessionMaterialsList] = useState<any[]>([]);
   const [masterMaterialsList, setMasterMaterialsList] = useState<any[]>([]);
+
+  // Auto-save debounce refs
+  const saveTimersRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+  const pendingUpdatesRef = useRef<{ [key: string]: any }>({});
+  const laborTimersRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+  const pendingLaborUpdatesRef = useRef<{ [key: string]: any }>({});
+
+  useEffect(() => {
+    return () => {
+      Object.values(saveTimersRef.current).forEach(clearTimeout);
+      Object.values(laborTimersRef.current).forEach(clearTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -88,8 +100,8 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
       const newMat = await apiPost('/api/aufmass/materials', {
         session_id: sessionId,
         photo_id: photoId || null,
-        item_name: 'New Material',
-        quantity: 1,
+        item_name: '',
+        quantity: null,
         unit: 'st.'
       });
       setMaterials([...materials, newMat]);
@@ -97,14 +109,36 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
     } catch (e) {}
   };
 
-  const handleUpdateMaterial = async (id: string, updates: any) => {
-    // Optimistic UI
+  const handleUpdateMaterial = (id: string, updates: any, immediate = false) => {
+    // Optimistic synchronous UI update
     setMaterials(mats => mats.map(m => m.id === id ? { ...m, ...updates } : m));
     setSessionMaterialsList(mats => mats.map(m => m.id === id ? { ...m, ...updates } : m));
-    try {
-      await apiPatch('/api/aufmass/materials', { id, ...updates });
-    } catch (e) {
-      loadData(); // Revert on error
+
+    pendingUpdatesRef.current[id] = {
+      ...(pendingUpdatesRef.current[id] || {}),
+      ...updates,
+    };
+
+    if (saveTimersRef.current[id]) {
+      clearTimeout(saveTimersRef.current[id]);
+    }
+
+    const flush = async () => {
+      const payload = pendingUpdatesRef.current[id];
+      delete pendingUpdatesRef.current[id];
+      delete saveTimersRef.current[id];
+      if (!payload || Object.keys(payload).length === 0) return;
+      try {
+        await apiPatch('/api/aufmass/materials', { id, ...payload });
+      } catch (e) {
+        console.error("Failed to patch material", e);
+      }
+    };
+
+    if (immediate) {
+      flush();
+    } else {
+      saveTimersRef.current[id] = setTimeout(flush, 400);
     }
   };
 
@@ -141,6 +175,11 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
   };
 
   const handleDeleteMaterial = async (id: string) => {
+    if (saveTimersRef.current[id]) {
+      clearTimeout(saveTimersRef.current[id]);
+      delete saveTimersRef.current[id];
+    }
+    delete pendingUpdatesRef.current[id];
     setMaterials(mats => mats.filter(m => m.id !== id));
     setSessionMaterialsList(mats => mats.filter(m => m.id !== id));
     try {
@@ -162,16 +201,43 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
     } catch (e) {}
   };
 
-  const handleUpdateLabor = async (id: string, updates: any) => {
+  const handleUpdateLabor = (id: string, updates: any, immediate = false) => {
     setLabor(labs => labs.map(l => l.id === id ? { ...l, ...updates } : l));
-    try {
-      await apiPatch('/api/aufmass/labor', { id, ...updates });
-    } catch (e) {
-      loadData();
+
+    pendingLaborUpdatesRef.current[id] = {
+      ...(pendingLaborUpdatesRef.current[id] || {}),
+      ...updates,
+    };
+
+    if (laborTimersRef.current[id]) {
+      clearTimeout(laborTimersRef.current[id]);
+    }
+
+    const flush = async () => {
+      const payload = pendingLaborUpdatesRef.current[id];
+      delete pendingLaborUpdatesRef.current[id];
+      delete laborTimersRef.current[id];
+      if (!payload || Object.keys(payload).length === 0) return;
+      try {
+        await apiPatch('/api/aufmass/labor', { id, ...payload });
+      } catch (e) {
+        console.error("Failed to patch labor", e);
+      }
+    };
+
+    if (immediate) {
+      flush();
+    } else {
+      laborTimersRef.current[id] = setTimeout(flush, 400);
     }
   };
 
   const handleDeleteLabor = async (id: string) => {
+    if (laborTimersRef.current[id]) {
+      clearTimeout(laborTimersRef.current[id]);
+      delete laborTimersRef.current[id];
+    }
+    delete pendingLaborUpdatesRef.current[id];
     setLabor(labs => labs.filter(l => l.id !== id));
     try {
       await apiDelete(`/api/aufmass/labor?id=${id}`);
@@ -239,9 +305,11 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
                 <div className="flex justify-between items-start">
                   <input
                     type="text"
-                    value={mat.item_name}
+                    value={mat.item_name || ''}
+                    placeholder={t("aufmass", "materialNamePlaceholder", "Nazwa materiału / Material...")}
                     list="material-suggestions"
                     onChange={(e) => handleMaterialNameChange(mat.id, e.target.value)}
+                    onBlur={() => handleUpdateMaterial(mat.id, {}, true)}
                     className="bg-transparent border-b border-dashed border-white/20 text-sm font-bold text-white outline-none w-2/3 focus:border-emerald-500"
                   />
                   <button onClick={() => handleDeleteMaterial(mat.id)} className="text-slate-600 hover:text-red-500">
@@ -255,8 +323,13 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
                     </label>
                     <input
                       type="number"
-                      value={mat.quantity}
-                      onChange={(e) => handleUpdateMaterial(mat.id, { quantity: parseFloat(e.target.value) })}
+                      value={mat.quantity !== null && mat.quantity !== undefined && !isNaN(mat.quantity) ? mat.quantity : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleUpdateMaterial(mat.id, { quantity: val === '' ? null : parseFloat(val) });
+                      }}
+                      onBlur={() => handleUpdateMaterial(mat.id, {}, true)}
+                      placeholder="0"
                       className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white outline-none mt-1"
                     />
                   </div>
@@ -266,8 +339,10 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
                     </label>
                     <input
                       type="text"
-                      value={mat.unit}
+                      value={mat.unit || ''}
                       onChange={(e) => handleUpdateMaterial(mat.id, { unit: e.target.value })}
+                      onBlur={() => handleUpdateMaterial(mat.id, {}, true)}
+                      placeholder="st."
                       className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white outline-none mt-1"
                     />
                   </div>
@@ -277,8 +352,13 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
                     </label>
                     <input
                       type="number"
-                      value={mat.price || ''}
-                      onChange={(e) => handleUpdateMaterial(mat.id, { price: parseFloat(e.target.value) })}
+                      value={mat.price !== null && mat.price !== undefined && !isNaN(mat.price) ? mat.price : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleUpdateMaterial(mat.id, { price: val === '' ? null : parseFloat(val) });
+                      }}
+                      onBlur={() => handleUpdateMaterial(mat.id, {}, true)}
+                      placeholder="0.00"
                       className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white outline-none mt-1"
                     />
                   </div>
@@ -313,8 +393,13 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
                     </label>
                     <input
                       type="number"
-                      value={lab.worker_count}
-                      onChange={(e) => handleUpdateLabor(lab.id, { worker_count: parseInt(e.target.value) })}
+                      value={lab.worker_count !== null && lab.worker_count !== undefined && !isNaN(lab.worker_count) ? lab.worker_count : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleUpdateLabor(lab.id, { worker_count: val === '' ? null : parseInt(val, 10) });
+                      }}
+                      onBlur={() => handleUpdateLabor(lab.id, {}, true)}
+                      placeholder="1"
                       className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white outline-none mt-1"
                     />
                   </div>
@@ -324,8 +409,13 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
                     </label>
                     <input
                       type="number"
-                      value={lab.estimated_hours}
-                      onChange={(e) => handleUpdateLabor(lab.id, { estimated_hours: parseFloat(e.target.value) })}
+                      value={lab.estimated_hours !== null && lab.estimated_hours !== undefined && !isNaN(lab.estimated_hours) ? lab.estimated_hours : ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleUpdateLabor(lab.id, { estimated_hours: val === '' ? null : parseFloat(val) });
+                      }}
+                      onBlur={() => handleUpdateLabor(lab.id, {}, true)}
+                      placeholder="1"
                       className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white outline-none mt-1"
                     />
                   </div>
@@ -338,6 +428,7 @@ export default function AufmassPanel({ sessionId, photoId, description, onChange
                       type="text"
                       value={lab.description || ''}
                       onChange={(e) => handleUpdateLabor(lab.id, { description: e.target.value })}
+                      onBlur={() => handleUpdateLabor(lab.id, {}, true)}
                       placeholder={t("aufmass", "laborPlaceholder", "e.g., Installation of cables")}
                       className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white outline-none mt-1"
                     />

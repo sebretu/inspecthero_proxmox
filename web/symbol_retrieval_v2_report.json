@@ -1,0 +1,141 @@
+{
+  "generated_at": "2026-07-23T23:37:50.135338",
+  "total_queries": 1354,
+  "experiment_status": "COMPLETED",
+  "target_82pct_achieved": false,
+  "target_85pct_achieved": false,
+  "socket_edv_50pct_reduction": false,
+  "best_pipeline": "HYBRID_BEST",
+  "best_precision1": 0.7962,
+  "baseline_v1_precision1": 0.7688,
+  "improvement_over_baseline": 0.0274,
+  "siamese_best_val_epoch": 5,
+  "siamese_best_val_p1": 0.537,
+  "hybrid_best_weights": {
+    "emb": 0.65,
+    "cls": 0.25,
+    "geo": 0.09999999999999998
+  },
+  "ensemble_best_weight_v1": 0.9,
+  "gt_audit_summary": {
+    "cross_class_high_similarity_pairs": 63,
+    "same_class_low_similarity_pairs": 435481
+  },
+  "pipeline_results": {
+    "V1_OLD": {
+      "pipeline": "V1_OLD_Handcrafted",
+      "precision1": 0.7688,
+      "precision5": 0.6908,
+      "recall10": 0.0188,
+      "mrr": 0.8325,
+      "false_match_rate": 0.2312,
+      "socket_edv_errors": 51,
+      "confusion": {
+        "socket->edv": 32,
+        "edv->socket": 19,
+        "socket->sym_socket": 3,
+        "sym_socket->socket": 4,
+        "light->special": 2,
+        "special->light": 5,
+        "cee->socket": 19,
+        "socket->cee": 33
+      }
+    },
+    "HYBRID": {
+      "pipeline": "Hybrid_V2",
+      "precision1": 0.7903,
+      "precision5": 0.7548,
+      "recall10": 0.0186,
+      "mrr": 0.8409,
+      "false_match_rate": 0.2097,
+      "socket_edv_errors": 47,
+      "confusion": {
+        "socket->edv": 15,
+        "edv->socket": 32,
+        "socket->sym_socket": 6,
+        "sym_socket->socket": 5,
+        "light->special": 3,
+        "special->light": 5,
+        "cee->socket": 29,
+        "socket->cee": 17
+      }
+    },
+    "HYBRID_BEST": {
+      "pipeline": "Hybrid_0.65_0.25_0.10",
+      "precision1": 0.7962,
+      "precision5": 0.7625,
+      "recall10": 0.0184,
+      "mrr": 0.8407,
+      "false_match_rate": 0.2038,
+      "socket_edv_errors": 47,
+      "confusion": {
+        "socket->edv": 13,
+        "edv->socket": 34,
+        "socket->sym_socket": 7,
+        "sym_socket->socket": 6,
+        "light->special": 3,
+        "special->light": 5,
+        "cee->socket": 29,
+        "socket->cee": 12
+      }
+    },
+    "SIAMESE": {
+      "pipeline": "Siamese_ContrastiveLoss",
+      "precision1": 0.7149,
+      "precision5": 0.6669,
+      "recall10": 0.0124,
+      "mrr": 0.7869,
+      "false_match_rate": 0.2851,
+      "socket_edv_errors": 100,
+      "confusion": {
+        "socket->edv": 45,
+        "edv->socket": 55,
+        "socket->sym_socket": 2,
+        "sym_socket->socket": 5,
+        "light->special": 4,
+        "special->light": 5,
+        "cee->socket": 24,
+        "socket->cee": 31
+      }
+    },
+    "ENSEMBLE_BEST": {
+      "pipeline": "Ensemble_V1_0.9_Sia_0.1",
+      "precision1": 0.7644,
+      "precision5": 0.6814,
+      "recall10": 0.0188,
+      "mrr": 0.8278,
+      "false_match_rate": 0.2356,
+      "socket_edv_errors": 51,
+      "confusion": {
+        "socket->edv": 34,
+        "edv->socket": 17,
+        "socket->sym_socket": 2,
+        "sym_socket->socket": 4,
+        "light->special": 2,
+        "special->light": 4,
+        "cee->socket": 20,
+        "socket->cee": 35
+      }
+    },
+    "ENSEMBLE_TRIPLE": {
+      "pipeline": "TriEns_H0.6_S0.4_V0.0",
+      "precision1": 0.7895,
+      "precision5": 0.7544,
+      "recall10": 0.0181,
+      "mrr": 0.8357,
+      "false_match_rate": 0.2105,
+      "socket_edv_errors": 48,
+      "confusion": {
+        "socket->edv": 11,
+        "edv->socket": 37,
+        "socket->sym_socket": 5,
+        "sym_socket->socket": 6,
+        "light->special": 2,
+        "special->light": 5,
+        "cee->socket": 34,
+        "socket->cee": 15
+      }
+    }
+  },
+  "recommended_pipeline": "HYBRID_BEST"
+}

@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-07-24T06:03:10.045862",
+  "total_samples": 300,
+  "mean_similarity_to_v1": {
+    "symbol_0px": 0.5925,
+    "symbol_5px": 0.6193,
+    "symbol_10px": 0.63,
+    "symbol_20px": 0.6424,
+    "symbol_40px": 0.6674,
+    "symbol_80px": 0.7297,
+    "V1_full": 0.98
+  },
+  "step_by_step_stability": {
+    "symbol_0px->symbol_5px": 0.8606,
+    "symbol_5px->symbol_10px": 0.8938,
+    "symbol_10px->symbol_20px": 0.8619,
+    "symbol_20px->symbol_40px": 0.8415,
+    "symbol_40px->symbol_80px": 0.8098,
+    "symbol_80px->V1_full": 0.7297
+  },
+  "insight": "Adding context to a tight crop drastically alters the 768D embedding vector. Cosine similarity between symbol_0px and V1_full drops to ~0.55-0.62, showing that context dominates the direction of the vector."
+}

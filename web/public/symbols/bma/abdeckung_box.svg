@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" width="100" height="80">
+  <rect x="4" y="4" width="92" height="72" rx="4" fill="#ffffff" stroke="#64748b" stroke-width="3" stroke-dasharray="6 4"/>
+  <rect x="15" y="15" width="70" height="50" rx="2" fill="#f1f5f9" opacity="0.6"/>
+  <text x="50" y="45" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#475569" text-anchor="middle">COVER</text>
+</svg>

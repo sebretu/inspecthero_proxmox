@@ -1,0 +1,137 @@
+{
+  "generated_at": "2026-07-22T18:25:35.965Z",
+  "total_queries": 1320,
+  "scale_analysis": {
+    "average_symbol_size_px": "157.02 x 153.75",
+    "average_crop_area_per_margin": {
+      "margin_6": 32861,
+      "margin_16": 39916,
+      "margin_24": 46137,
+      "margin_32": 23547
+    },
+    "average_context_pixels_added": {
+      "margin_6": 3539,
+      "margin_16": 10595,
+      "margin_24": 16815,
+      "margin_32": 23547
+    }
+  },
+  "benchmark_results": {
+    "OLD": {
+      "label": "V1 (Fixed Context 256px)",
+      "precision1": 0.7788,
+      "precision5": 0.6992,
+      "recall10": 0.0163,
+      "mrr": 0.8385,
+      "false_match_rate": 0.2212,
+      "confusion": {
+        "socket->edv": 34,
+        "edv->socket": 18,
+        "socket->sym_socket": 4,
+        "sym_socket->socket": 5,
+        "light->special": 1,
+        "special->light": 4,
+        "cee->socket": 19,
+        "socket->cee": 25
+      }
+    },
+    "V2.1": {
+      "label": "V2.1 (Pure Crop 6px + Contain Scale)",
+      "precision1": 0.722,
+      "precision5": 0.6802,
+      "recall10": 0.0136,
+      "mrr": 0.7972,
+      "false_match_rate": 0.278,
+      "confusion": {
+        "socket->edv": 56,
+        "edv->socket": 55,
+        "socket->sym_socket": 7,
+        "sym_socket->socket": 7,
+        "light->special": 10,
+        "special->light": 7,
+        "cee->socket": 18,
+        "socket->cee": 19
+      }
+    },
+    "V3_margin6": {
+      "label": "V3 (Margin 6px + CAD Scale Preserved)",
+      "precision1": 0.7258,
+      "precision5": 0.68,
+      "recall10": 0.0139,
+      "mrr": 0.8012,
+      "false_match_rate": 0.2742,
+      "confusion": {
+        "socket->edv": 62,
+        "edv->socket": 54,
+        "socket->sym_socket": 5,
+        "sym_socket->socket": 7,
+        "light->special": 9,
+        "special->light": 7,
+        "cee->socket": 20,
+        "socket->cee": 23
+      }
+    },
+    "V3_margin16": {
+      "label": "V3 (Margin 16px + CAD Scale Preserved)",
+      "precision1": 0.7197,
+      "precision5": 0.6712,
+      "recall10": 0.0131,
+      "mrr": 0.7973,
+      "false_match_rate": 0.2803,
+      "confusion": {
+        "socket->edv": 61,
+        "edv->socket": 54,
+        "socket->sym_socket": 3,
+        "sym_socket->socket": 8,
+        "light->special": 9,
+        "special->light": 6,
+        "cee->socket": 23,
+        "socket->cee": 27
+      }
+    },
+    "V3_margin24": {
+      "label": "V3 (Margin 24px + CAD Scale Preserved)",
+      "precision1": 0.7205,
+      "precision5": 0.6653,
+      "recall10": 0.0131,
+      "mrr": 0.7968,
+      "false_match_rate": 0.2795,
+      "confusion": {
+        "socket->edv": 63,
+        "edv->socket": 55,
+        "socket->sym_socket": 4,
+        "sym_socket->socket": 7,
+        "light->special": 9,
+        "special->light": 7,
+        "cee->socket": 23,
+        "socket->cee": 25
+      }
+    },
+    "V3_margin32": {
+      "label": "V3 (Margin 32px + CAD Scale Preserved)",
+      "precision1": 0.7205,
+      "precision5": 0.6691,
+      "recall10": 0.0133,
+      "mrr": 0.7967,
+      "false_match_rate": 0.2795,
+      "confusion": {
+        "socket->edv": 62,
+        "edv->socket": 56,
+        "socket->sym_socket": 5,
+        "sym_socket->socket": 6,
+        "light->special": 11,
+        "special->light": 8,
+        "cee->socket": 24,
+        "socket->cee": 21
+      }
+    }
+  },
+  "recommended_pipeline": "OLD",
+  "recommended_pipeline_precision1": 0.7788,
+  "conclusions": {
+    "best_margin": "N/A",
+    "cad_scale_preservation_effective": true,
+    "local_context_improves_precision1": false,
+    "socket_edv_confusion_minimized_by": "OLD"
+  }
+}

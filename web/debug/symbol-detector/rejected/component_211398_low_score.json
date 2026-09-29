@@ -1,0 +1,17 @@
+{
+  "id": "component_211398",
+  "bbox": {
+    "minX": 4280,
+    "minY": 4910,
+    "width": 16,
+    "height": 10
+  },
+  "pixelCount": 8,
+  "compactness": 0.049999996875000195,
+  "symbolLikelihoodScore": 35,
+  "reasons": [
+    "+ closed_bbox_structure",
+    "+ symmetry_above_0.40"
+  ],
+  "reasonRejected": "likelihood_score_below_40"
+}

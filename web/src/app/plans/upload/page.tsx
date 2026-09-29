@@ -99,7 +99,15 @@ export default function PlansUploadPage() {
         const bs = await apiGet<Building[]>(`/api/buildings?projectId=${encodeURIComponent(projectId)}`, token!);
         if (!active) return;
         setBuildings(bs);
-        if (bs.length > 0 && !bs.find(b => b.id === buildingId)) setBuildingId(bs[0].id);
+        if (bs.length > 0) {
+          if (!bs.find(b => b.id === buildingId)) {
+            setBuildingId(bs[0].id);
+          }
+        } else {
+          setBuildingId("");
+          setFloors([]);
+          setFloorId("");
+        }
       } catch (e: any) { if (active) setErr(e.message); }
     })();
     return () => { active = false; };
@@ -107,15 +115,27 @@ export default function PlansUploadPage() {
 
   useEffect(() => {
     if (!projectId || !sessionChecked || !isAdmin) return;
+    if (!buildingId) {
+      setFloors([]);
+      setFloorId("");
+      return;
+    }
     let active = true;
     (async () => {
       try {
         const token = await getToken();
         const fs = await apiGet<Floor[]>(`/api/floors?projectId=${encodeURIComponent(projectId)}`, token!);
         if (!active) return;
-        const relevantFloors = buildingId ? fs.filter(f => f.building_id === buildingId) : [];
+        const relevantFloors = fs.filter(f => f.building_id === buildingId);
         setFloors(relevantFloors);
-        if (relevantFloors.length > 0 && !relevantFloors.find(f => f.id === floorId)) setFloorId(relevantFloors[0].id);
+        if (relevantFloors.length > 0) {
+          if (!relevantFloors.find(f => f.id === floorId)) {
+            setFloorId(relevantFloors[0].id);
+          }
+        } else {
+          // Explicitly clear floorId when building has no floors
+          setFloorId("");
+        }
       } catch (e: any) { if (active) setErr(e.message); }
     })();
     return () => { active = false; };
@@ -146,13 +166,18 @@ export default function PlansUploadPage() {
       const created = await apiPost<Building>("/api/buildings", { project_id: projectId, name: newBuildingName.trim() });
       setBuildings(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
       setBuildingId(created.id);
+      setFloors([]);
+      setFloorId("");
       setNewBuildingName("");
     } catch (e: any) { setErr(e.message); }
     finally { setCreatingBuilding(false); }
   }
 
   async function createFloor() {
-    if (!projectId || !newFloorName.trim()) return;
+    if (!projectId || !buildingId || !newFloorName.trim()) {
+      setErr(t("planUpload", "selectBuildingFirst", "Please select a building and specify a floor name."));
+      return;
+    }
     setCreatingFloor(true);
     try {
       const level = newFloorLevel.trim() === "" ? null : Number(newFloorLevel);
@@ -167,10 +192,17 @@ export default function PlansUploadPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file || !projectId || !floorId) {
-      setErr(t("planUpload", "errorMissingFields", "Fill in all fields."));
+    if (!file || !projectId || !buildingId || !floorId) {
+      setErr(t("planUpload", "errorMissingFields", "Please select a project, building, and floor, and attach a PDF."));
       return;
     }
+
+    const matchedFloor = floors.find(f => f.id === floorId);
+    if (!matchedFloor) {
+      setErr(t("planUpload", "invalidFloor", "Selected floor does not match the active building. Please create or choose a floor."));
+      return;
+    }
+
     setBusy(true); setErr(null); setOk(null);
     try {
       const token = await getToken();
@@ -327,20 +359,30 @@ export default function PlansUploadPage() {
                   <select
                     value={floorId}
                     onChange={(e) => setFloorId(e.target.value)}
-                    className="w-full bg-black/40 border border-ui-border rounded-2xl px-6 py-4 text-xs font-bold text-ui-text outline-none appearance-none cursor-pointer focus:border-ui-accent/50 transition-all"
+                    disabled={floors.length === 0}
+                    className="w-full bg-black/40 border border-ui-border rounded-2xl px-6 py-4 text-xs font-bold text-ui-text outline-none appearance-none cursor-pointer focus:border-ui-accent/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    {floors.map(f => <option key={f.id} value={f.id} className="bg-ui-bg">{f.name} (Level {f.level})</option>)}
-                    {floors.length === 0 && <option value="" className="bg-ui-bg">{t("planUpload", "noFloors", "NO FLOORS FOUND")}</option>}
+                    {floors.length === 0 ? (
+                      <option value="" className="bg-ui-bg">{t("planUpload", "noFloors", "NO FLOORS FOUND — PLEASE ADD ONE BELOW")}</option>
+                    ) : (
+                      floors.map(f => <option key={f.id} value={f.id} className="bg-ui-bg">{f.name} (Level {f.level})</option>)
+                    )}
                   </select>
                   <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-ui-muted">▼</div>
                 </div>
+
+                {buildingId && floors.length === 0 && (
+                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] font-bold">
+                    ⚠️ {t("planUpload", "floorRequiredWarning", "This building has no floors yet. Create a floor below before uploading a plan.")}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
                   <input
                     type="text"
                     value={newFloorName}
                     onChange={e => setNewFloorName(e.target.value)}
-                    placeholder={t("planUpload", "newFloorName", "Floor name")}
+                    placeholder={t("planUpload", "newFloorName", "Floor name (e.g. EG, OG, Halle)")}
                     className="bg-black/40 border border-ui-border rounded-xl px-5 py-3 text-[10px] font-bold text-ui-text outline-none focus:border-ui-accent/30 transition-all"
                   />
                   <div className="flex gap-3">
@@ -353,7 +395,7 @@ export default function PlansUploadPage() {
                     />
                     <button
                       onClick={createFloor}
-                      disabled={!newFloorName.trim() || creatingFloor}
+                      disabled={!newFloorName.trim() || creatingFloor || !buildingId}
                       className="flex-1 rounded-xl bg-ui-accent/10 border border-ui-accent/30 text-ui-accent text-[10px] font-black uppercase tracking-widest hover:bg-ui-accent hover:text-ui-bg transition-all disabled:opacity-30"
                     >
                       {creatingFloor ? "..." : "＋ ADD FLOOR"}
@@ -423,7 +465,7 @@ export default function PlansUploadPage() {
                     <div className="flex flex-col gap-4 px-10">
                       <button
                         onClick={onSubmit}
-                        disabled={busy || !projectId || !floorId}
+                        disabled={busy || !projectId || !buildingId || !floorId || floors.length === 0}
                         className="w-full bg-ui-accent text-ui-bg py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-ui-accent/30 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                       >
                         {busy ? "..." : t("planUpload", "submit", "UPLOAD PLAN NOW")}

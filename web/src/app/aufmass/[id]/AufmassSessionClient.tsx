@@ -157,7 +157,7 @@ export default function AufmassSessionClient({ sessionId }: { sessionId: string 
           <div>
             <h1 className="text-sm md:text-base font-black text-white tracking-widest uppercase leading-none">{session.name}</h1>
             <p className="text-[10px] text-ui-accent tracking-widest uppercase mt-1">
-              {session.session_type === 'zusatz' ? t("aufmass", "zusatz", "Zusatzplanung") : session.session_type === 'baubehinderung' ? t("aufmass", "baubehinderung", "Baubehinderung") : session.session_type === 'bestellung' ? t("aufmass", "bestellung", "Bestellung") : t("aufmass", "aufmass", "Aufmaß")}
+              {session.session_type === 'zusatz' ? t("aufmass", "zusatz", "Zusatzarbeit") : session.session_type === 'baubehinderung' ? t("aufmass", "baubehinderung", "Baubehinderung") : session.session_type === 'bestellung' ? t("aufmass", "bestellung", "Bestellung") : t("aufmass", "aufmass", "Aufmaß")}
             </p>
           </div>
         </div>

@@ -1,0 +1,529 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>SYMBOL_GENERATOR_V4 Visual Validation (V2 vs V4)</title>
+      <style>
+        body { background: #020617; color: #f8fafc; font-family: system-ui, sans-serif; padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); gap: 16px; margin-top: 20px; }
+        .header { background: #0f172a; padding: 20px; border-radius: 12px; border: 1px solid #1e293b; }
+        .metric { font-size: 24px; font-weight: bold; color: #4ade80; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>⚡ SYMBOL_GENERATOR_V4 Validation Report</h1>
+        <p>Graph-Based Wire Removal & Single Core Isolation vs Legacy V2</p>
+        <div style="display: flex; gap: 32px; margin-top: 16px;">
+          <div><div>V4 Visual SINGLE Rate</div><div class="metric">88.0%</div></div>
+          <div><div>V4 Avg Occupancy</div><div class="metric">69.8%</div></div>
+          <div><div>V4 Median Occupancy</div><div class="metric">75.3%</div></div>
+          <div><div>V4 Avg Symbols / Crop</div><div class="metric" style="color: #38bdf8;">1.21</div></div>
+        </div>
+      </div>
+      <div class="grid">
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #01 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_01_a6b0a414.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 52.8% | Wires Removed: 1912px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #02 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_02_729a91e3.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 87.4% | Wires Removed: 52406px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #03 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_03_96b9f535.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 87.4% | Wires Removed: 52412px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #04 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_04_cc9f90d9.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 90.7% | Wires Removed: 9732px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #05 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_05_1f216ebf.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 64.5% | Wires Removed: 6249px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #06 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_06_3c78ac78.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 84.4% | Wires Removed: 25477px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #07 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_07_85514c7e.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 38.3% | Wires Removed: 7247px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #08 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_08_e863ab3e.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 75.6% | Wires Removed: 8945px | Margin: 6px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #09 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_09_49553d27.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 44.7% | Wires Removed: 8377px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #10 — V4 FAIL (Class: sym_cee32)
+          </div>
+          <img src="preview_v4_10_c5ab33d7.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 75.6% | Wires Removed: 0px | Margin: 6px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #11 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_11_94425547.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 75.6% | Wires Removed: 0px | Margin: 6px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #12 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_12_f2ccbf32.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 74.7% | Wires Removed: 4565px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #13 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_13_72c111a4.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 43.3% | Wires Removed: 1435px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #14 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_14_73635e01.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 59.7% | Wires Removed: 5903px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #15 — V4 PASSED (SINGLE) (Class: light)
+          </div>
+          <img src="preview_v4_15_af6c3538.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 87.5% | Wires Removed: 53342px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #16 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_16_338783ed.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 60.7% | Wires Removed: 3384px | Margin: 7px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #17 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_17_111ffcc7.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 76.9% | Wires Removed: 10376px | Margin: 6px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #18 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_18_a07b04d5.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 73.8% | Wires Removed: 6048px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #19 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_19_3233e68e.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 47.9% | Wires Removed: 6298px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #20 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_20_9a3b592f.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 64.3% | Wires Removed: 657px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #21 — V4 FAIL (Class: edv)
+          </div>
+          <img src="preview_v4_21_35d547fb.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 75.6% | Wires Removed: 3935px | Margin: 6px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #22 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_22_ad6d3098.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 32.2% | Wires Removed: 11706px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #23 — V4 FAIL (Class: edv)
+          </div>
+          <img src="preview_v4_23_21a4865c.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 75.6% | Wires Removed: 1559px | Margin: 6px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #24 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_24_ce5717a0.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 69.1% | Wires Removed: 4270px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #25 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_25_88ba04d0.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 69.0% | Wires Removed: 6421px | Margin: 6px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #26 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_26_6c42776e.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 73.0% | Wires Removed: 11880px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #27 — V4 FAIL (Class: edv)
+          </div>
+          <img src="preview_v4_27_6f8dfb26.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 75.6% | Wires Removed: 598px | Margin: 6px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #28 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_28_eb60a9cb.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 75.6% | Wires Removed: 4838px | Margin: 6px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #29 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_29_edef57e3.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 38.6% | Wires Removed: 1588px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #30 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_30_677a48ab.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 87.0% | Wires Removed: 48816px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #31 — V4 PASSED (SINGLE) (Class: special)
+          </div>
+          <img src="preview_v4_31_57f08106.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 76.4% | Wires Removed: 7322px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #32 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_32_a9bab657.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 86.9% | Wires Removed: 48577px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #33 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_33_672dedb8.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 74.9% | Wires Removed: 9211px | Margin: 6px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #34 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_34_35a570ed.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 68.7% | Wires Removed: 5722px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #35 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_35_f10001a1.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 87.0% | Wires Removed: 49003px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #36 — V4 PASSED (SINGLE) (Class: light)
+          </div>
+          <img src="preview_v4_36_ee00eacc.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 87.4% | Wires Removed: 52411px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #37 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_37_157a8919.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 51.0% | Wires Removed: 4041px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #38 — V4 FAIL (Class: light)
+          </div>
+          <img src="preview_v4_38_2fa47308.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 47.5% | Wires Removed: 3372px | Margin: 7px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #39 — V4 PASSED (SINGLE) (Class: edv)
+          </div>
+          <img src="preview_v4_39_d69a3785.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 80.0% | Wires Removed: 4716px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #40 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_40_3cee1375.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 47.9% | Wires Removed: 5364px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #41 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_41_729f23f0.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 44.1% | Wires Removed: 477px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #42 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_42_8e5fc491.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 51.0% | Wires Removed: 4041px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #43 — V4 PASSED (SINGLE) (Class: special)
+          </div>
+          <img src="preview_v4_43_ef49aa1d.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 75.3% | Wires Removed: 3827px | Margin: 5px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #44 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_44_d7d11d08.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 74.6% | Wires Removed: 3610px | Margin: 5px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #45 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_45_98c0c28e.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 86.0% | Wires Removed: 17687px | Margin: 8px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #46 — V4 FAIL (Class: light)
+          </div>
+          <img src="preview_v4_46_849d3999.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 53.6% | Wires Removed: 4810px | Margin: 4px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #47 — V4 FAIL (Class: socket)
+          </div>
+          <img src="preview_v4_47_2946f3d3.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 75.6% | Wires Removed: 8016px | Margin: 6px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #48 — V4 FAIL (Class: edv)
+          </div>
+          <img src="preview_v4_48_886c3ad1.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 75.6% | Wires Removed: 267px | Margin: 6px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #4ade80;">
+             #49 — V4 PASSED (SINGLE) (Class: socket)
+          </div>
+          <img src="preview_v4_49_0f338d12.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 74.8% | Wires Removed: 8913px | Margin: 5px
+          </div>
+        </div>
+        
+        <div style="border: 1px solid #334155; border-radius: 8px; padding: 12px; background: #0f172a; color: #f8fafc; font-family: monospace;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #f87171;">
+             #50 — V4 FAIL (Class: edv)
+          </div>
+          <img src="preview_v4_50_ee007b7c.png" style="width: 100%; border-radius: 4px; display: block;" />
+          <div style="margin-top: 8px; font-size: 12px; color: #94a3b8;">
+            V4 Occupancy: 75.6% | Wires Removed: 1615px | Margin: 6px
+          </div>
+        </div>
+        
+      </div>
+    </body>
+    </html>
+    

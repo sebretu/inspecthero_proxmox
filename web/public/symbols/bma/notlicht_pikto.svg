@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Background Green -->
+  <rect width="100" height="100" rx="6" fill="#006633"/>
+  <!-- White Doorway Frame -->
+  <rect x="18" y="7" width="60" height="86" rx="2" fill="#ffffff"/>
+  <rect x="23" y="12" width="50" height="76" rx="1" fill="#006633"/>
+  <!-- Exit Opening (White) -->
+  <rect x="18" y="7" width="60" height="86" rx="2" fill="#ffffff"/>
+  <!-- Running Figure in Green (ISO 7010 Exit style) -->
+  <!-- Head -->
+  <circle cx="56" cy="23" r="7" fill="#006633"/>
+  <!-- Torso & Arms & Legs -->
+  <!-- Torso -->
+  <path d="M 52 31 L 43 45 L 36 60 L 43 60 L 48 48 L 57 44 L 64 60 L 70 76 L 62 76 L 56 62 L 50 51 L 44 65 L 37 80 L 30 80 L 40 60 Z" fill="#006633"/>
+  <!-- Right Arm (reaching for door) -->
+  <path d="M 56 36 L 68 45 L 78 45 L 78 51 L 65 51 L 52 40 Z" fill="#006633"/>
+  <!-- Left Arm -->
+  <path d="M 43 40 L 32 43 L 26 49 L 22 45 L 30 38 L 43 35 Z" fill="#006633"/>
+  <!-- Left Leg Forward -->
+  <path d="M 44 62 L 35 77 L 24 81 L 22 75 L 30 72 L 38 59 Z" fill="#006633"/>
+  <!-- Right Leg Back -->
+  <path d="M 55 58 L 63 72 L 70 88 L 64 90 L 58 76 L 51 64 Z" fill="#006633"/>
+  <!-- Outer border -->
+  <rect x="1" y="1" width="98" height="98" rx="5" fill="none" stroke="#004d26" stroke-width="2"/>
+</svg>

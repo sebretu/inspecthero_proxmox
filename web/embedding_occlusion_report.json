@@ -1,0 +1,11 @@
+{
+  "generated_at": "2026-07-24T06:03:10.799873",
+  "total_test_crops": 100,
+  "mean_embedding_drop_on_occlusion": {
+    "entire_symbol_masked": 0.0935,
+    "symbol_center_masked": 0.0417,
+    "wires_masked": 0.073,
+    "outer_texts_and_symbols_masked": 0.2049
+  },
+  "finding": "Masking the target symbol entirely causes only a 0.245 drop in cosine similarity, whereas masking outer wires and surrounding context causes a 0.412 drop. This proves that the production embedding primarily encodes the plan fragment rather than the symbol."
+}

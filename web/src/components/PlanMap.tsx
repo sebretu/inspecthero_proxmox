@@ -638,6 +638,7 @@ export default function PlanMap({
           projectId={projectId || undefined}
           isWhiteSchemaMode={isWhiteSchemaMode}
           onToggleWhiteSchemaMode={() => setIsWhiteSchemaMode((prev) => !prev)}
+          hideToolbars={Boolean(hideTasks || (aufmassMarkers && aufmassMarkers.length > 0))}
         />
 
         {/* Task / Question creation button placed in the top-right toolbar */}

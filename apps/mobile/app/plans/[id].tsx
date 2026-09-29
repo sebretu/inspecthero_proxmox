@@ -262,6 +262,9 @@ interface AufmassMarkerPin {
 
 export default function InteractivePlanScreen() {
   const { id, mode, aufmassId } = useLocalSearchParams<{ id: string; mode?: string; aufmassId?: string }>();
+  const activeMode = (Array.isArray(mode) ? mode[0] : (mode || '')).toLowerCase().trim();
+  const activeAufmassId = Array.isArray(aufmassId) ? aufmassId[0] : (aufmassId || '');
+
   const router = useRouter();
   const webViewRef = useRef<WebView>(null);
   const { t } = useLanguage();
@@ -284,19 +287,19 @@ export default function InteractivePlanScreen() {
 
   // Layers Visibility filtered by initial mode
   const initialLayers = useMemo<Record<SymbolCategory, boolean>>(() => {
-    if (mode === 'circuits') {
+    if (activeMode === 'circuits') {
       return { tasks: false, heating: false, circuits: true, lighting: false, bma: false, notlicht: false, cables: false, klappen: false };
     }
-    if (mode === 'bma') {
+    if (activeMode === 'bma') {
       return { tasks: false, heating: false, circuits: false, lighting: false, bma: true, notlicht: false, cables: false, klappen: false };
     }
-    if (mode === 'tasks' || mode === 'maengel') {
+    if (activeMode === 'tasks' || activeMode === 'maengel') {
       return { tasks: true, heating: false, circuits: false, lighting: false, bma: false, notlicht: false, cables: false, klappen: false };
     }
-    if (mode === 'cables') {
+    if (activeMode === 'cables') {
       return { tasks: false, heating: false, circuits: false, lighting: false, bma: false, notlicht: false, cables: true, klappen: false };
     }
-    if (mode === 'aufmass') {
+    if (activeMode === 'aufmass') {
       return { tasks: false, heating: false, circuits: false, lighting: false, bma: false, notlicht: false, cables: false, klappen: false };
     }
     return {
@@ -309,7 +312,7 @@ export default function InteractivePlanScreen() {
       cables: true,
       klappen: true,
     };
-  }, [mode]);
+  }, [activeMode]);
 
   const [layers, setLayers] = useState<Record<SymbolCategory, boolean>>(initialLayers);
 
@@ -689,9 +692,9 @@ export default function InteractivePlanScreen() {
 
       // 8. Fetch Aufmass markers if in aufmass mode
       let loadedAufmass: AufmassMarkerPin[] = [];
-      if (token && (mode === 'aufmass' || aufmassId)) {
+      if (token && (activeMode === 'aufmass' || activeAufmassId)) {
         try {
-          const aUrl = aufmassId ? `${apiUrl}/api/aufmass/markers?sessionId=${aufmassId}` : `${apiUrl}/api/aufmass/markers?planId=${activePlanId}`;
+          const aUrl = activeAufmassId ? `${apiUrl}/api/aufmass/markers?sessionId=${activeAufmassId}` : `${apiUrl}/api/aufmass/markers?planId=${activePlanId}`;
           const aRes = await fetch(aUrl, { headers });
           if (aRes.ok) {
             const aJson = await aRes.json();
@@ -715,7 +718,7 @@ export default function InteractivePlanScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, session?.access_token]);
+  }, [id, session?.access_token, activeMode, activeAufmassId]);
 
   useEffect(() => {
     loadPlan();
@@ -1053,19 +1056,39 @@ export default function InteractivePlanScreen() {
     let visibleSymbols: PlanSymbolPin[] = [];
     let visibleAufmass: AufmassMarkerPin[] = [];
 
-    if (mode === 'circuits') {
+    if (activeMode === 'aufmass') {
+      // STRICT Aufmaß Mode: ONLY display Aufmaß measurement markers
+      visibleTasks = [];
+      visibleCircuits = [];
+      visibleCables = [];
+      visibleSymbols = [];
+      visibleAufmass = activeAufmassId
+        ? aufmassMarkers.filter((m) => m.session_id === activeAufmassId)
+        : aufmassMarkers;
+    } else if (activeMode === 'circuits') {
       visibleCircuits = circuits;
-    } else if (mode === 'bma') {
+      visibleTasks = [];
+      visibleCables = [];
+      visibleSymbols = [];
+      visibleAufmass = [];
+    } else if (activeMode === 'bma') {
       visibleSymbols = symbols.filter((s) => getSymbolCategory(s.symbol_type) === 'bma');
-    } else if (mode === 'tasks' || mode === 'maengel') {
+      visibleTasks = [];
+      visibleCircuits = [];
+      visibleCables = [];
+      visibleAufmass = [];
+    } else if (activeMode === 'tasks' || activeMode === 'maengel') {
       visibleTasks = tasks;
-    } else if (mode === 'cables') {
+      visibleCircuits = [];
+      visibleCables = [];
+      visibleSymbols = [];
+      visibleAufmass = [];
+    } else if (activeMode === 'cables') {
       visibleCables = cables;
       visibleSymbols = symbols.filter((s) => getSymbolCategory(s.symbol_type) === 'cables');
-    } else if (mode === 'aufmass') {
-      visibleAufmass = aufmassId
-        ? aufmassMarkers.filter((m) => m.session_id === aufmassId)
-        : aufmassMarkers;
+      visibleTasks = [];
+      visibleCircuits = [];
+      visibleAufmass = [];
     } else {
       visibleTasks = layers.tasks ? tasks : [];
       visibleCircuits = layers.circuits ? circuits : [];
@@ -1288,99 +1311,129 @@ export default function InteractivePlanScreen() {
             }
           }
 
-          // DIN / CAD Vector SVG Symbol Generator
+          // DIN / CAD Vector SVG Symbol Generator (1:1 Web Match)
           function getVectorSvgHtml(type, color, rotation) {
             const rot = rotation || 0;
             const rotStyle = rot ? 'transform: rotate(' + rot + 'deg); transform-origin: center;' : '';
             const c = color || '#38BDF8';
             const tLow = (type || '').toLowerCase();
 
+            // 1. ZWD-Melder (Dual Sensor Blue Square with pulse & 2 arrows)
             if (type === 'detector_blue' || type === 'bma_smoke' || tLow.includes('smoke') || tLow.includes('ot') || tLow.includes('zwd') || tLow.includes('optical')) {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="42" fill="rgba(56,189,248,0.2)" stroke="#0284C7" stroke-width="8"/><circle cx="50" cy="50" r="22" fill="none" stroke="#0284C7" stroke-width="6"/><circle cx="50" cy="50" r="8" fill="#0284C7"/></svg>';
+              return '<svg viewBox="0 0 120 120" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="90" height="90" fill="rgba(37,99,235,0.15)" stroke="#2563eb" stroke-width="6" /><path d="M 25 85 H 38 V 65 H 52 V 85" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /><line x1="38" y1="36" x2="68" y2="66" stroke="#2563eb" stroke-width="5" stroke-linecap="round" /><path d="M 57 66 L 68 68 L 66 57" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /><line x1="56" y1="36" x2="86" y2="66" stroke="#2563eb" stroke-width="5" stroke-linecap="round" /><path d="M 75 66 L 86 68 L 84 57" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /></svg>';
             }
+
+            // 2. D-Melder (Detector Red Square with pulse & 2 arrows)
             if (type === 'detector_red' || type === 'bma_dual' || (tLow.includes('detector') && !tLow.includes('heat') && !tLow.includes('thermo')) || tLow === 'bma' || tLow.includes('melder')) {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="42" fill="rgba(239,68,68,0.2)" stroke="#DC2626" stroke-width="8"/><circle cx="50" cy="50" r="28" fill="none" stroke="#DC2626" stroke-width="6"/><circle cx="50" cy="50" r="14" fill="none" stroke="#DC2626" stroke-width="4"/><circle cx="50" cy="50" r="6" fill="#DC2626"/></svg>';
+              return '<svg viewBox="0 0 120 120" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="90" height="90" fill="rgba(220,38,38,0.15)" stroke="#dc2626" stroke-width="6" /><path d="M 25 85 H 38 V 65 H 52 V 85" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /><line x1="38" y1="36" x2="68" y2="66" stroke="#dc2626" stroke-width="5" stroke-linecap="round" /><path d="M 57 66 L 68 68 L 66 57" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /><line x1="56" y1="36" x2="86" y2="66" stroke="#dc2626" stroke-width="5" stroke-linecap="round" /><path d="M 75 66 L 86 68 L 84 57" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" /></svg>';
             }
-            if (type === 'thermo_melder' || type === 'bma_heat' || tLow.includes('heat') || tLow.includes('thermo') || tLow.includes('temp')) {
+
+            // 3. DIS Signalgeber (Detector with Sirene)
+            if (type === 'dis_signalgeber') {
+              return '<svg viewBox="0 0 120 120" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="25" width="70" height="70" fill="rgba(220,38,38,0.15)" stroke="#dc2626" stroke-width="5" /><path d="M 18 80 H 28 V 64 H 40 V 80" fill="none" stroke="#dc2626" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" /><line x1="28" y1="41" x2="52" y2="65" stroke="#dc2626" stroke-width="4" stroke-linecap="round" /><path d="M 43 65 L 52 66 L 50 58" fill="none" stroke="#dc2626" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" /><line x1="42" y1="41" x2="66" y2="65" stroke="#dc2626" stroke-width="4" stroke-linecap="round" /><path d="M 57 65 L 66 66 L 64 58" fill="none" stroke="#dc2626" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" /><path d="M 80 40 H 92 L 114 28 V 92 L 92 80 H 80 Z" fill="rgba(220,38,38,0.2)" stroke="#dc2626" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" /><text x="96" y="65" fill="#dc2626" font-size="16" font-weight="900" font-family="sans-serif" text-anchor="middle">S</text></svg>';
+            }
+
+            // 4. Sirene / Signalgeber
+            if (type === 'sirene' || type === 'sirene_up' || type === 'bma_siren' || tLow.includes('siren')) {
+              const sirenRot = (type === 'sirene_right') ? 90 : (type === 'sirene_down') ? 180 : (type === 'sirene_left') ? 270 : rot;
+              const sStyle = sirenRot ? 'transform: rotate(' + sirenRot + 'deg); transform-origin: center;' : '';
+              return '<svg viewBox="0 0 120 120" style="width:100%;height:100%;' + sStyle + '"><path d="M 16 38 H 38 L 104 18 V 102 L 38 82 H 16 Z" fill="rgba(220,38,38,0.2)" stroke="#dc2626" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" /></svg>';
+            }
+
+            if (type === 'thermo_melder' || type === 'bma_heat' || tLow.includes('heat') || tLow.includes('thermo')) {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="42" fill="rgba(249,115,22,0.2)" stroke="#EA580C" stroke-width="8"/><path d="M 50 24 L 50 62 M 42 66 A 10 10 0 1 0 58 66 A 10 10 0 0 0 42 66" fill="#EA580C" stroke="#EA580C" stroke-width="4"/></svg>';
             }
+
             if (type === 'handmelder' || type === 'bma_rop' || tLow.includes('hand') || tLow.includes('rop') || tLow.includes('call_point')) {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" rx="8" fill="rgba(220,38,38,0.2)" stroke="#DC2626" stroke-width="8"/><circle cx="50" cy="50" r="16" fill="#DC2626"/><text x="50" y="80" fill="#DC2626" font-size="14" font-weight="900" text-anchor="middle">BMA</text></svg>';
             }
-            if (type === 'sirene' || type === 'sirene_up' || type === 'bma_siren' || tLow.includes('siren')) {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><polygon points="30,35 60,15 60,85 30,65" fill="#F97316" stroke="#C2410C" stroke-width="6"/><rect x="18" y="38" width="14" height="24" fill="#C2410C"/><path d="M 70 30 A 25 25 0 0 1 70 70" fill="none" stroke="#EA580C" stroke-width="6" stroke-linecap="round"/></svg>';
-            }
-            if (type === 'sirene_right') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;transform: rotate(90deg);"><polygon points="30,35 60,15 60,85 30,65" fill="#F97316" stroke="#C2410C" stroke-width="6"/><rect x="18" y="38" width="14" height="24" fill="#C2410C"/><path d="M 70 30 A 25 25 0 0 1 70 70" fill="none" stroke="#EA580C" stroke-width="6" stroke-linecap="round"/></svg>';
-            }
-            if (type === 'sirene_down') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;transform: rotate(180deg);"><polygon points="30,35 60,15 60,85 30,65" fill="#F97316" stroke="#C2410C" stroke-width="6"/><rect x="18" y="38" width="14" height="24" fill="#C2410C"/><path d="M 70 30 A 25 25 0 0 1 70 70" fill="none" stroke="#EA580C" stroke-width="6" stroke-linecap="round"/></svg>';
-            }
-            if (type === 'sirene_left') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;transform: rotate(270deg);"><polygon points="30,35 60,15 60,85 30,65" fill="#F97316" stroke="#C2410C" stroke-width="6"/><rect x="18" y="38" width="14" height="24" fill="#C2410C"/><path d="M 70 30 A 25 25 0 0 1 70 70" fill="none" stroke="#EA580C" stroke-width="6" stroke-linecap="round"/></svg>';
-            }
+
             if (type === 'koppler' || tLow.includes('koppl') || tLow.includes('module')) {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="20" y="20" width="60" height="60" rx="6" fill="#991B1B" stroke="#7F1D1D" stroke-width="8"/><circle cx="50" cy="50" r="14" fill="#FFFFFF"/></svg>';
             }
+
             if (type === 'bmz' || tLow.includes('bmz') || tLow.includes('zentrale')) {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="12" y="12" width="76" height="76" rx="8" fill="#B91C1C" stroke="#7F1D1D" stroke-width="8"/><text x="50" y="60" fill="#FFFFFF" font-size="24" font-weight="900" font-family="sans-serif" text-anchor="middle">BMZ</text></svg>';
             }
-            if (type === 'warmepumpe_aussen') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" rx="10" fill="rgba(2,132,199,0.15)" stroke="#0284C7" stroke-width="7"/><circle cx="50" cy="50" r="26" fill="none" stroke="#0284C7" stroke-width="5"/><path d="M 50 24 L 50 76 M 24 50 L 76 50 M 32 32 L 68 68 M 32 68 L 68 32" stroke="#0284C7" stroke-width="4"/></svg>';
+
+            // 5. Lampe / Leuchte (Orange Circle with 45-deg cross)
+            if (type === 'lampe' || type === 'light') {
+              return '<svg viewBox="0 0 120 120" style="width:100%;height:100%;' + rotStyle + '"><circle cx="60" cy="60" r="48" fill="rgba(249,115,22,0.15)" stroke="#f97316" stroke-width="6" /><line x1="26" y1="26" x2="94" y2="94" stroke="#f97316" stroke-width="6" stroke-linecap="round" /><line x1="94" y1="26" x2="26" y2="94" stroke="#f97316" stroke-width="6" stroke-linecap="round" /></svg>';
             }
+
+            // 6. Notlicht Lampe (Green Circle with white 45-deg wedges)
+            if (type === 'notlicht_lampe') {
+              return '<svg viewBox="0 0 120 120" style="width:100%;height:100%;' + rotStyle + '"><circle cx="60" cy="60" r="48" fill="#16a34a" stroke="#16a34a" stroke-width="4" /><path d="M 60 60 L 26 26 A 48 48 0 0 1 94 26 Z" fill="#ffffff" /><path d="M 60 60 L 26 94 A 48 48 0 0 0 94 94 Z" fill="#ffffff" /></svg>';
+            }
+
+            // 7. Notlicht Pikto (ISO 7010 Exit Doorway with Running Man)
+            if (type === 'notlicht_pikto' || type === 'notlicht_pikto_gross') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect width="100" height="100" rx="6" fill="#006633"/><rect x="18" y="7" width="60" height="86" rx="2" fill="#ffffff"/><circle cx="56" cy="23" r="7" fill="#006633"/><path d="M 52 31 L 43 45 L 36 60 L 43 60 L 48 48 L 57 44 L 64 60 L 70 76 L 62 76 L 56 62 L 50 51 L 44 65 L 37 80 L 30 80 L 40 60 Z" fill="#006633"/><path d="M 56 36 L 68 45 L 78 45 L 78 51 L 65 51 L 52 40 Z" fill="#006633"/><path d="M 43 40 L 32 43 L 26 49 L 22 45 L 30 38 L 43 35 Z" fill="#006633"/><path d="M 44 62 L 35 77 L 24 81 L 22 75 L 30 72 L 38 59 Z" fill="#006633"/><path d="M 55 58 L 63 72 L 70 88 L 64 90 L 58 76 L 51 64 Z" fill="#006633"/><rect x="1" y="1" width="98" height="98" rx="5" fill="none" stroke="#004d26" stroke-width="2"/></svg>';
+            }
+
+            if (type === 'notlicht_pikto_right' || type === 'notlicht_pikto_gross_right') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect width="100" height="100" rx="6" fill="#006633"/><rect x="2" y="2" width="96" height="96" rx="4" fill="none" stroke="#ffffff" stroke-width="2"/><rect x="10" y="14" width="36" height="72" rx="2" fill="#ffffff"/><circle cx="34" cy="27" r="5" fill="#006633"/><path d="M 31 34 L 25 43 L 19 53 L 25 53 L 28 45 L 34 42 L 38 53 L 42 64 L 37 64 L 33 55 L 29 48 L 25 57 L 21 68 L 16 68 L 24 53 Z" fill="#006633"/><path d="M 34 37 L 42 43 L 48 43 L 48 47 L 39 47 L 31 40 Z" fill="#006633"/><path d="M 52 44 L 74 44 L 74 34 L 92 50 L 74 66 L 74 56 L 52 56 Z" fill="#ffffff"/></svg>';
+            }
+
+            if (type === 'notlicht_pikto_left' || type === 'notlicht_pikto_gross_left') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect width="100" height="100" rx="6" fill="#006633"/><rect x="2" y="2" width="96" height="96" rx="4" fill="none" stroke="#ffffff" stroke-width="2"/><rect x="54" y="14" width="36" height="72" rx="2" fill="#ffffff"/><circle cx="66" cy="27" r="5" fill="#006633"/><path d="M 69 34 L 75 43 L 81 53 L 75 53 L 72 45 L 66 42 L 62 53 L 58 64 L 63 64 L 67 55 L 71 48 L 75 57 L 79 68 L 84 68 L 76 53 Z" fill="#006633"/><path d="M 66 37 L 58 43 L 52 43 L 52 47 L 61 47 L 69 40 Z" fill="#006633"/><path d="M 48 44 L 26 44 L 26 34 L 8 50 L 26 66 L 26 56 L 48 56 Z" fill="#ffffff"/></svg>';
+            }
+
+            if (type === 'notlicht_pikto_down' || type === 'notlicht_pikto_gross_down') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect width="100" height="100" rx="6" fill="#006633"/><rect x="2" y="2" width="96" height="96" rx="4" fill="none" stroke="#ffffff" stroke-width="2"/><rect x="18" y="7" width="60" height="46" rx="2" fill="#ffffff"/><circle cx="56" cy="18" r="5" fill="#006633"/><path d="M 52 24 L 45 34 L 39 42 L 45 42 L 48 34 L 54 32 L 59 42 Z" fill="#006633"/><path d="M 44 60 L 44 76 L 34 76 L 50 92 L 66 76 L 56 76 L 56 60 Z" fill="#ffffff"/></svg>';
+            }
+
+            if (type === 'notlicht_pikto_up' || type === 'notlicht_pikto_gross_up') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect width="100" height="100" rx="6" fill="#006633"/><rect x="2" y="2" width="96" height="96" rx="4" fill="none" stroke="#ffffff" stroke-width="2"/><rect x="18" y="47" width="60" height="46" rx="2" fill="#ffffff"/><circle cx="56" cy="58" r="5" fill="#006633"/><path d="M 52 64 L 45 74 L 39 82 L 45 82 L 48 74 L 54 72 L 59 82 Z" fill="#006633"/><path d="M 44 40 L 44 24 L 34 24 L 50 8 L 66 24 L 56 24 L 56 40 Z" fill="#ffffff"/></svg>';
+            }
+
+            // 8. Wärmepumpen & Heizung
             if (type === 'warmepumpe_innen') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="20" y="12" width="60" height="76" rx="8" fill="rgba(14,165,233,0.15)" stroke="#0284C7" stroke-width="7"/><line x1="30" y1="35" x2="70" y2="35" stroke="#0284C7" stroke-width="5"/><circle cx="50" cy="60" r="14" fill="none" stroke="#0284C7" stroke-width="4"/></svg>';
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="5" y="5" width="90" height="90" rx="4" fill="#ffffff" stroke="#1e293b" stroke-width="2"/><line x1="5" y1="20" x2="95" y2="20" stroke="#1e293b" stroke-width="2"/><circle cx="50" cy="58" r="28" fill="#ffffff" stroke="#334155" stroke-width="2"/><circle cx="50" cy="58" r="4" fill="#1e293b"/><path d="M 50 58 C 53 52, 60 45, 68 43 C 72 47, 71 54, 65 60 C 59 61, 53 60, 50 58 Z" fill="#1e293b"/><path d="M 50 58 C 44 61, 37 60, 32 56 C 31 49, 36 44, 42 46 C 47 48, 49 53, 50 58 Z" fill="#1e293b"/></svg>';
             }
+
+            if (type === 'warmepumpe_aussen') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="10" width="80" height="80" rx="8" fill="rgba(2,132,199,0.15)" stroke="#0284C7" stroke-width="5"/><circle cx="50" cy="50" r="30" fill="none" stroke="#0284C7" stroke-width="4"/><circle cx="50" cy="50" r="6" fill="#0284C7"/><line x1="50" y1="20" x2="50" y2="80" stroke="#0284C7" stroke-width="3"/><line x1="20" y1="50" x2="80" y2="50" stroke="#0284C7" stroke-width="3"/><line x1="28" y1="28" x2="72" y2="72" stroke="#0284C7" stroke-width="3"/><line x1="28" y1="72" x2="72" y2="28" stroke="#0284C7" stroke-width="3"/></svg>';
+            }
+
             if (type === 'infrarotheizung') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="25" width="70" height="50" rx="8" fill="rgba(249,115,22,0.18)" stroke="#F97316" stroke-width="7"/><path d="M 30 40 Q 40 30 50 40 T 70 40 M 30 55 Q 40 45 50 55 T 70 55" fill="none" stroke="#F97316" stroke-width="5"/></svg>';
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="25" width="80" height="50" rx="6" fill="rgba(249,115,22,0.18)" stroke="#F97316" stroke-width="5"/><path d="M 22 50 Q 32 35 42 50 T 62 50 T 82 50" fill="none" stroke="#F97316" stroke-width="4" stroke-linecap="round"/></svg>';
             }
-            if (type === 'geraet_box') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" rx="8" fill="rgba(99,102,241,0.2)" stroke="#6366F1" stroke-width="7"/><circle cx="35" cy="40" r="8" fill="#6366F1"/><circle cx="65" cy="40" r="8" fill="#6366F1"/><rect x="30" y="62" width="40" height="10" rx="3" fill="#6366F1"/></svg>';
-            }
+
             if (type === 'temperaturfuehler') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="38" fill="rgba(16,185,129,0.18)" stroke="#10B981" stroke-width="7"/><path d="M 50 25 L 50 58 M 44 64 A 8 8 0 1 0 56 64 A 8 8 0 0 0 44 64" fill="#10B981" stroke="#10B981" stroke-width="4"/></svg>';
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="38" fill="rgba(16,185,129,0.18)" stroke="#10B981" stroke-width="5"/><path d="M 50 22 L 50 60 M 42 66 A 9 9 0 1 0 58 66 A 9 9 0 0 0 42 66" fill="#10B981" stroke="#10B981" stroke-width="4"/></svg>';
             }
-            if (type === 'heizkreisverteiler') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="25" width="70" height="50" rx="6" fill="rgba(2,132,199,0.18)" stroke="#0284C7" stroke-width="7"/><circle cx="32" cy="50" r="6" fill="#0284C7"/><circle cx="50" cy="50" r="6" fill="#0284C7"/><circle cx="68" cy="50" r="6" fill="#0284C7"/></svg>';
+
+            if (type === 'kabelauslass') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="44" cy="44" r="26" fill="none" stroke="#F8FAFC" stroke-width="4"/><circle cx="44" cy="44" r="7" fill="#F8FAFC"/><line x1="44" y1="44" x2="75" y2="75" stroke="#F8FAFC" stroke-width="4" stroke-linecap="round"/><polygon points="86,86 68,82 82,68" fill="#F8FAFC"/></svg>';
             }
-            if (type === 'pufferspeicher') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="25" y="20" width="50" height="60" rx="14" fill="rgba(100,116,139,0.25)" stroke="#64748B" stroke-width="7"/><line x1="25" y1="40" x2="75" y2="40" stroke="#64748B" stroke-width="5"/><line x1="25" y1="60" x2="75" y2="60" stroke="#64748B" stroke-width="5"/></svg>';
+
+            if (type === 'kabelbahn') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect width="100" height="100" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="4"/><line x1="28" y1="10" x2="28" y2="90" stroke="#16a34a" stroke-width="7"/><line x1="72" y1="10" x2="72" y2="90" stroke="#16a34a" stroke-width="7"/><line x1="28" y1="20" x2="72" y2="20" stroke="#16a34a" stroke-width="6"/><line x1="28" y1="40" x2="72" y2="40" stroke="#16a34a" stroke-width="6"/><line x1="28" y1="60" x2="72" y2="60" stroke="#16a34a" stroke-width="6"/><line x1="28" y1="80" x2="72" y2="80" stroke="#16a34a" stroke-width="6"/></svg>';
             }
-            if (type === 'light') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="34" fill="rgba(234,179,8,0.18)" stroke="#EAB308" stroke-width="8"/><line x1="26" y1="26" x2="74" y2="74" stroke="#EAB308" stroke-width="8" stroke-linecap="round"/><line x1="74" y1="26" x2="26" y2="74" stroke="#EAB308" stroke-width="8" stroke-linecap="round"/></svg>';
+
+            if (type === 'abdeckung' || type === 'abdeckung_box') {
+              return '<svg viewBox="0 0 100 80" style="width:100%;height:100%;' + rotStyle + '"><rect x="4" y="4" width="92" height="72" rx="4" fill="#ffffff" stroke="#64748b" stroke-width="4" stroke-dasharray="6 4"/><rect x="15" y="15" width="70" height="50" rx="2" fill="#f1f5f9" opacity="0.6"/><text x="50" y="46" font-family="sans-serif" font-size="14" font-weight="900" fill="#475569" text-anchor="middle">COVER</text></svg>';
             }
+
+            if (type === 'revisionsklappe') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" fill="rgba(245,158,11,0.15)" stroke="#D97706" stroke-width="6"/><line x1="15" y1="15" x2="85" y2="85" stroke="#D97706" stroke-width="5"/><line x1="15" y1="85" x2="85" y2="15" stroke="#D97706" stroke-width="5"/></svg>';
+            }
+
+            if (type === 'anderungen') {
+              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><path d="M 20 50 A 15 15 0 0 1 40 30 A 20 20 0 0 1 70 30 A 15 15 0 0 1 85 50 A 15 15 0 0 1 70 70 A 20 20 0 0 1 35 70 A 15 15 0 0 1 20 50 Z" fill="rgba(220,38,38,0.2)" stroke="#DC2626" stroke-width="6"/></svg>';
+            }
+
             if (type === 'wandleuchte') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><line x1="15" y1="50" x2="85" y2="50" stroke="#CA8A04" stroke-width="8" stroke-linecap="round"/><circle cx="50" cy="30" r="22" fill="rgba(234,179,8,0.25)" stroke="#CA8A04" stroke-width="7"/><line x1="36" y1="16" x2="64" y2="44" stroke="#CA8A04" stroke-width="6"/><line x1="64" y1="16" x2="36" y2="44" stroke="#CA8A04" stroke-width="6"/></svg>';
             }
+
             if (type === 'led_stripe') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="40" width="70" height="20" rx="4" fill="rgba(250,204,21,0.25)" stroke="#FACC15" stroke-width="6"/><circle cx="28" cy="50" r="4" fill="#FACC15"/><circle cx="50" cy="50" r="4" fill="#FACC15"/><circle cx="72" cy="50" r="4" fill="#FACC15"/></svg>';
             }
+
             if (type === 'switch') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="32" fill="none" stroke="#F59E0B" stroke-width="8"/><line x1="50" y1="50" x2="78" y2="22" stroke="#F59E0B" stroke-width="8" stroke-linecap="round"/><circle cx="78" cy="22" r="5" fill="#F59E0B"/></svg>';
-            }
-            if (type === 'notlicht_lampe') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="36" fill="rgba(22,163,74,0.2)" stroke="#16A34A" stroke-width="8"/><circle cx="50" cy="50" r="14" fill="#16A34A"/></svg>';
-            }
-            if (type === 'notlicht_pikto_right') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 30 50 L 55 30 L 55 42 L 75 42 L 75 58 L 55 58 L 55 70 Z" fill="#FFFFFF"/></svg>';
-            }
-            if (type === 'notlicht_pikto_left') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 70 50 L 45 30 L 45 42 L 25 42 L 25 58 L 45 58 L 45 70 Z" fill="#FFFFFF"/></svg>';
-            }
-            if (type === 'notlicht_pikto_down') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 50 70 L 30 45 L 42 45 L 42 25 L 58 25 L 58 45 L 70 45 Z" fill="#FFFFFF"/></svg>';
-            }
-            if (type === 'notlicht_pikto_up') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="10" y="20" width="80" height="60" rx="6" fill="#16A34A" stroke="#15803D" stroke-width="6"/><path d="M 50 25 L 30 50 L 42 50 L 42 70 L 58 70 L 58 50 L 70 50 Z" fill="#FFFFFF"/></svg>';
-            }
-            if (type === 'revisionsklappe') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" fill="rgba(245,158,11,0.15)" stroke="#D97706" stroke-width="7"/><line x1="15" y1="15" x2="85" y2="85" stroke="#D97706" stroke-width="6"/><line x1="15" y1="85" x2="85" y2="15" stroke="#D97706" stroke-width="6"/></svg>';
-            }
-            if (type === 'abdeckung') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" fill="rgba(100,116,139,0.3)" stroke="#64748B" stroke-width="6" stroke-dasharray="8,8"/></svg>';
-            }
-            if (type === 'anderungen') {
-              return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><path d="M 20 50 A 15 15 0 0 1 40 30 A 20 20 0 0 1 70 30 A 15 15 0 0 1 85 50 A 15 15 0 0 1 70 70 A 20 20 0 0 1 35 70 A 15 15 0 0 1 20 50 Z" fill="rgba(220,38,38,0.2)" stroke="#DC2626" stroke-width="6"/></svg>';
             }
 
             return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="38" fill="none" stroke="' + c + '" stroke-width="8"/><circle cx="50" cy="50" r="12" fill="' + c + '"/></svg>';
@@ -1510,7 +1563,7 @@ export default function InteractivePlanScreen() {
 
             const icon = L.divIcon({
               className: '',
-              html: '<div class="svg-marker-container"><div class="svg-marker-box" style="border-color: ' + def.color + 'aa;">' + svgHtml + '</div><span class="pin-label">' + displayLabel + '</span></div>',
+              html: '<div class="svg-marker-container"><div style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.6));">' + svgHtml + '</div><span class="pin-label">' + displayLabel + '</span></div>',
               iconSize: [36, 36],
               iconAnchor: [18, 18],
             });
@@ -1725,82 +1778,112 @@ export default function InteractivePlanScreen() {
         </View>
       )}
 
-      {/* 2. Interactive Layer Switcher Toolbar */}
-      <View style={styles.toolbarContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.toolbarScroll}>
-          <TouchableOpacity
-            style={[styles.toolChip, layers.tasks && styles.toolChipActive]}
-            onPress={() => toggleLayer('tasks')}
-          >
-            <Text style={[styles.toolChipText, layers.tasks && styles.toolChipTextActive]}>
-              📌 Zadania ({layerCounts.tasks})
-            </Text>
-          </TouchableOpacity>
+      {/* 2. Interactive Layer Switcher Toolbar / Focused Mode Banner */}
+      {activeMode === 'aufmass' ? (
+        <View style={styles.aufmassHeaderBanner}>
+          <Text style={styles.aufmassBannerTitle}>📐 PROTOKÓŁ AUFMAß (OBMIAR)</Text>
+          <Text style={styles.aufmassBannerSubtitle}>
+            Widoczne wyłącznie punkty pomiarowe obmiaru ({aufmassMarkers.length})
+          </Text>
+        </View>
+      ) : activeMode === 'circuits' ? (
+        <View style={styles.aufmassHeaderBanner}>
+          <Text style={[styles.aufmassBannerTitle, { color: '#38BDF8' }]}>⚡ TRYB STROMKREISE (OBWODY)</Text>
+          <Text style={styles.aufmassBannerSubtitle}>
+            Widoczne wyłącznie obwody elektryczne i ich statusy ({circuits.length})
+          </Text>
+        </View>
+      ) : activeMode === 'bma' ? (
+        <View style={styles.aufmassHeaderBanner}>
+          <Text style={[styles.aufmassBannerTitle, { color: '#F87171' }]}>🚨 TRYB BMA AUTOMATIK</Text>
+          <Text style={styles.aufmassBannerSubtitle}>
+            Widoczne wyłącznie elementy i czujki systemu BMA ({symbols.filter((s) => getSymbolCategory(s.symbol_type) === 'bma').length})
+          </Text>
+        </View>
+      ) : activeMode === 'cables' ? (
+        <View style={styles.aufmassHeaderBanner}>
+          <Text style={[styles.aufmassBannerTitle, { color: '#38BDF8' }]}>🪜 TRYB TRAS KABLOWYCH</Text>
+          <Text style={styles.aufmassBannerSubtitle}>
+            Widoczne wyłącznie linie kablowe i ich parametry ({cables.length})
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.toolbarContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.toolbarScroll}>
+            <TouchableOpacity
+              style={[styles.toolChip, layers.tasks && styles.toolChipActive]}
+              onPress={() => toggleLayer('tasks')}
+            >
+              <Text style={[styles.toolChipText, layers.tasks && styles.toolChipTextActive]}>
+                📌 Zadania ({layerCounts.tasks})
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.toolChip, layers.circuits && styles.toolChipActive]}
-            onPress={() => toggleLayer('circuits')}
-          >
-            <Text style={[styles.toolChipText, layers.circuits && styles.toolChipTextActive]}>
-              ⚡ Obwody ({layerCounts.circuits})
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toolChip, layers.circuits && styles.toolChipActive]}
+              onPress={() => toggleLayer('circuits')}
+            >
+              <Text style={[styles.toolChipText, layers.circuits && styles.toolChipTextActive]}>
+                ⚡ Obwody ({layerCounts.circuits})
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.toolChip, layers.heating && styles.toolChipActive]}
-            onPress={() => toggleLayer('heating')}
-          >
-            <Text style={[styles.toolChipText, layers.heating && styles.toolChipTextActive]}>
-              ❄️ Pompy Ciepła ({layerCounts.heating})
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toolChip, layers.heating && styles.toolChipActive]}
+              onPress={() => toggleLayer('heating')}
+            >
+              <Text style={[styles.toolChipText, layers.heating && styles.toolChipTextActive]}>
+                ❄️ Pompy Ciepła ({layerCounts.heating})
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.toolChip, layers.lighting && styles.toolChipActive]}
-            onPress={() => toggleLayer('lighting')}
-          >
-            <Text style={[styles.toolChipText, layers.lighting && styles.toolChipTextActive]}>
-              💡 Oświetlenie ({layerCounts.lighting})
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toolChip, layers.lighting && styles.toolChipActive]}
+              onPress={() => toggleLayer('lighting')}
+            >
+              <Text style={[styles.toolChipText, layers.lighting && styles.toolChipTextActive]}>
+                💡 Oświetlenie ({layerCounts.lighting})
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.toolChip, layers.bma && styles.toolChipActive]}
-            onPress={() => toggleLayer('bma')}
-          >
-            <Text style={[styles.toolChipText, layers.bma && styles.toolChipTextActive]}>
-              🚨 BMA ({layerCounts.bma})
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toolChip, layers.bma && styles.toolChipActive]}
+              onPress={() => toggleLayer('bma')}
+            >
+              <Text style={[styles.toolChipText, layers.bma && styles.toolChipTextActive]}>
+                🚨 BMA ({layerCounts.bma})
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.toolChip, layers.notlicht && styles.toolChipActive]}
-            onPress={() => toggleLayer('notlicht')}
-          >
-            <Text style={[styles.toolChipText, layers.notlicht && styles.toolChipTextActive]}>
-              🟢 Notlicht ({layerCounts.notlicht})
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toolChip, layers.notlicht && styles.toolChipActive]}
+              onPress={() => toggleLayer('notlicht')}
+            >
+              <Text style={[styles.toolChipText, layers.notlicht && styles.toolChipTextActive]}>
+                🟢 Notlicht ({layerCounts.notlicht})
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.toolChip, layers.cables && styles.toolChipActive]}
-            onPress={() => toggleLayer('cables')}
-          >
-            <Text style={[styles.toolChipText, layers.cables && styles.toolChipTextActive]}>
-              🪜 Kable ({layerCounts.cables})
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toolChip, layers.cables && styles.toolChipActive]}
+              onPress={() => toggleLayer('cables')}
+            >
+              <Text style={[styles.toolChipText, layers.cables && styles.toolChipTextActive]}>
+                🪜 Kable ({layerCounts.cables})
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.toolChip, layers.klappen && styles.toolChipActive]}
-            onPress={() => toggleLayer('klappen')}
-          >
-            <Text style={[styles.toolChipText, layers.klappen && styles.toolChipTextActive]}>
-              🔲 Klapy ({layerCounts.klappen})
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+            <TouchableOpacity
+              style={[styles.toolChip, layers.klappen && styles.toolChipActive]}
+              onPress={() => toggleLayer('klappen')}
+            >
+              <Text style={[styles.toolChipText, layers.klappen && styles.toolChipTextActive]}>
+                🔲 Klapy ({layerCounts.klappen})
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      )}
 
       {/* 3. Main Leaflet WebView Map */}
       {loading ? (
@@ -2323,6 +2406,25 @@ const styles = StyleSheet.create({
   },
   toolChipTextActive: {
     color: '#38BDF8',
+  },
+  aufmassHeaderBanner: {
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+  },
+  aufmassBannerTitle: {
+    color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+  aufmassBannerSubtitle: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '500',
   },
   mapWrapper: {
     flex: 1,

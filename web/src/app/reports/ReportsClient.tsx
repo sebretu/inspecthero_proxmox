@@ -901,7 +901,8 @@ export default function ReportsClient() {
                         try {
                             let pixelsPerMeter: number | null = null;
                             try {
-                                const scaleRes = await fetch(`/api/plans/${plan.id}/scale`, {
+                                const scaleUrl = `/api/plans/${plan.id}/scale${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+                                const scaleRes = await fetch(scaleUrl, {
                                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                                 });
                                 if (scaleRes.ok) {
@@ -914,48 +915,96 @@ export default function ReportsClient() {
                             } catch (e) {}
 
                             // Fetch exact tile grid dimensions at maxZoom (where Leaflet CRS.latLngToPoint points were saved)
-                            let maxZoomPxW = (plan as any).worldPxW || plan.image_width || 3000;
-                            let maxZoomPxH = (plan as any).worldPxH || plan.image_height || 2000;
+                            let maxZoomPxW = (plan as any).grid_width || (plan as any).worldPxW || plan.image_width || 3000;
+                            let maxZoomPxH = (plan as any).grid_height || (plan as any).worldPxH || plan.image_height || 2000;
                             try {
-                                const metaRes = await fetch(getApiUrl(`/api/tiles/${plan.id}/meta`), {
+                                const metaUrl = getApiUrl(`/api/tiles/${plan.id}/meta${token ? `?token=${encodeURIComponent(token)}` : ''}`);
+                                const metaRes = await fetch(metaUrl, {
                                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                                 });
                                 if (metaRes.ok) {
                                     const mData = await metaRes.json();
                                     const tSize = mData.tileSize || 256;
-                                    maxZoomPxW = (mData.gridW || 1) * tSize;
-                                    maxZoomPxH = (mData.gridH || 1) * tSize;
+                                    if (mData.gridW && mData.gridH) {
+                                        maxZoomPxW = mData.gridW * tSize;
+                                        maxZoomPxH = mData.gridH * tSize;
+                                    }
                                 }
                             } catch (e) {}
 
-                            const res = await fetch(`/api/plans/${plan.id}/measurements`, {
-                                headers: token ? { Authorization: `Bearer ${token}` } : {},
-                            });
-                            if (res.ok) {
-                                const json = await res.json();
-                                measurements = (json.measurements || []).map((m: any) => {
+                            let rawList: any[] = [];
+                            try {
+                                const measUrl = `/api/plans/${plan.id}/measurements${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+                                const res = await fetch(measUrl, {
+                                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                                });
+                                if (res.ok) {
+                                    const json = await res.json();
+                                    rawList = Array.isArray(json) ? json : (json.measurements || []);
+                                }
+                            } catch (e) {}
+
+                            if (rawList.length === 0 && typeof window !== "undefined") {
+                                try {
+                                    const local = localStorage.getItem(`plan_measurements_${plan.id}`);
+                                    if (local) {
+                                        const parsed = JSON.parse(local);
+                                        if (Array.isArray(parsed) && parsed.length > 0) {
+                                            rawList = parsed;
+                                        }
+                                    }
+                                } catch {}
+                            }
+
+                            if (rawList.length > 0) {
+                                measurements = rawList.map((m: any) => {
                                     const pts = m.points || [];
-                                    const segments: Array<{ distMeters?: number | null; distPx?: number }> = [];
+                                    let segmentLabels: Record<number, string> = {};
+                                    if (m.label && typeof m.label === "string" && m.label.trim().startsWith("{") && m.label.trim().endsWith("}")) {
+                                        try {
+                                            const parsed = JSON.parse(m.label);
+                                            if (typeof parsed === "object" && parsed !== null) {
+                                                segmentLabels = parsed;
+                                            }
+                                        } catch {}
+                                    } else if (m.label && typeof m.label === "string" && m.label.trim()) {
+                                        segmentLabels = { 0: m.label.trim() };
+                                    }
+
+                                    const segments: Array<{ distMeters?: number | null; distPx?: number; label?: string }> = [];
                                     let totalPx = 0;
                                     for (let i = 1; i < pts.length; i++) {
-                                        const x1 = Number(pts[i - 1].x ?? (pts[i - 1].x_norm != null ? pts[i - 1].x_norm * maxZoomPxW : 0));
-                                        const y1 = Number(pts[i - 1].y ?? (pts[i - 1].y_norm != null ? pts[i - 1].y_norm * maxZoomPxH : 0));
-                                        const x2 = Number(pts[i].x ?? (pts[i].x_norm != null ? pts[i].x_norm * maxZoomPxW : 0));
-                                        const y2 = Number(pts[i].y ?? (pts[i].y_norm != null ? pts[i].y_norm * maxZoomPxH : 0));
+                                        const pA = pts[i - 1];
+                                        const pB = pts[i];
+                                        const x1 = Number(pA.x != null && pA.x > 1 ? pA.x : (pA.x_norm != null ? pA.x_norm * maxZoomPxW : (pA.x ?? 0) * maxZoomPxW));
+                                        const y1 = Number(pA.y != null && pA.y > 1 ? pA.y : (pA.y_norm != null ? pA.y_norm * maxZoomPxH : (pA.y ?? 0) * maxZoomPxH));
+                                        const x2 = Number(pB.x != null && pB.x > 1 ? pB.x : (pB.x_norm != null ? pB.x_norm * maxZoomPxW : (pB.x ?? 0) * maxZoomPxW));
+                                        const y2 = Number(pB.y != null && pB.y > 1 ? pB.y : (pB.y_norm != null ? pB.y_norm * maxZoomPxH : (pB.y ?? 0) * maxZoomPxH));
                                         const dx = x2 - x1;
                                         const dy = y2 - y1;
                                         const segPx = Math.sqrt(dx * dx + dy * dy);
                                         totalPx += segPx;
                                         const segM = pixelsPerMeter && pixelsPerMeter > 0 && segPx > 0 ? segPx / pixelsPerMeter : null;
-                                        segments.push({ distMeters: segM, distPx: segPx });
+                                        const customSegLabel = segmentLabels[i - 1] || (i === 1 && m.label && !m.label.trim().startsWith("{") ? m.label.trim() : undefined);
+                                        segments.push({ distMeters: segM, distPx: segPx, label: customSegLabel });
                                     }
                                     const distM = pixelsPerMeter && pixelsPerMeter > 0 && totalPx > 0
                                         ? totalPx / pixelsPerMeter
                                         : (m.total_distance_meters || m.distance_meters || null);
 
                                     const normPts = pts.map((p: any) => {
-                                        let xn = p.x_norm != null ? Number(p.x_norm) : (p.x != null && maxZoomPxW > 0 ? Number(p.x) / maxZoomPxW : 0);
-                                        let yn = p.y_norm != null ? Number(p.y_norm) : (p.y != null && maxZoomPxH > 0 ? Number(p.y) / maxZoomPxH : 0);
+                                        let xn = 0;
+                                        let yn = 0;
+                                        if (p.x_norm != null) {
+                                            xn = Number(p.x_norm);
+                                        } else if (p.x != null) {
+                                            xn = Number(p.x) > 1 && maxZoomPxW > 0 ? Number(p.x) / maxZoomPxW : Number(p.x);
+                                        }
+                                        if (p.y_norm != null) {
+                                            yn = Number(p.y_norm);
+                                        } else if (p.y != null) {
+                                            yn = Number(p.y) > 1 && maxZoomPxH > 0 ? Number(p.y) / maxZoomPxH : Number(p.y);
+                                        }
                                         return {
                                             x_norm: Math.max(0, Math.min(1, isNaN(xn) ? 0 : xn)),
                                             y_norm: Math.max(0, Math.min(1, isNaN(yn) ? 0 : yn)),

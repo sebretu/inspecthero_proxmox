@@ -1,0 +1,101 @@
+{
+  "cee": {
+    "cee": 21,
+    "edv": 8,
+    "light": 5,
+    "socket": 22,
+    "special": 3,
+    "sym_cee16": 0,
+    "sym_cee32": 1,
+    "sym_socket": 2,
+    "text": 0
+  },
+  "edv": {
+    "cee": 8,
+    "edv": 56,
+    "light": 8,
+    "socket": 58,
+    "special": 2,
+    "sym_cee16": 1,
+    "sym_cee32": 0,
+    "sym_socket": 0,
+    "text": 0
+  },
+  "light": {
+    "cee": 9,
+    "edv": 6,
+    "light": 25,
+    "socket": 43,
+    "special": 4,
+    "sym_cee16": 0,
+    "sym_cee32": 0,
+    "sym_socket": 0,
+    "text": 0
+  },
+  "socket": {
+    "cee": 19,
+    "edv": 56,
+    "light": 33,
+    "socket": 864,
+    "special": 21,
+    "sym_cee16": 1,
+    "sym_cee32": 0,
+    "sym_socket": 6,
+    "text": 2
+  },
+  "special": {
+    "cee": 2,
+    "edv": 2,
+    "light": 6,
+    "socket": 23,
+    "special": 9,
+    "sym_cee16": 0,
+    "sym_cee32": 0,
+    "sym_socket": 0,
+    "text": 0
+  },
+  "sym_cee16": {
+    "cee": 6,
+    "edv": 1,
+    "light": 0,
+    "socket": 0,
+    "special": 0,
+    "sym_cee16": 0,
+    "sym_cee32": 0,
+    "sym_socket": 0,
+    "text": 0
+  },
+  "sym_cee32": {
+    "cee": 3,
+    "edv": 0,
+    "light": 0,
+    "socket": 0,
+    "special": 0,
+    "sym_cee16": 0,
+    "sym_cee32": 0,
+    "sym_socket": 0,
+    "text": 0
+  },
+  "sym_socket": {
+    "cee": 2,
+    "edv": 1,
+    "light": 0,
+    "socket": 10,
+    "special": 0,
+    "sym_cee16": 0,
+    "sym_cee32": 0,
+    "sym_socket": 4,
+    "text": 0
+  },
+  "text": {
+    "cee": 0,
+    "edv": 0,
+    "light": 0,
+    "socket": 1,
+    "special": 0,
+    "sym_cee16": 0,
+    "sym_cee32": 0,
+    "sym_socket": 0,
+    "text": 0
+  }
+}

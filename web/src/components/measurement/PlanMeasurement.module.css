@@ -229,6 +229,19 @@
 /* Leaflet Tooltip renderuje poza drzewem React – używamy :global aby klasa CSS Modules działała */
 
 :global {
+  .leaflet-container.leaflet-measuring-mode,
+  .leaflet-container.leaflet-measuring-mode .leaflet-pane,
+  .leaflet-container.leaflet-measuring-mode .leaflet-tile-pane,
+  .leaflet-container.leaflet-measuring-mode .leaflet-overlay-pane,
+  .leaflet-container.leaflet-measuring-mode .leaflet-marker-pane,
+  .leaflet-container.leaflet-measuring-mode .leaflet-interactive,
+  .leaflet-container.leaflet-measuring-mode .leaflet-image-layer,
+  .leaflet-container.leaflet-measuring-mode .leaflet-grab,
+  .leaflet-container.leaflet-measuring-mode svg,
+  .leaflet-container.leaflet-measuring-mode path {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23ffffff' stroke-width='3' opacity='0.9'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%232563eb' stroke-width='1.5'/%3E%3Cline x1='16' y1='2' x2='16' y2='10' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='16' y1='2' x2='16' y2='10' stroke='%232563eb' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='16' y1='22' x2='16' y2='30' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='16' y1='22' x2='16' y2='30' stroke='%232563eb' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='2' y1='16' x2='10' y2='16' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='2' y1='16' x2='10' y2='16' stroke='%232563eb' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='22' y1='16' x2='30' y2='16' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='22' y1='16' x2='30' y2='16' stroke='%232563eb' stroke-width='1.5' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%23ef4444' stroke='%23ffffff' stroke-width='0.75'/%3E%3C/svg%3E") 16 16, crosshair !important;
+  }
+
   .leaflet-tooltip.measure-label,
   .leaflet-tooltip.measure-label::before {
     background: rgba(15, 23, 42, 0.9) !important;
@@ -259,4 +272,110 @@
   border: 2px solid #ffffff;
   border-radius: 50%;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.reticleContainer {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1002;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.reticleRing {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid #2563eb;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9), 0 0 8px rgba(37, 99, 235, 0.5);
+  animation: reticlePulse 1.8s infinite ease-in-out;
+}
+
+.reticleCenterDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 1px solid #ffffff;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.9);
+  z-index: 2;
+}
+
+.reticleCrosshairH {
+  position: absolute;
+  width: 28px;
+  height: 1px;
+  background: rgba(37, 99, 235, 0.85);
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+.reticleCrosshairV {
+  position: absolute;
+  height: 28px;
+  width: 1px;
+  background: rgba(37, 99, 235, 0.85);
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+.reticleBadge {
+  position: absolute;
+  left: 18px;
+  top: -12px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.clickRipple {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1001;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid #ef4444;
+  animation: rippleExpand 0.45s ease-out forwards;
+}
+
+@keyframes reticlePulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+    border-color: #3b82f6;
+  }
+}
+
+@keyframes rippleExpand {
+  0% {
+    width: 6px;
+    height: 6px;
+    opacity: 1;
+    border-color: #ef4444;
+  }
+  100% {
+    width: 38px;
+    height: 38px;
+    opacity: 0;
+    border-color: #22c55e;
+  }
 }

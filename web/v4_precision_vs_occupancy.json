@@ -1,0 +1,29 @@
+{
+  "pearson_correlation": 0.1292,
+  "occupancy_buckets": {
+    "0.00-0.20": {
+      "count": 0,
+      "precision1": 0.0
+    },
+    "0.20-0.40": {
+      "count": 81,
+      "precision1": 0.6296,
+      "socket_edv_errors": 9
+    },
+    "0.40-0.60": {
+      "count": 289,
+      "precision1": 0.6125,
+      "socket_edv_errors": 32
+    },
+    "0.60-0.80": {
+      "count": 0,
+      "precision1": 0.0
+    },
+    "0.80-1.00": {
+      "count": 983,
+      "precision1": 0.7396,
+      "socket_edv_errors": 72
+    }
+  },
+  "insight": "Higher occupancy increases the prominence of line strokes, but in a 16x16 thumbnail embedding, scaling up a socket or EDV symbol homogenizes fine internal text/pins, causing feature vectors of sockets and EDVs to become even more identical."
+}
