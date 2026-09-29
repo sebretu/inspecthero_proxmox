@@ -104,13 +104,7 @@ export default function PlansListScreen() {
       ORDER BY p.name ASC;
     `)) as PlanItem[]) || [];
 
-    const cachedSet = new Set<string>();
-    if (allPlans) {
-      for (const pl of allPlans) {
-        const isCached = await TileCacheService.isPlanCachedLocally(pl.id);
-        if (isCached) cachedSet.add(pl.id);
-      }
-    }
+    const cachedSet = await TileCacheService.getCachedPlanIds();
     setCachedPlanIds(cachedSet);
 
     const groups: ProjectGroup[] = (projs || []).map((pr: any) => {
@@ -250,11 +244,11 @@ export default function PlansListScreen() {
       const db = await getDatabase();
       // 1. Instant load from SQLite (0ms UI render)
       await queryLocalPlans(db);
-      await refreshCacheStats();
       setLoading(false);
       setRefreshing(false);
 
-      // 2. Non-blocking background sync
+      // 2. Non-blocking background cache calculation & sync
+      refreshCacheStats();
       syncPlansAndProjectsFromApiBackground(db);
     } catch (err) {
       console.error('[PlansList] Load error:', err);

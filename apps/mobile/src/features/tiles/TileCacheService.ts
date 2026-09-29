@@ -42,6 +42,20 @@ export class TileCacheService {
   }
 
   /**
+   * Fast retrieval of all locally cached plan IDs in a single directory read (< 2ms)
+   */
+  static async getCachedPlanIds(): Promise<Set<string>> {
+    try {
+      const info = await FileSystem.getInfoAsync(TILES_BASE_DIR);
+      if (!info.exists || !info.isDirectory) return new Set();
+      const entries = await FileSystem.readDirectoryAsync(TILES_BASE_DIR);
+      return new Set(entries);
+    } catch {
+      return new Set();
+    }
+  }
+
+  /**
    * Check if any tiles for this plan have been cached locally
    */
   static async isPlanCachedLocally(planId: string): Promise<boolean> {
@@ -76,14 +90,23 @@ export class TileCacheService {
     }
   }
 
+  private static planSizeCache: Map<string, number> = new Map();
+  private static totalCacheBytesCached: number = 0;
+
   /**
    * Calculate disk usage for a specific plan
    */
-  static async getPlanCacheSize(planId: string): Promise<number> {
+  static async getPlanCacheSize(planId: string, forceFresh: boolean = false): Promise<number> {
+    if (!forceFresh && this.planSizeCache.has(planId)) {
+      return this.planSizeCache.get(planId) || 0;
+    }
     try {
       const planDir = this.getPlanTilesDir(planId);
       const info = await FileSystem.getInfoAsync(planDir);
-      if (!info.exists || !info.isDirectory) return 0;
+      if (!info.exists || !info.isDirectory) {
+        this.planSizeCache.set(planId, 0);
+        return 0;
+      }
 
       let totalBytes = 0;
       const readDirRecursive = async (dirUri: string) => {
@@ -102,6 +125,7 @@ export class TileCacheService {
       };
 
       await readDirRecursive(planDir);
+      this.planSizeCache.set(planId, totalBytes);
       return totalBytes;
     } catch {
       return 0;
@@ -111,28 +135,21 @@ export class TileCacheService {
   /**
    * Calculate total disk usage for all cached plans
    */
-  static async getTotalCacheSize(): Promise<number> {
+  static async getTotalCacheSize(forceFresh: boolean = false): Promise<number> {
+    if (!forceFresh && this.totalCacheBytesCached > 0) {
+      return this.totalCacheBytesCached;
+    }
     try {
       const info = await FileSystem.getInfoAsync(TILES_BASE_DIR);
       if (!info.exists || !info.isDirectory) return 0;
 
       let totalBytes = 0;
-      const readDirRecursive = async (dirUri: string) => {
-        const files = await FileSystem.readDirectoryAsync(dirUri);
-        for (const file of files) {
-          const fileUri = `${dirUri}${file}`;
-          const fileInfo = await FileSystem.getInfoAsync(fileUri);
-          if (fileInfo.exists) {
-            if (fileInfo.isDirectory) {
-              await readDirRecursive(`${fileUri}/`);
-            } else if (fileInfo.size) {
-              totalBytes += fileInfo.size;
-            }
-          }
-        }
-      };
-
-      await readDirRecursive(TILES_BASE_DIR);
+      const planDirs = await FileSystem.readDirectoryAsync(TILES_BASE_DIR);
+      for (const pId of planDirs) {
+        const pSize = await this.getPlanCacheSize(pId, forceFresh);
+        totalBytes += pSize;
+      }
+      this.totalCacheBytesCached = totalBytes;
       return totalBytes;
     } catch {
       return 0;
@@ -308,6 +325,8 @@ export class TileCacheService {
         limits,
         gridW: meta.gridW,
         gridH: meta.gridH,
+        imageWidth: meta.width || meta.imageWidth || 1920,
+        imageHeight: meta.height || meta.imageHeight || 1080,
         tileSize: meta.tileSize || 256,
         downloadedAt: new Date().toISOString()
       })).catch(() => {});

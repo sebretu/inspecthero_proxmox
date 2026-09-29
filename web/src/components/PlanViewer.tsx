@@ -390,32 +390,39 @@ export default function PlanViewer({
   // -----------------------
   // 3) READY → LEAFLET
   // -----------------------
-  return (
-    <PlanMap
-      planId={planId}
-      projectId={planProjectId}
-      meta={meta!}
-      fullHeight={fullHeight}
-      focusPoint={focusPoint}
-      focusTaskId={focusTaskId}
-      focusFehlerId={focusFehlerId}
-      focusRevisionId={focusRevisionId}
-      allowCreate={allowCreateResolved}
-      currentUserId={effectiveUserId}
-      currentUserRole={effectiveUserRole}
-      projectLoadError={planProjectErr}
-      isQuestion={isQuestion}
-      showCompleted={showCompleted}
-      revisions={revisions}
-      fehlers={fehlers}
-      aufmassMarkers={aufmassMarkers}
-      hideTasks={hideTasks}
-      customMinZoom={plan?.min_zoom}
-      customMagnification={plan?.magnification}
-      onMapClick={onMapClick}
-      onMarkerDragEnd={onMarkerDragEnd}
-      onMarkerDelete={onMarkerDelete}
-      onMarkerClick={onMarkerClick}
-    />
-  );
-}
+    const planProjectName = plan?.project?.name || undefined;
+    const planTitle = plan?.floor?.name
+      ? `${plan?.floor?.building?.name ? plan.floor.building.name + " - " : ""}${plan.floor.name} (v${plan.version || 1})`
+      : undefined;
+
+    return (
+      <PlanMap
+        planId={planId}
+        projectId={planProjectId}
+        planTitle={planTitle}
+        planProjectName={planProjectName}
+        meta={meta!}
+        fullHeight={fullHeight}
+        focusPoint={focusPoint}
+        focusTaskId={focusTaskId}
+        focusFehlerId={focusFehlerId}
+        focusRevisionId={focusRevisionId}
+        allowCreate={allowCreateResolved}
+        currentUserId={effectiveUserId}
+        currentUserRole={effectiveUserRole}
+        projectLoadError={planProjectErr}
+        isQuestion={isQuestion}
+        showCompleted={showCompleted}
+        revisions={revisions}
+        fehlers={fehlers}
+        aufmassMarkers={aufmassMarkers}
+        hideTasks={hideTasks}
+        customMinZoom={plan?.min_zoom}
+        customMagnification={plan?.magnification}
+        onMapClick={onMapClick}
+        onMarkerDragEnd={onMarkerDragEnd}
+        onMarkerDelete={onMarkerDelete}
+        onMarkerClick={onMarkerClick}
+      />
+    );
+  }

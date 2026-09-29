@@ -11,6 +11,7 @@ import "leaflet/dist/leaflet.css";
 import TaskDrawer from "./TaskDrawer";
 import PlanMeasurementModule from "./measurement/PlanMeasurementModule";
 import PlanPhotoPinsModule from "./photo-pins/PlanPhotoPinsModule";
+import PlanMaterialModule from "./materials/PlanMaterialModule";
 import PlanRevisionsKlappenModule from "./klappen/PlanRevisionsKlappenModule";
 import PlanBmaSymbolsModule from "./bma-symbols/PlanBmaSymbolsModule";
 import PlanLayersControl, {
@@ -144,6 +145,8 @@ export default function PlanMap({
   onMarkerDelete,
   onMarkerClick,
   onMarkerDoubleClick,
+  planTitle,
+  planProjectName,
 }: {
   planId: string;
   projectId: string | null;
@@ -170,6 +173,8 @@ export default function PlanMap({
   onMarkerDelete?: (id: string) => void;
   onMarkerClick?: (id: string) => void;
   onMarkerDoubleClick?: (id: string) => void;
+  planTitle?: string;
+  planProjectName?: string;
 }) {
   const START_ZOOM = 2;
   const FALLBACK_UPLOADED_BY = "44444444-4444-4444-4444-444444444444";
@@ -205,6 +210,10 @@ export default function PlanMap({
 
   const handleMeasurementsCount = useCallback((c: number) => {
     setLayerCounts((prev) => (prev.measurements === c ? prev : { ...prev, measurements: c }));
+  }, []);
+
+  const handleMaterialCounts = useCallback((c: { material: number; materialItems: number }) => {
+    setLayerCounts((prev) => (prev.material === c.material ? prev : { ...prev, material: c.material }));
   }, []);
 
   const handlePhotoCounts = useCallback((c: { photoPins: number; montageDoku: number; damage?: number }) => {
@@ -617,6 +626,17 @@ export default function PlanMap({
           onEnsurePhotoPinsVisible={() => ensureLayerVisible("photoPins")}
           onEnsureMontageDokuVisible={() => ensureLayerVisible("montageDoku")}
           onEnsureDamageVisible={() => ensureLayerVisible("damage")}
+        />
+        <PlanMaterialModule
+          planId={planId}
+          meta={meta}
+          currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
+          isVisible={layersVisibility.material}
+          onCountsChange={handleMaterialCounts}
+          onEnsureVisible={() => ensureLayerVisible("material")}
+          projectName={planProjectName || (typeof window !== "undefined" ? localStorage.getItem("et4u_active_project_name") || undefined : undefined)}
+          planTitle={planTitle}
         />
         <PlanRevisionsKlappenModule
           planId={planId}

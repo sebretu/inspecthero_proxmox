@@ -20,6 +20,7 @@ import { getDatabase } from '../../src/db/database';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { useAuth } from '../../src/auth/useAuth';
 import { TileCacheService } from '../../src/features/tiles/TileCacheService';
+import { LEAFLET_OFFLINE_CSS, LEAFLET_OFFLINE_JS } from '../../src/features/tiles/leafletBundle';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -1106,8 +1107,12 @@ export default function InteractivePlanScreen() {
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          ${LEAFLET_OFFLINE_CSS}
+        </style>
+        <script>
+          ${LEAFLET_OFFLINE_JS}
+        </script>
         <style>
           * {
             -webkit-tap-highlight-color: transparent;
@@ -1655,7 +1660,7 @@ export default function InteractivePlanScreen() {
 
             if (localTileDir) {
               tileLayer.on('tileerror', function(error) {
-                if (error && error.tile && error.coords) {
+                if (navigator.onLine && error && error.tile && error.coords) {
                   error.tile.src = apiUrl + '/api/tiles/' + planId + '/' + error.coords.z + '/' + error.coords.x + '/' + error.coords.y + '.png' + tokenParam;
                 }
               });

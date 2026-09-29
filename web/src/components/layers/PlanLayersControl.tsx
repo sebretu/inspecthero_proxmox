@@ -6,6 +6,7 @@ import L from "leaflet";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 export type PlanLayersVisibility = {
+  material: boolean;
   measurements: boolean;
   klappen: boolean;
   photoPins: boolean;
@@ -24,6 +25,7 @@ export type PlanLayersVisibility = {
 };
 
 export const DEFAULT_LAYERS_VISIBILITY: PlanLayersVisibility = {
+  material: true,
   measurements: false,
   klappen: false,
   photoPins: false,
@@ -42,6 +44,7 @@ export const DEFAULT_LAYERS_VISIBILITY: PlanLayersVisibility = {
 };
 
 export type LayerCounts = {
+  material?: number;
   measurements?: number;
   klappen?: number;
   photoPins?: number;
@@ -120,6 +123,7 @@ export default function PlanLayersControl({
 
   const setAll = (val: boolean) => {
     onChange({
+      material: val,
       measurements: val,
       klappen: val,
       photoPins: val,
@@ -149,6 +153,15 @@ export default function PlanLayersControl({
     color: string;
     bgBadge: string;
   }> = [
+      {
+        key: "material",
+        icon: "📦",
+        label: t("planLayers", "material", "Material (Zamówienia / Bestellen)"),
+        desc: "Punkty zamówień materiałów, gniazd, ramek, lamp i osprzętu",
+        count: counts.material,
+        color: "#f59e0b",
+        bgBadge: "#fef3c7",
+      },
       {
         key: "anderungen",
         icon: "☁️",

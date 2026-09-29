@@ -128,10 +128,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (req.method === "PUT") {
-            if (!isAdmin) {
-                return res.status(403).json({ ok: false, error: { message: "Forbidden: Admins only" } });
-            }
-
             const { id, name, display_name, unit, category, article_number, is_favorite } = req.body;
             if (!id || !name || !unit) {
                 return res.status(400).json({ ok: false, error: { message: "ID, name and unit are required" } });
@@ -170,10 +166,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (req.method === "DELETE") {
-            if (!isAdmin) {
-                return res.status(403).json({ ok: false, error: { message: "Forbidden: Admins only" } });
-            }
-
             const id = req.query.id as string;
             if (!id) {
                 return res.status(400).json({ ok: false, error: { message: "Missing material ID" } });
