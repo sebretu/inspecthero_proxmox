@@ -162,6 +162,93 @@ export const ALL_SYMBOLS: SymbolDefinition[] = [
   { id: 'anderungen', category: 'klappen', name: 'Änderungen / Rewizja', emoji: '☁️', color: '#DC2626', defaultLabel: 'Rewizja' },
 ];
 
+export function getSymbolCategory(symbolType: string): SymbolCategory {
+  const t = (symbolType || '').toLowerCase();
+  if (
+    t.includes('bma') ||
+    t.includes('detector') ||
+    t.includes('melder') ||
+    t.includes('siren') ||
+    t.includes('sirene') ||
+    t.includes('koppler') ||
+    t.includes('bmz') ||
+    t.includes('smoke') ||
+    t.includes('heat') ||
+    t.includes('handmelder') ||
+    t.includes('rop') ||
+    t.includes('brand') ||
+    t.includes('feu')
+  ) {
+    return 'bma';
+  }
+  if (
+    t.includes('notlicht') ||
+    t.includes('pikto') ||
+    t.includes('rettung') ||
+    t.includes('exit') ||
+    t.includes('emergency')
+  ) {
+    return 'notlicht';
+  }
+  if (
+    t.includes('warmepumpe') ||
+    t.includes('wärmepumpe') ||
+    t.includes('heating') ||
+    t.includes('heiz') ||
+    t.includes('speicher') ||
+    t.includes('infrarot') ||
+    t.includes('thermostat') ||
+    t.includes('pumpe') ||
+    t.includes('hkv')
+  ) {
+    return 'heating';
+  }
+  if (
+    t.includes('socket') ||
+    t.includes('steckdose') ||
+    t.includes('cee') ||
+    t.includes('edv') ||
+    t.includes('circuit') ||
+    t.includes('stromkreis') ||
+    t.includes('kabelauslass')
+  ) {
+    return 'circuits';
+  }
+  if (
+    t.includes('light') ||
+    t.includes('leuchte') ||
+    t.includes('lampe') ||
+    t.includes('led') ||
+    t.includes('switch') ||
+    t.includes('schalter') ||
+    t.includes('beleuchtung')
+  ) {
+    return 'lighting';
+  }
+  if (
+    t.includes('kabel') ||
+    t.includes('cable') ||
+    t.includes('trasse') ||
+    t.includes('kabelzug')
+  ) {
+    return 'cables';
+  }
+  if (
+    t.includes('klappe') ||
+    t.includes('abdeckung') ||
+    t.includes('revis') ||
+    t.includes('anderung') ||
+    t.includes('revision')
+  ) {
+    return 'klappen';
+  }
+
+  const def = ALL_SYMBOLS.find((d) => d.id.toLowerCase() === t);
+  if (def) return def.category;
+
+  return 'klappen';
+}
+
 interface AufmassMarkerPin {
   id: string;
   session_id: string;
@@ -225,6 +312,11 @@ export default function InteractivePlanScreen() {
   }, [mode]);
 
   const [layers, setLayers] = useState<Record<SymbolCategory, boolean>>(initialLayers);
+
+  useEffect(() => {
+    setLayers(initialLayers);
+  }, [initialLayers]);
+
   const [showLayersModal, setShowLayersModal] = useState(false);
 
   // Selected Entity for Bottom Inspection Drawer
@@ -955,14 +1047,35 @@ export default function InteractivePlanScreen() {
     const token = session?.access_token || '';
     const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://inspecthero.pl';
 
-    const visibleTasks = layers.tasks ? tasks : [];
-    const visibleCircuits = layers.circuits ? circuits : [];
-    const visibleCables = layers.cables ? cables : [];
-    const visibleSymbols = symbols.filter((s) => {
-      const def = ALL_SYMBOLS.find((d) => d.id === s.symbol_type);
-      const cat = def?.category || 'klappen';
-      return layers[cat] ?? true;
-    });
+    let visibleTasks: TaskPin[] = [];
+    let visibleCircuits: CircuitPin[] = [];
+    let visibleCables: CablePin[] = [];
+    let visibleSymbols: PlanSymbolPin[] = [];
+    let visibleAufmass: AufmassMarkerPin[] = [];
+
+    if (mode === 'circuits') {
+      visibleCircuits = circuits;
+    } else if (mode === 'bma') {
+      visibleSymbols = symbols.filter((s) => getSymbolCategory(s.symbol_type) === 'bma');
+    } else if (mode === 'tasks' || mode === 'maengel') {
+      visibleTasks = tasks;
+    } else if (mode === 'cables') {
+      visibleCables = cables;
+      visibleSymbols = symbols.filter((s) => getSymbolCategory(s.symbol_type) === 'cables');
+    } else if (mode === 'aufmass') {
+      visibleAufmass = aufmassId
+        ? aufmassMarkers.filter((m) => m.session_id === aufmassId)
+        : aufmassMarkers;
+    } else {
+      visibleTasks = layers.tasks ? tasks : [];
+      visibleCircuits = layers.circuits ? circuits : [];
+      visibleCables = layers.cables ? cables : [];
+      visibleSymbols = symbols.filter((s) => {
+        const cat = getSymbolCategory(s.symbol_type);
+        return layers[cat] ?? true;
+      });
+      visibleAufmass = aufmassMarkers;
+    }
 
     return `
       <!DOCTYPE html>
@@ -1180,20 +1293,21 @@ export default function InteractivePlanScreen() {
             const rot = rotation || 0;
             const rotStyle = rot ? 'transform: rotate(' + rot + 'deg); transform-origin: center;' : '';
             const c = color || '#38BDF8';
+            const tLow = (type || '').toLowerCase();
 
-            if (type === 'detector_blue' || type === 'bma_smoke') {
+            if (type === 'detector_blue' || type === 'bma_smoke' || tLow.includes('smoke') || tLow.includes('ot') || tLow.includes('zwd') || tLow.includes('optical')) {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="42" fill="rgba(56,189,248,0.2)" stroke="#0284C7" stroke-width="8"/><circle cx="50" cy="50" r="22" fill="none" stroke="#0284C7" stroke-width="6"/><circle cx="50" cy="50" r="8" fill="#0284C7"/></svg>';
             }
-            if (type === 'detector_red' || type === 'bma_dual') {
+            if (type === 'detector_red' || type === 'bma_dual' || (tLow.includes('detector') && !tLow.includes('heat') && !tLow.includes('thermo')) || tLow === 'bma' || tLow.includes('melder')) {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="42" fill="rgba(239,68,68,0.2)" stroke="#DC2626" stroke-width="8"/><circle cx="50" cy="50" r="28" fill="none" stroke="#DC2626" stroke-width="6"/><circle cx="50" cy="50" r="14" fill="none" stroke="#DC2626" stroke-width="4"/><circle cx="50" cy="50" r="6" fill="#DC2626"/></svg>';
             }
-            if (type === 'thermo_melder' || type === 'bma_heat') {
+            if (type === 'thermo_melder' || type === 'bma_heat' || tLow.includes('heat') || tLow.includes('thermo') || tLow.includes('temp')) {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><circle cx="50" cy="50" r="42" fill="rgba(249,115,22,0.2)" stroke="#EA580C" stroke-width="8"/><path d="M 50 24 L 50 62 M 42 66 A 10 10 0 1 0 58 66 A 10 10 0 0 0 42 66" fill="#EA580C" stroke="#EA580C" stroke-width="4"/></svg>';
             }
-            if (type === 'handmelder' || type === 'bma_rop') {
+            if (type === 'handmelder' || type === 'bma_rop' || tLow.includes('hand') || tLow.includes('rop') || tLow.includes('call_point')) {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="15" y="15" width="70" height="70" rx="8" fill="rgba(220,38,38,0.2)" stroke="#DC2626" stroke-width="8"/><circle cx="50" cy="50" r="16" fill="#DC2626"/><text x="50" y="80" fill="#DC2626" font-size="14" font-weight="900" text-anchor="middle">BMA</text></svg>';
             }
-            if (type === 'sirene' || type === 'sirene_up' || type === 'bma_siren') {
+            if (type === 'sirene' || type === 'sirene_up' || type === 'bma_siren' || tLow.includes('siren')) {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><polygon points="30,35 60,15 60,85 30,65" fill="#F97316" stroke="#C2410C" stroke-width="6"/><rect x="18" y="38" width="14" height="24" fill="#C2410C"/><path d="M 70 30 A 25 25 0 0 1 70 70" fill="none" stroke="#EA580C" stroke-width="6" stroke-linecap="round"/></svg>';
             }
             if (type === 'sirene_right') {
@@ -1205,10 +1319,10 @@ export default function InteractivePlanScreen() {
             if (type === 'sirene_left') {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;transform: rotate(270deg);"><polygon points="30,35 60,15 60,85 30,65" fill="#F97316" stroke="#C2410C" stroke-width="6"/><rect x="18" y="38" width="14" height="24" fill="#C2410C"/><path d="M 70 30 A 25 25 0 0 1 70 70" fill="none" stroke="#EA580C" stroke-width="6" stroke-linecap="round"/></svg>';
             }
-            if (type === 'koppler') {
+            if (type === 'koppler' || tLow.includes('koppl') || tLow.includes('module')) {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="20" y="20" width="60" height="60" rx="6" fill="#991B1B" stroke="#7F1D1D" stroke-width="8"/><circle cx="50" cy="50" r="14" fill="#FFFFFF"/></svg>';
             }
-            if (type === 'bmz') {
+            if (type === 'bmz' || tLow.includes('bmz') || tLow.includes('zentrale')) {
               return '<svg viewBox="0 0 100 100" style="width:100%;height:100%;' + rotStyle + '"><rect x="12" y="12" width="76" height="76" rx="8" fill="#B91C1C" stroke="#7F1D1D" stroke-width="8"/><text x="50" y="60" fill="#FFFFFF" font-size="24" font-weight="900" font-family="sans-serif" text-anchor="middle">BMZ</text></svg>';
             }
             if (type === 'warmepumpe_aussen') {
@@ -1521,7 +1635,7 @@ export default function InteractivePlanScreen() {
           ${JSON.stringify(visibleCircuits)}.forEach(function(c) { window.addCircuitMarker(c); });
           ${JSON.stringify(visibleSymbols)}.forEach(function(s) { window.addPlanSymbolMarker(s); });
           ${JSON.stringify(visibleCables)}.forEach(function(c) { window.addCablePolyline(c); });
-          ${JSON.stringify(aufmassMarkers)}.forEach(function(a) { window.addAufmassMarker(a); });
+          ${JSON.stringify(visibleAufmass)}.forEach(function(a) { window.addAufmassMarker(a); });
         </script>
       </body>
       </html>

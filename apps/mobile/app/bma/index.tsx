@@ -9,6 +9,8 @@ import {
   ScrollView,
   RefreshControl,
   TextInput,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -45,6 +47,8 @@ export default function BmaScreen() {
   const [plans, setPlans] = useState<PlanOption[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showPlanPicker, setShowPlanPicker] = useState(false);
+  const [planSearch, setPlanSearch] = useState('');
   const [devices, setDevices] = useState<BmaDeviceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -224,30 +228,35 @@ export default function BmaScreen() {
         }}
       />
 
-      {/* Plan Filter Bar */}
+      {/* Plan Filter Bar (Dropdown) */}
       <View style={styles.filterSection}>
-        <Text style={styles.filterHeading}>FILTRUJ WG PLANU:</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+        <Text style={styles.filterHeading}>WYBIERZ PLAN BUDOWLANY (BMA):</Text>
+        <TouchableOpacity
+          style={styles.dropdownBtn}
+          onPress={() => setShowPlanPicker(true)}
+        >
+          <Text style={styles.dropdownBtnLabel}>PLAN:</Text>
+          <Text style={styles.dropdownBtnValue} numberOfLines={1}>
+            {selectedPlanId === 'all'
+              ? `Wszystkie plany (${devices.length} czujek)`
+              : plans.find((p) => p.id === selectedPlanId)?.name || 'Wybierz plan...'}
+          </Text>
+          <Text style={styles.dropdownArrow}>▼</Text>
+        </TouchableOpacity>
+
+        {selectedPlanId !== 'all' && (
           <TouchableOpacity
-            style={[styles.chip, selectedPlanId === 'all' && styles.chipActive]}
-            onPress={() => setSelectedPlanId('all')}
+            style={styles.openPlanDirectBtn}
+            onPress={() => {
+              router.push({
+                pathname: '/plans/[id]',
+                params: { id: selectedPlanId, mode: 'bma' },
+              } as any);
+            }}
           >
-            <Text style={[styles.chipText, selectedPlanId === 'all' && styles.chipTextActive]}>
-              Wszystkie ({devices.length})
-            </Text>
+            <Text style={styles.openPlanDirectBtnText}>🗺️ Otwórz Rzut 2D z Czujkami BMA →</Text>
           </TouchableOpacity>
-          {plans.map((p) => (
-            <TouchableOpacity
-              key={p.id}
-              style={[styles.chip, selectedPlanId === p.id && styles.chipActive]}
-              onPress={() => setSelectedPlanId(p.id)}
-            >
-              <Text style={[styles.chipText, selectedPlanId === p.id && styles.chipTextActive]}>
-                {p.project_name ? `[${p.project_name}] ` : ''}{p.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        )}
 
         {/* Search Bar */}
         <TextInput
@@ -283,6 +292,57 @@ export default function BmaScreen() {
           }
         />
       )}
+
+      {/* MODAL: PLAN PICKER */}
+      <Modal
+        visible={showPlanPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPlanPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowPlanPicker(false)}>
+          <View style={styles.pickerModalCard}>
+            <Text style={styles.pickerModalTitle}>📐 Wybierz Plan dla BMA</Text>
+            <TextInput
+              style={styles.pickerSearchInput}
+              placeholder="Szukaj planu..."
+              placeholderTextColor="#64748B"
+              value={planSearch}
+              onChangeText={setPlanSearch}
+            />
+            <ScrollView style={{ maxHeight: 320 }}>
+              <TouchableOpacity
+                style={[styles.pickerItemRow, selectedPlanId === 'all' && styles.pickerItemRowActive]}
+                onPress={() => {
+                  setSelectedPlanId('all');
+                  setShowPlanPicker(false);
+                }}
+              >
+                <Text style={[styles.pickerItemText, selectedPlanId === 'all' && styles.pickerItemTextActive]}>
+                  📁 Wszystkie plany ({devices.length} czujek)
+                </Text>
+              </TouchableOpacity>
+
+              {plans
+                .filter((p) => (p.name + (p.project_name || '')).toLowerCase().includes(planSearch.toLowerCase()))
+                .map((p) => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={[styles.pickerItemRow, selectedPlanId === p.id && styles.pickerItemRowActive]}
+                    onPress={() => {
+                      setSelectedPlanId(p.id);
+                      setShowPlanPicker(false);
+                    }}
+                  >
+                    <Text style={[styles.pickerItemText, selectedPlanId === p.id && styles.pickerItemTextActive]}>
+                      📐 {p.project_name ? `[${p.project_name}] ` : ''}{p.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -299,13 +359,105 @@ const styles = StyleSheet.create({
     backgroundColor: '#0B0F19',
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
+    gap: 8,
   },
   filterHeading: {
     fontSize: 10,
     fontWeight: '800',
     color: '#64748B',
-    marginBottom: 6,
     letterSpacing: 0.5,
+  },
+  dropdownBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  dropdownBtnLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#EF4444',
+    marginRight: 6,
+  },
+  dropdownBtnValue: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F8FAFC',
+  },
+  dropdownArrow: {
+    fontSize: 10,
+    color: '#EF4444',
+    marginLeft: 6,
+  },
+  openPlanDirectBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  openPlanDirectBtnText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  pickerModalCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 14,
+    padding: 16,
+    width: '90%',
+    maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  pickerModalTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#F8FAFC',
+    marginBottom: 10,
+  },
+  pickerSearchInput: {
+    backgroundColor: '#1E293B',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    color: '#F8FAFC',
+    fontSize: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  pickerItemRow: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+  },
+  pickerItemRowActive: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  pickerItemText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  pickerItemTextActive: {
+    color: '#EF4444',
+    fontWeight: '800',
   },
   chipScroll: {
     flexDirection: 'row',

@@ -577,7 +577,10 @@ export default function AufmassScreen() {
                     onPress={() => {
                       const pId = activeSession.plan_id;
                       setActiveSession(null);
-                      router.push({ pathname: '/plans/[id]', params: { id: pId } } as any);
+                      router.push({
+                        pathname: '/plans/[id]',
+                        params: { id: pId, mode: 'aufmass', aufmassId: activeSession.id },
+                      } as any);
                     }}
                   >
                     <Text style={styles.planNavBtnText}>🗺️ Otwórz Rzut 2D tego Aufmaß →</Text>
