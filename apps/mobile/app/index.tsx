@@ -314,7 +314,7 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={[styles.moduleBtn, { borderColor: '#10B981' }]}
                   activeOpacity={0.8}
-                  onPress={() => router.push('/plans' as any)}
+                  onPress={() => router.push('/aufmass' as any)}
                 >
                   <Text style={styles.moduleIcon}>📏</Text>
                   <Text style={[styles.moduleTitle, { color: '#10B981' }]}>{t('aufmass', 'Aufmaß (Admin)')}</Text>

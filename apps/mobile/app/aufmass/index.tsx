@@ -41,9 +41,11 @@ interface AufmassSession {
 interface AufmassMaterial {
   id: string;
   session_id: string;
-  name: string;
+  name?: string;
+  item_name?: string;
   unit: string;
-  quantity: number;
+  quantity?: number | null;
+  price?: number | null;
 }
 
 interface AufmassLabor {
@@ -108,9 +110,9 @@ export default function AufmassScreen() {
   const [addItemType, setAddItemType] = useState<'material' | 'labor'>('material');
   const [matName, setMatName] = useState('');
   const [matUnit, setMatUnit] = useState('st.');
-  const [matQty, setMatQty] = useState('1');
+  const [matQty, setMatQty] = useState('');
   const [laborDesc, setLaborDesc] = useState('');
-  const [laborHours, setLaborHours] = useState('1');
+  const [laborHours, setLaborHours] = useState('');
   const [laborWorkers, setLaborWorkers] = useState('1');
   const [savingItem, setSavingItem] = useState(false);
 
@@ -347,12 +349,13 @@ export default function AufmassScreen() {
           Alert.alert('Błąd', 'Podaj nazwę materiału.');
           return;
         }
-        const qty = parseFloat(matQty) || 1;
+        const qty = matQty.trim() !== '' ? (parseFloat(matQty) || 0) : null;
         const res = await fetch(`${API_BASE_URL}/api/aufmass/materials`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
             session_id: activeSession.id,
+            item_name: matName.trim(),
             name: matName.trim(),
             unit: matUnit.trim() || 'st.',
             quantity: qty,
@@ -360,14 +363,14 @@ export default function AufmassScreen() {
         });
         if (res.ok) {
           const json = await res.json();
-          setSessionMaterials((prev) => [...prev, json?.data || { id: `mat-${Date.now()}`, session_id: activeSession.id, name: matName, unit: matUnit, quantity: qty }]);
+          setSessionMaterials((prev) => [...prev, json?.data || { id: `mat-${Date.now()}`, session_id: activeSession.id, item_name: matName.trim(), name: matName.trim(), unit: matUnit.trim() || 'st.', quantity: qty }]);
         }
       } else {
         if (!laborDesc.trim()) {
           Alert.alert('Błąd', 'Podaj opis wykonanych prac.');
           return;
         }
-        const hrs = parseFloat(laborHours) || 1;
+        const hrs = laborHours.trim() !== '' ? (parseFloat(laborHours) || 0) : 1;
         const wCount = parseInt(laborWorkers, 10) || 1;
         const res = await fetch(`${API_BASE_URL}/api/aufmass/labor`, {
           method: 'POST',
@@ -375,20 +378,22 @@ export default function AufmassScreen() {
           body: JSON.stringify({
             session_id: activeSession.id,
             description: laborDesc.trim(),
-            hours: hrs,
             worker_count: wCount,
+            estimated_hours: hrs,
             date: new Date().toISOString().split('T')[0],
           }),
         });
         if (res.ok) {
           const json = await res.json();
-          setSessionLabor((prev) => [...prev, json?.data || { id: `lab-${Date.now()}`, session_id: activeSession.id, description: laborDesc, hours: hrs, worker_count: wCount }]);
+          setSessionLabor((prev) => [...prev, json?.data || { id: `lab-${Date.now()}`, session_id: activeSession.id, description: laborDesc.trim(), hours: hrs, estimated_hours: hrs, worker_count: wCount }]);
         }
       }
 
       setShowAddItemModal(false);
       setMatName('');
+      setMatQty('');
       setLaborDesc('');
+      setLaborHours('');
     } catch (e: any) {
       Alert.alert('Błąd', e?.message || 'Nie udało się dodać pozycji.');
     } finally {
@@ -586,6 +591,9 @@ export default function AufmassScreen() {
                     <TouchableOpacity
                       onPress={() => {
                         setAddItemType('material');
+                        setMatName('');
+                        setMatQty('');
+                        setMatUnit('st.');
                         setShowAddItemModal(true);
                       }}
                     >
@@ -597,9 +605,9 @@ export default function AufmassScreen() {
                   ) : (
                     sessionMaterials.map((m) => (
                       <View key={m.id} style={styles.itemRow}>
-                        <Text style={styles.itemRowTitle}>{m.name}</Text>
+                        <Text style={styles.itemRowTitle}>{m.item_name || m.name}</Text>
                         <Text style={styles.itemRowValue}>
-                          {m.quantity} {m.unit}
+                          {m.quantity !== null && m.quantity !== undefined ? m.quantity : '-'} {m.unit}
                         </Text>
                       </View>
                     ))
@@ -613,6 +621,9 @@ export default function AufmassScreen() {
                     <TouchableOpacity
                       onPress={() => {
                         setAddItemType('labor');
+                        setLaborDesc('');
+                        setLaborHours('');
+                        setLaborWorkers('1');
                         setShowAddItemModal(true);
                       }}
                     >
@@ -807,6 +818,8 @@ export default function AufmassScreen() {
                     <TextInput
                       style={styles.input}
                       keyboardType="numeric"
+                      placeholder="0"
+                      placeholderTextColor="#64748B"
                       value={matQty}
                       onChangeText={setMatQty}
                     />
@@ -838,6 +851,8 @@ export default function AufmassScreen() {
                     <TextInput
                       style={styles.input}
                       keyboardType="numeric"
+                      placeholder="0"
+                      placeholderTextColor="#64748B"
                       value={laborHours}
                       onChangeText={setLaborHours}
                     />

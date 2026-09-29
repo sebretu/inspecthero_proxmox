@@ -315,7 +315,7 @@ export default function CircuitsScreen() {
                     style={styles.planCard}
                     activeOpacity={0.7}
                     onPress={() => {
-                      router.push({ pathname: '/plans/[id]', params: { id: pl.id } } as any);
+                      router.push({ pathname: '/plans/[id]', params: { id: pl.id, mode: 'circuits' } } as any);
                     }}
                   >
                     <View style={styles.planCardLeft}>

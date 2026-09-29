@@ -104,9 +104,7 @@ export default function BmaScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
       const db = await getDatabase();
-      await syncBmaFromApi(db);
 
       let query = `
         SELECT b.id, b.plan_id, b.device_number, b.device_type, b.status, b.pos_x, b.pos_y, b.version,
@@ -126,11 +124,18 @@ export default function BmaScreen() {
 
       query += ` ORDER BY b.device_number ASC;`;
 
-      const rows = (await db.getAllAsync(query, params)) as BmaDeviceRow[];
-      setDevices(rows || []);
+      const rows = ((await db.getAllAsync(query, params)) as BmaDeviceRow[]) || [];
+      setDevices(rows);
+      setLoading(false);
+      setRefreshing(false);
+
+      // Background sync
+      syncBmaFromApi(db).then(async () => {
+        const updatedRows = ((await db.getAllAsync(query, params)) as BmaDeviceRow[]) || [];
+        setDevices(updatedRows);
+      });
     } catch (err) {
       console.error('[BMA] Load error:', err);
-    } finally {
       setLoading(false);
       setRefreshing(false);
     }
@@ -142,7 +147,11 @@ export default function BmaScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadData();
+    getDatabase().then((db) => {
+      syncBmaFromApi(db).finally(() => {
+        loadData();
+      });
+    });
   };
 
   const filteredDevices = devices.filter((d) => {
@@ -170,7 +179,7 @@ export default function BmaScreen() {
           if (item.plan_id) {
             router.push({
               pathname: '/plans/[id]',
-              params: { id: item.plan_id },
+              params: { id: item.plan_id, mode: 'bma' },
             } as any);
           }
         }}

@@ -76,6 +76,14 @@ export default function MaterialsCatalogScreen() {
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
+  // Email Order State
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [savedEmails, setSavedEmails] = useState<{ id: string; email: string }[]>([]);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailSubject, setEmailSubject] = useState('Baumaterialien Bestellung');
+  const [emailContent, setEmailContent] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
   // Add / Edit Material Modal
   const [modalMode, setModalMode] = useState<'add' | 'edit' | null>(null);
   const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
@@ -86,10 +94,38 @@ export default function MaterialsCatalogScreen() {
   const [formArticleNumber, setFormArticleNumber] = useState('');
   const [formIsFavorite, setFormIsFavorite] = useState(false);
 
+  // Load Saved Emails from API
+  const loadSavedEmails = useCallback(async () => {
+    try {
+      const { data: { session } } = await authSupabase.auth.getSession();
+      if (!session?.access_token) return;
+      const res = await fetch(`${API_BASE_URL}/api/saved-emails`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const list = Array.isArray(json) ? json : (json?.data || []);
+        setSavedEmails(list);
+        if (list.length > 0 && !emailTo) {
+          setEmailTo(list[0].email);
+        }
+      }
+    } catch {}
+  }, [emailTo]);
+
   // Load Categories & Materials from API / SQLite
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
+      const db = await getDatabase();
+      // Load local SQLite first for instant 0ms render
+      const localRows = ((await db.getAllAsync(
+        'SELECT id, name, category, unit FROM materials ORDER BY name ASC;'
+      )) as MaterialItem[]) || [];
+      if (localRows.length > 0) {
+        setMaterials(localRows);
+        setLoading(false);
+      }
+
       const { data: { session } } = await authSupabase.auth.getSession();
       const headers: Record<string, string> = session?.access_token
         ? { Authorization: `Bearer ${session.access_token}` }
@@ -107,8 +143,8 @@ export default function MaterialsCatalogScreen() {
         console.warn('[Materials] Categories load error:', e);
       }
 
-      // 2. Fetch Materials
-      const matRes = await fetch(`${API_BASE_URL}/api/materials?limit=250`, { headers });
+      // 2. Fetch Materials with limit 2000 (No more 250 cut-off)
+      const matRes = await fetch(`${API_BASE_URL}/api/materials?limit=2000`, { headers });
       if (matRes.ok) {
         const matJson = await matRes.json();
         const items = matJson?.data?.items || matJson?.items || [];
@@ -125,7 +161,6 @@ export default function MaterialsCatalogScreen() {
           setMaterials(mapped);
 
           // Cache in local SQLite
-          const db = await getDatabase();
           const now = new Date().toISOString();
           for (const m of mapped) {
             await db.runAsync(
@@ -135,16 +170,8 @@ export default function MaterialsCatalogScreen() {
               [m.id, m.name, m.category || null, m.unit || 'st.', now, now]
             ).catch(() => {});
           }
-          return;
         }
       }
-
-      // Fallback local SQLite
-      const db = await getDatabase();
-      const localRows = (await db.getAllAsync(
-        'SELECT id, name, category, unit FROM materials ORDER BY name ASC LIMIT 100;'
-      )) as MaterialItem[];
-      setMaterials(localRows || []);
     } catch (err) {
       console.warn('[Materials] Load error:', err);
     } finally {
@@ -239,6 +266,106 @@ export default function MaterialsCatalogScreen() {
   const totalCartCount = useMemo(() => {
     return Object.values(cart).reduce((a, b) => a + b, 0);
   }, [cart]);
+
+  // Open Email Order Modal
+  const openEmailModal = (customItems?: Array<{ name: string; quantity: number; unit: string }>, customProjId?: string) => {
+    loadSavedEmails();
+    const targetProjId = customProjId || selectedProjectId;
+    const proj = projects.find((p) => p.id === targetProjId);
+    const bldgName = proj?.name || 'Baustelle';
+
+    let itemsToFormat: Array<{ name: string; category?: string; article_number?: string; quantity: number; unit: string }> = [];
+
+    if (customItems && customItems.length > 0) {
+      itemsToFormat = customItems.map((ci) => ({
+        name: ci.name,
+        quantity: ci.quantity,
+        unit: ci.unit,
+      }));
+    } else {
+      itemsToFormat = Object.entries(cart).map(([matId, qty]) => {
+        const m = materials.find((mat) => mat.id === matId);
+        return {
+          name: m?.display_name || m?.name || 'Artikel',
+          category: m?.category || undefined,
+          article_number: m?.article_number || undefined,
+          quantity: qty,
+          unit: m?.unit || 'st.',
+        };
+      });
+    }
+
+    if (itemsToFormat.length === 0) {
+      Alert.alert('Brak pozycji', 'Dodaj artykuły do koszyka, aby wygenerować treść wiadomości e-mail.');
+      return;
+    }
+
+    const lines: string[] = [];
+    lines.push('Guten Tag,');
+    lines.push('');
+    lines.push(`hiermit möchte ich folgendes Material für die Baustelle ${bldgName} bestellen:`);
+    lines.push('');
+
+    itemsToFormat.forEach((item) => {
+      const catPrefix = item.category ? `${item.category} — ` : '';
+      const artSuffix = item.article_number ? ` (Art. nr: ${item.article_number})` : '';
+      lines.push(`- ${catPrefix}${item.name}${artSuffix} – ${item.quantity} ${item.unit}`);
+    });
+
+    lines.push('');
+    lines.push('Falls etwas nicht vorrätig ist, bitte ich um Rückmeldung.');
+    lines.push('Bei Rückfragen stehe ich Ihnen gerne zur Verfügung.');
+    lines.push('');
+    lines.push('Mit freundlichen Grüßen,');
+    lines.push('et4u Baustellen-Team');
+
+    setEmailSubject(`Baumaterialien Bestellung - ${bldgName}`);
+    setEmailContent(lines.join('\n'));
+    setShowEmailModal(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailTo.trim()) {
+      Alert.alert('Brak adresu e-mail', 'Podaj lub wybierz adres e-mail odbiorcy zamówienia.');
+      return;
+    }
+
+    try {
+      setIsSendingEmail(true);
+      const { data: { session } } = await authSupabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        Alert.alert('Błąd', 'Musisz być zalogowany, aby wysłać e-mail.');
+        return;
+      }
+
+      const htmlContent = emailContent.replace(/\n/g, '<br />');
+      const res = await fetch(`${API_BASE_URL}/api/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          to: emailTo.trim(),
+          subject: emailSubject.trim() || 'Baumaterialien Bestellung',
+          html: htmlContent,
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && (json.ok || json.success)) {
+        Alert.alert('✅ E-mail wysłany', `Zamówienie materiałowe zostało pomyślnie wysłane na adres: ${emailTo.trim()}`);
+        setShowEmailModal(false);
+      } else {
+        Alert.alert('Błąd wysyłania', json?.error || json?.message || 'Serwer pocztowy zwrócił błąd.');
+      }
+    } catch (e: any) {
+      Alert.alert('Błąd', e?.message || 'Wystąpił błąd podczas wysyłania wiadomości e-mail.');
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   // Toggle Favorite
   const toggleFavorite = async (item: MaterialItem) => {
@@ -778,8 +905,15 @@ export default function MaterialsCatalogScreen() {
                 {submitting ? (
                   <ActivityIndicator color="#0F172A" />
                 ) : (
-                  <Text style={styles.submitOrderBtnText}>🚀 Złóż Zapotrzebowanie Materiałowe ({totalCartCount})</Text>
+                  <Text style={styles.submitOrderBtnText}>🚀 Złóż Zapotrzebowanie w Systemie ({totalCartCount})</Text>
                 )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.emailOrderBtn}
+                onPress={() => openEmailModal()}
+              >
+                <Text style={styles.emailOrderBtnText}>✉️ Wyślij Zapotrzebowanie E-mailem (Gotowy tekst)</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -831,11 +965,102 @@ export default function MaterialsCatalogScreen() {
                   <Text style={styles.metaLabel}>Pozycji: <Text style={styles.metaValue}>{item.items_count || 0}</Text></Text>
                   <Text style={styles.metaLabel}>Data: <Text style={styles.metaValue}>{new Date(item.created_at).toLocaleDateString()}</Text></Text>
                 </View>
+
+                <View style={styles.historyActionRow}>
+                  <TouchableOpacity
+                    style={styles.historyEmailBtn}
+                    onPress={() => openEmailModal(item.items, item.project_id)}
+                  >
+                    <Text style={styles.historyEmailBtnText}>✉️ Wyślij E-mail z tym zamówieniem</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             );
           }}
         />
       )}
+
+      {/* MODAL: EMAIL ORDER */}
+      <Modal
+        visible={showEmailModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEmailModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalHeading}>✉️ Wyślij Zapotrzebowanie E-mail</Text>
+
+            <ScrollView style={{ maxHeight: 380 }}>
+              <Text style={styles.inputLabel}>ODBIORCY (WYBIERZ ZAPISANY LUB WPISZ):</Text>
+              {savedEmails.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                  {savedEmails.map((se) => (
+                    <TouchableOpacity
+                      key={se.id}
+                      style={[styles.catChip, emailTo === se.email && styles.catChipActive]}
+                      onPress={() => setEmailTo(se.email)}
+                    >
+                      <Text style={[styles.catChipText, emailTo === se.email && styles.catChipTextActive]}>
+                        📧 {se.email}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+
+              <TextInput
+                style={styles.input}
+                placeholder="np. hurtownia@example.com, biuro@..."
+                placeholderTextColor="#64748B"
+                value={emailTo}
+                onChangeText={setEmailTo}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+
+              <Text style={styles.inputLabel}>TEMAT WIADOMOŚCI:</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Temat..."
+                placeholderTextColor="#64748B"
+                value={emailSubject}
+                onChangeText={setEmailSubject}
+              />
+
+              <Text style={styles.inputLabel}>TREŚĆ ZAMÓWIENIA (DEUTSCH / GOTOWY SZABLON):</Text>
+              <TextInput
+                style={[styles.input, { height: 180, textAlignVertical: 'top', fontSize: 12, lineHeight: 18 }]}
+                placeholder="Treść e-mail..."
+                placeholderTextColor="#64748B"
+                value={emailContent}
+                onChangeText={setEmailContent}
+                multiline
+              />
+            </ScrollView>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setShowEmailModal(false)}
+              >
+                <Text style={styles.cancelBtnText}>Anuluj</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: '#38BDF8' }]}
+                onPress={handleSendEmail}
+                disabled={isSendingEmail}
+              >
+                {isSendingEmail ? (
+                  <ActivityIndicator color="#0F172A" />
+                ) : (
+                  <Text style={[styles.saveBtnText, { color: '#0F172A' }]}>🚀 Wyślij E-mail</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* MODAL: ADD / EDIT MATERIAL */}
       <Modal
@@ -1292,12 +1517,47 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 16,
-    marginBottom: 40,
+    marginBottom: 10,
   },
   submitOrderBtnText: {
     color: '#0F172A',
     fontSize: 14,
     fontWeight: '800',
+  },
+  emailOrderBtn: {
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  emailOrderBtnText: {
+    color: '#38BDF8',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  historyActionRow: {
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#1E293B',
+    paddingTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  historyEmailBtn: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.4)',
+  },
+  historyEmailBtnText: {
+    color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,

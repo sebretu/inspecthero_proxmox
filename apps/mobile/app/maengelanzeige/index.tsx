@@ -19,6 +19,7 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
+import { getDatabase } from '../../src/db/database';
 import { authSupabase } from '../../src/auth/authClient';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { useAuth } from '../../src/auth/useAuth';
@@ -94,6 +95,14 @@ export default function MaengelanzeigeScreen() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [tradeFilter, setTradeFilter] = useState<string>('ALL');
 
+  // Dropdown Picker Modals
+  const [showCompanyPicker, setShowCompanyPicker] = useState(false);
+  const [showProjectPicker, setShowProjectPicker] = useState(false);
+  const [showDocPicker, setShowDocPicker] = useState(false);
+  const [companySearch, setCompanySearch] = useState('');
+  const [projectSearch, setProjectSearch] = useState('');
+  const [docSearch, setDocSearch] = useState('');
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -112,7 +121,20 @@ export default function MaengelanzeigeScreen() {
 
   const loadProjectsAndDocs = useCallback(async () => {
     try {
-      setLoading(true);
+      const db = await getDatabase();
+      // Load local SQLite projects first for instant 0ms render
+      const localProjs = (await db.getAllAsync(
+        'SELECT id, name FROM projects ORDER BY name ASC;'
+      ).catch(() => [])) as ProjectOption[];
+
+      if (localProjs && localProjs.length > 0) {
+        setProjects(localProjs);
+        if (!selectedProjectId) {
+          setSelectedProjectId(localProjs[0].id);
+        }
+        setLoading(false);
+      }
+
       const { data: { session } } = await authSupabase.auth.getSession();
       const headers: Record<string, string> = session?.access_token
         ? { Authorization: `Bearer ${session.access_token}` }
@@ -135,9 +157,11 @@ export default function MaengelanzeigeScreen() {
       if (pRes.ok) {
         const pJson = await pRes.json();
         const pList = Array.isArray(pJson) ? pJson : (pJson?.data || []);
-        setProjects(pList);
-        if (!selectedProjectId && pList.length > 0) {
-          setSelectedProjectId(pList[0].id);
+        if (pList.length > 0) {
+          setProjects(pList);
+          if (!selectedProjectId) {
+            setSelectedProjectId(pList[0].id);
+          }
         }
       }
 
@@ -428,81 +452,48 @@ export default function MaengelanzeigeScreen() {
         }}
       />
 
-      {/* 0. Company (Firma / Auftraggeber) Filter Bar */}
-      {companies.length > 0 && (
-        <View style={[styles.topSelectorBar, { borderBottomWidth: 0, paddingBottom: 4 }]}>
-          <Text style={styles.selectorLabel}>FIRMA / AUFTRAGGEBER:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollBar}>
-            <TouchableOpacity
-              style={[styles.projChip, !selectedCompanyId && styles.projChipActive]}
-              onPress={() => setSelectedCompanyId('')}
-            >
-              <Text style={[styles.projChipText, !selectedCompanyId && styles.projChipTextActive]}>
-                🏢 Alle Firmen ({companies.length})
-              </Text>
-            </TouchableOpacity>
-            {companies.map((c) => (
-              <TouchableOpacity
-                key={c.id}
-                style={[styles.projChip, selectedCompanyId === c.id && styles.projChipActive]}
-                onPress={() => {
-                  setSelectedCompanyId(c.id);
-                  const matchingProj = projects.find((p) => p.company_id === c.id);
-                  if (matchingProj) {
-                    setSelectedProjectId(matchingProj.id);
-                    setSelectedDocId('');
-                  }
-                }}
-              >
-                <Text style={[styles.projChipText, selectedCompanyId === c.id && styles.projChipTextActive]}>
-                  🏢 {c.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+      {/* Dropdown Selectors: Firma, Projekt, Dokument */}
+      <View style={styles.dropdownSelectorBar}>
+        {/* Company Dropdown */}
+        {companies.length > 0 && (
+          <TouchableOpacity
+            style={styles.dropdownBtn}
+            onPress={() => setShowCompanyPicker(true)}
+          >
+            <Text style={styles.dropdownBtnLabel}>FIRMA:</Text>
+            <Text style={styles.dropdownBtnValue} numberOfLines={1}>
+              {companies.find((c) => c.id === selectedCompanyId)?.name || 'Alle Firmen'}
+            </Text>
+            <Text style={styles.dropdownArrow}>▼</Text>
+          </TouchableOpacity>
+        )}
 
-      {/* 1. Project Switcher Bar */}
-      <View style={styles.topSelectorBar}>
-        <Text style={styles.selectorLabel}>PROJEKT:</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollBar}>
-          {visibleProjects.map((p) => (
-            <TouchableOpacity
-              key={p.id}
-              style={[styles.projChip, selectedProjectId === p.id && styles.projChipActive]}
-              onPress={() => {
-                setSelectedProjectId(p.id);
-                setSelectedDocId('');
-              }}
-            >
-              <Text style={[styles.projChipText, selectedProjectId === p.id && styles.projChipTextActive]}>
-                📁 {p.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {/* Project Dropdown */}
+        <TouchableOpacity
+          style={styles.dropdownBtn}
+          onPress={() => setShowProjectPicker(true)}
+        >
+          <Text style={styles.dropdownBtnLabel}>PROJEKT:</Text>
+          <Text style={styles.dropdownBtnValue} numberOfLines={1}>
+            {projects.find((p) => p.id === selectedProjectId)?.name || 'Projekt wählen...'}
+          </Text>
+          <Text style={styles.dropdownArrow}>▼</Text>
+        </TouchableOpacity>
+
+        {/* Document Dropdown */}
+        {documents.length > 0 && (
+          <TouchableOpacity
+            style={[styles.dropdownBtn, { borderColor: '#A855F7' }]}
+            onPress={() => setShowDocPicker(true)}
+          >
+            <Text style={[styles.dropdownBtnLabel, { color: '#C084FC' }]}>PROTOKOLL:</Text>
+            <Text style={styles.dropdownBtnValue} numberOfLines={1}>
+              {documents.find((d) => d.id === selectedDocId)?.title || documents.find((d) => d.id === selectedDocId)?.file_name || 'Protokoll wählen...'}
+            </Text>
+            <Text style={[styles.dropdownArrow, { color: '#C084FC' }]}>▼</Text>
+          </TouchableOpacity>
+        )}
       </View>
-
-      {/* 2. Documents (Protokoły PDF) Switcher */}
-      {documents.length > 0 && (
-        <View style={styles.docSelectorBar}>
-          <Text style={styles.selectorLabel}>PROTOKOLL-DOKUMENT (PDF):</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollBar}>
-            {documents.map((d) => (
-              <TouchableOpacity
-                key={d.id}
-                style={[styles.docChip, selectedDocId === d.id && styles.docChipActive]}
-                onPress={() => setSelectedDocId(d.id)}
-              >
-                <Text style={[styles.docChipText, selectedDocId === d.id && styles.docChipTextActive]}>
-                  📑 {d.title || d.file_name || 'Mängelprotokoll'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
 
       {/* 3. Trade Filter Bar (KDSK, ETEC, Philips, etc.) */}
       {uniqueTrades.length > 0 && (
@@ -930,6 +921,140 @@ export default function MaengelanzeigeScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      {/* MODAL: COMPANY PICKER */}
+      <Modal
+        visible={showCompanyPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCompanyPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowCompanyPicker(false)}>
+          <View style={styles.pickerModalCard}>
+            <Text style={styles.pickerModalTitle}>🏢 Wybierz Firmę / Zleceniodawcę</Text>
+            <TextInput
+              style={styles.pickerSearchInput}
+              placeholder="Szukaj firmy..."
+              placeholderTextColor="#64748B"
+              value={companySearch}
+              onChangeText={setCompanySearch}
+            />
+            <ScrollView style={{ maxHeight: 300 }}>
+              <TouchableOpacity
+                style={[styles.pickerItemRow, !selectedCompanyId && styles.pickerItemRowActive]}
+                onPress={() => {
+                  setSelectedCompanyId('');
+                  setShowCompanyPicker(false);
+                }}
+              >
+                <Text style={[styles.pickerItemText, !selectedCompanyId && styles.pickerItemTextActive]}>
+                  🏢 Wszystkie firmy ({companies.length})
+                </Text>
+              </TouchableOpacity>
+              {companies
+                .filter((c) => c.name.toLowerCase().includes(companySearch.toLowerCase()))
+                .map((c) => (
+                  <TouchableOpacity
+                    key={c.id}
+                    style={[styles.pickerItemRow, selectedCompanyId === c.id && styles.pickerItemRowActive]}
+                    onPress={() => {
+                      setSelectedCompanyId(c.id);
+                      const matchingProj = projects.find((p) => p.company_id === c.id);
+                      if (matchingProj) {
+                        setSelectedProjectId(matchingProj.id);
+                        setSelectedDocId('');
+                      }
+                      setShowCompanyPicker(false);
+                    }}
+                  >
+                    <Text style={[styles.pickerItemText, selectedCompanyId === c.id && styles.pickerItemTextActive]}>
+                      🏢 {c.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* MODAL: PROJECT PICKER */}
+      <Modal
+        visible={showProjectPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowProjectPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowProjectPicker(false)}>
+          <View style={styles.pickerModalCard}>
+            <Text style={styles.pickerModalTitle}>📁 Wybierz Projekt Budowlany</Text>
+            <TextInput
+              style={styles.pickerSearchInput}
+              placeholder="Szukaj projektu..."
+              placeholderTextColor="#64748B"
+              value={projectSearch}
+              onChangeText={setProjectSearch}
+            />
+            <ScrollView style={{ maxHeight: 300 }}>
+              {visibleProjects
+                .filter((p) => p.name.toLowerCase().includes(projectSearch.toLowerCase()))
+                .map((p) => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={[styles.pickerItemRow, selectedProjectId === p.id && styles.pickerItemRowActive]}
+                    onPress={() => {
+                      setSelectedProjectId(p.id);
+                      setSelectedDocId('');
+                      setShowProjectPicker(false);
+                    }}
+                  >
+                    <Text style={[styles.pickerItemText, selectedProjectId === p.id && styles.pickerItemTextActive]}>
+                      📁 {p.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* MODAL: DOCUMENT / PROTOKOLL PICKER */}
+      <Modal
+        visible={showDocPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDocPicker(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowDocPicker(false)}>
+          <View style={styles.pickerModalCard}>
+            <Text style={styles.pickerModalTitle}>📑 Wybierz Protokół / Dokument PDF</Text>
+            <TextInput
+              style={styles.pickerSearchInput}
+              placeholder="Szukaj protokołu..."
+              placeholderTextColor="#64748B"
+              value={docSearch}
+              onChangeText={setDocSearch}
+            />
+            <ScrollView style={{ maxHeight: 300 }}>
+              {documents
+                .filter((d) => (d.title || d.file_name || '').toLowerCase().includes(docSearch.toLowerCase()))
+                .map((d) => (
+                  <TouchableOpacity
+                    key={d.id}
+                    style={[styles.pickerItemRow, selectedDocId === d.id && styles.pickerItemRowActive]}
+                    onPress={() => {
+                      setSelectedDocId(d.id);
+                      setShowDocPicker(false);
+                    }}
+                  >
+                    <Text style={[styles.pickerItemText, selectedDocId === d.id && styles.pickerItemTextActive]}>
+                      📑 {d.title || d.file_name || 'Mängelprotokoll'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -938,6 +1063,87 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#030712',
+  },
+  dropdownSelectorBar: {
+    backgroundColor: '#0B0F19',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+    gap: 6,
+  },
+  dropdownBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  dropdownBtnLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#38BDF8',
+    marginRight: 6,
+  },
+  dropdownBtnValue: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F8FAFC',
+  },
+  dropdownArrow: {
+    fontSize: 10,
+    color: '#38BDF8',
+    marginLeft: 6,
+  },
+  pickerModalCard: {
+    backgroundColor: '#0F172A',
+    borderRadius: 14,
+    padding: 16,
+    width: '90%',
+    maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: '#38BDF8',
+  },
+  pickerModalTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#F8FAFC',
+    marginBottom: 10,
+  },
+  pickerSearchInput: {
+    backgroundColor: '#1E293B',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    color: '#F8FAFC',
+    fontSize: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  pickerItemRow: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+  },
+  pickerItemRowActive: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+  },
+  pickerItemText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  pickerItemTextActive: {
+    color: '#38BDF8',
+    fontWeight: '800',
   },
   topSelectorBar: {
     backgroundColor: '#0B0F19',

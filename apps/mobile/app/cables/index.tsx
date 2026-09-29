@@ -65,6 +65,7 @@ export default function CablesScreen() {
 
   const [plans, setPlans] = useState<PlanOption[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string>('all');
+  const [showPlanPicker, setShowPlanPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   const [trommels, setTrommels] = useState<TrommelRow[]>([]);
@@ -136,94 +137,102 @@ export default function CablesScreen() {
     }
   };
 
+  const queryLocalCables = async (db: any, activeProjId: string, activePlanId: string) => {
+    // Load projects
+    const projs = ((await db.getAllAsync(
+      'SELECT id, name, company_name, address FROM projects WHERE deleted_at IS NULL ORDER BY name ASC;'
+    )) as ProjectOption[]) || [];
+    setProjects(projs);
+
+    let pId = activeProjId;
+    if (!pId && projs && projs.length > 0) {
+      pId = projs[0].id;
+      setSelectedProjectId(pId);
+    }
+
+    // Load plans for the project with full building & floor names
+    let planRows: PlanOption[] = [];
+    if (pId) {
+      const rawPlans = (await db.getAllAsync(`
+        SELECT 
+          p.id, 
+          p.project_id, 
+          p.name, 
+          COALESCE(b.name, '') as building_name,
+          COALESCE(f.name, '') as floor_name
+        FROM plans p
+        LEFT JOIN floors f ON p.floor_id = f.id
+        LEFT JOIN buildings b ON f.building_id = b.id
+        WHERE p.deleted_at IS NULL AND p.project_id = ? AND p.id != 'pln-sample-001'
+        ORDER BY b.name ASC, f.level_number ASC, p.name ASC;
+      `, [pId])) as any[];
+
+      planRows = (rawPlans || []).map((p: any) => {
+        const parts = [p.building_name, p.floor_name, (p.name && p.name !== p.floor_name) ? p.name : ''].filter(Boolean);
+        const full = parts.length > 0 ? parts.join(' · ') : p.name;
+        return {
+          id: p.id,
+          project_id: p.project_id,
+          name: p.name,
+          building_name: p.building_name,
+          floor_name: p.floor_name,
+          full_name: full,
+        };
+      });
+    }
+    setPlans(planRows);
+
+    // Load Trommels
+    const trommelRows = ((await db.getAllAsync(
+      'SELECT * FROM trommels WHERE deleted_at IS NULL ORDER BY name ASC;'
+    )) as TrommelRow[]) || [];
+    setTrommels(trommelRows);
+
+    // Load Cables
+    let cableQuery = `
+      SELECT 
+        c.id, 
+        c.plan_id, 
+        c.trommel_id, 
+        c.cable_number, 
+        c.cable_type, 
+        c.length, 
+        c.status, 
+        c.version,
+        p.name as plan_name
+      FROM cables c
+      LEFT JOIN plans p ON c.plan_id = p.id
+      WHERE c.deleted_at IS NULL
+    `;
+    const paramsSql: any[] = [];
+
+    if (activePlanId !== 'all') {
+      cableQuery += ' AND c.plan_id = ?';
+      paramsSql.push(activePlanId);
+    } else if (pId) {
+      cableQuery += ' AND p.project_id = ?';
+      paramsSql.push(pId);
+    }
+
+    cableQuery += ' ORDER BY c.cable_number ASC;';
+    const cableRows = ((await db.getAllAsync(cableQuery, paramsSql)) as CableRow[]) || [];
+    setCables(cableRows);
+  };
+
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
       const db = await getDatabase();
-      await syncCablesFromApi(db, selectedProjectId);
+      // 1. Instant load from SQLite (0ms UI render)
+      await queryLocalCables(db, selectedProjectId, selectedPlanId);
+      setLoading(false);
+      setRefreshing(false);
 
-      // Load projects
-      const projs = await db.getAllAsync<ProjectOption>(
-        'SELECT id, name, company_name, address FROM projects WHERE deleted_at IS NULL ORDER BY name ASC;'
-      );
-      setProjects(projs || []);
-
-      let activeProjId = selectedProjectId;
-      if (!activeProjId && projs && projs.length > 0) {
-        activeProjId = projs[0].id;
-        setSelectedProjectId(activeProjId);
-      }
-
-      // Load plans for the project with full building & floor names
-      let planRows: PlanOption[] = [];
-      if (activeProjId) {
-        const rawPlans = await db.getAllAsync<any>(`
-          SELECT 
-            p.id, 
-            p.project_id,
-            p.name,
-            COALESCE(b.name, '') as building_name,
-            COALESCE(f.name, '') as floor_name
-          FROM plans p
-          LEFT JOIN floors f ON p.floor_id = f.id
-          LEFT JOIN buildings b ON f.building_id = b.id
-          WHERE p.deleted_at IS NULL AND p.project_id = ? AND p.id != 'pln-sample-001'
-          ORDER BY b.name ASC, f.level_number ASC, p.name ASC;
-        `, [activeProjId]);
-
-        planRows = (rawPlans || []).map((p) => {
-          const parts = [p.building_name, p.floor_name, (p.name && p.name !== p.floor_name) ? p.name : ''].filter(Boolean);
-          const full = parts.length > 0 ? parts.join(' · ') : p.name;
-          return {
-            id: p.id,
-            project_id: p.project_id,
-            name: p.name,
-            building_name: p.building_name,
-            floor_name: p.floor_name,
-            full_name: full,
-          };
-        });
-      }
-      setPlans(planRows);
-
-      // Load Trommels
-      const trommelRows = await db.getAllAsync<TrommelRow>(
-        'SELECT * FROM trommels WHERE deleted_at IS NULL ORDER BY name ASC;'
-      );
-      setTrommels(trommelRows || []);
-
-      // Load Cables
-      let cableQuery = `
-        SELECT 
-          c.id, 
-          c.plan_id, 
-          c.trommel_id, 
-          c.cable_number, 
-          c.cable_type, 
-          c.length, 
-          c.status, 
-          c.version,
-          p.name as plan_name
-        FROM cables c
-        LEFT JOIN plans p ON c.plan_id = p.id
-        WHERE c.deleted_at IS NULL
-      `;
-      const paramsSql: any[] = [];
-
-      if (selectedPlanId !== 'all') {
-        cableQuery += ' AND c.plan_id = ?';
-        paramsSql.push(selectedPlanId);
-      } else if (activeProjId) {
-        cableQuery += ' AND p.project_id = ?';
-        paramsSql.push(activeProjId);
-      }
-
-      cableQuery += ' ORDER BY c.cable_number ASC;';
-      const cableRows = await db.getAllAsync<CableRow>(cableQuery, paramsSql);
-      setCables(cableRows || []);
+      // 2. Non-blocking background sync
+      syncCablesFromApi(db, selectedProjectId).then(() => {
+        queryLocalCables(db, selectedProjectId, selectedPlanId);
+      });
     } catch (err) {
       console.error('[CablesScreen] Error loading cables & trommels:', err);
-    } finally {
       setLoading(false);
       setRefreshing(false);
     }
@@ -235,17 +244,23 @@ export default function CablesScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadData();
+    getDatabase().then((db) => {
+      syncCablesFromApi(db, selectedProjectId).finally(() => {
+        queryLocalCables(db, selectedProjectId, selectedPlanId);
+        setRefreshing(false);
+      });
+    });
   };
 
   const currentProject = projects.find((p) => p.id === selectedProjectId);
+  const currentPlan = plans.find((p) => p.id === selectedPlanId);
 
   const openPlanMap = (planIdToOpen?: string) => {
     const targetId = (planIdToOpen && planIdToOpen !== 'all') ? planIdToOpen : (plans[0]?.id || selectedPlanId);
     if (targetId && targetId !== 'all') {
-      router.push({ pathname: '/plans/[id]', params: { id: targetId } } as any);
+      router.push({ pathname: '/plans/[id]', params: { id: targetId, mode: 'cables' } } as any);
     } else {
-      router.push('/plans' as any);
+      router.push({ pathname: '/plans', params: { mode: 'cables' } } as any);
     }
   };
 
@@ -455,32 +470,28 @@ export default function CablesScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 2. Plan Scroll with FULL Names */}
-      <View style={styles.topControlSection}>
-        {plans.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.planScroll}>
-            <TouchableOpacity
-              style={[styles.planChip, selectedPlanId === 'all' && styles.planChipActive]}
-              onPress={() => setSelectedPlanId('all')}
-            >
-              <Text style={[styles.planChipText, selectedPlanId === 'all' && styles.planChipTextActive]}>
-                Wszystkie plany ({plans.length})
+      {/* 2. Plan Selector Bar (Dropdown just like Project Selector) */}
+      <View style={[styles.projectBar, { marginTop: 8 }]}>
+        <TouchableOpacity
+          style={styles.projectSelectorBtn}
+          onPress={() => setShowPlanPicker(true)}
+          activeOpacity={0.8}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.projectSelectorSub}>WYBRANY RZUT / PLAN:</Text>
+            <View style={styles.projectSelectorRow}>
+              <Text style={styles.projectSelectorTitle} numberOfLines={1}>
+                {selectedPlanId === 'all'
+                  ? `📐 Wszystkie plany (${plans.length})`
+                  : `📐 ${currentPlan?.full_name || 'Wybierz plan...'}`}
               </Text>
-            </TouchableOpacity>
-            {plans.map((pl) => (
-              <TouchableOpacity
-                key={pl.id}
-                style={[styles.planChip, selectedPlanId === pl.id && styles.planChipActive]}
-                onPress={() => setSelectedPlanId(pl.id)}
-              >
-                <Text style={[styles.planChipText, selectedPlanId === pl.id && styles.planChipTextActive]}>
-                  📐 {pl.full_name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+            </View>
+          </View>
+          <Text style={styles.chevronIcon}>▼</Text>
+        </TouchableOpacity>
+      </View>
 
+      <View style={styles.topControlSection}>
         <TouchableOpacity
           style={styles.openMapBanner}
           activeOpacity={0.8}
@@ -694,6 +705,63 @@ export default function CablesScreen() {
                     ) : null}
                   </View>
                   {selectedProjectId === pr.id ? (
+                    <Text style={styles.checkmarkIcon}>✓</Text>
+                  ) : null}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Plan Picker Modal */}
+      <Modal visible={showPlanPicker} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.projectModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Wybierz rzut / plan</Text>
+              <TouchableOpacity onPress={() => setShowPlanPicker(false)}>
+                <Text style={styles.closeBtnText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 380 }}>
+              <TouchableOpacity
+                style={[
+                  styles.projectItem,
+                  selectedPlanId === 'all' && styles.projectItemActive,
+                ]}
+                onPress={() => {
+                  setSelectedPlanId('all');
+                  setShowPlanPicker(false);
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.projectItemTitle}>📐 Wszystkie plany ({plans.length})</Text>
+                </View>
+                {selectedPlanId === 'all' ? (
+                  <Text style={styles.checkmarkIcon}>✓</Text>
+                ) : null}
+              </TouchableOpacity>
+
+              {plans.map((pl) => (
+                <TouchableOpacity
+                  key={pl.id}
+                  style={[
+                    styles.projectItem,
+                    selectedPlanId === pl.id && styles.projectItemActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedPlanId(pl.id);
+                    setShowPlanPicker(false);
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.projectItemTitle}>📐 {pl.full_name}</Text>
+                    {pl.floor_name ? (
+                      <Text style={styles.projectItemSub}>Kondygnacja: {pl.floor_name}</Text>
+                    ) : null}
+                  </View>
+                  {selectedPlanId === pl.id ? (
                     <Text style={styles.checkmarkIcon}>✓</Text>
                   ) : null}
                 </TouchableOpacity>

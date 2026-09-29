@@ -162,8 +162,19 @@ export const ALL_SYMBOLS: SymbolDefinition[] = [
   { id: 'anderungen', category: 'klappen', name: 'Änderungen / Rewizja', emoji: '☁️', color: '#DC2626', defaultLabel: 'Rewizja' },
 ];
 
+interface AufmassMarkerPin {
+  id: string;
+  session_id: string;
+  session_type?: string;
+  label?: string;
+  color?: string;
+  x_norm: number;
+  y_norm: number;
+  created_at?: string;
+}
+
 export default function InteractivePlanScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, mode, aufmassId } = useLocalSearchParams<{ id: string; mode?: string; aufmassId?: string }>();
   const router = useRouter();
   const webViewRef = useRef<WebView>(null);
   const { t } = useLanguage();
@@ -182,18 +193,38 @@ export default function InteractivePlanScreen() {
   const [circuits, setCircuits] = useState<CircuitPin[]>([]);
   const [cables, setCables] = useState<CablePin[]>([]);
   const [symbols, setSymbols] = useState<PlanSymbolPin[]>([]);
+  const [aufmassMarkers, setAufmassMarkers] = useState<AufmassMarkerPin[]>([]);
 
-  // Layers Visibility (1:1 with Web)
-  const [layers, setLayers] = useState<Record<SymbolCategory, boolean>>({
-    tasks: true,
-    heating: true,
-    circuits: true,
-    lighting: true,
-    bma: true,
-    notlicht: true,
-    cables: true,
-    klappen: true,
-  });
+  // Layers Visibility filtered by initial mode
+  const initialLayers = useMemo<Record<SymbolCategory, boolean>>(() => {
+    if (mode === 'circuits') {
+      return { tasks: false, heating: false, circuits: true, lighting: false, bma: false, notlicht: false, cables: false, klappen: false };
+    }
+    if (mode === 'bma') {
+      return { tasks: false, heating: false, circuits: false, lighting: false, bma: true, notlicht: false, cables: false, klappen: false };
+    }
+    if (mode === 'tasks' || mode === 'maengel') {
+      return { tasks: true, heating: false, circuits: false, lighting: false, bma: false, notlicht: false, cables: false, klappen: false };
+    }
+    if (mode === 'cables') {
+      return { tasks: false, heating: false, circuits: false, lighting: false, bma: false, notlicht: false, cables: true, klappen: false };
+    }
+    if (mode === 'aufmass') {
+      return { tasks: false, heating: false, circuits: false, lighting: false, bma: false, notlicht: false, cables: false, klappen: false };
+    }
+    return {
+      tasks: true,
+      heating: true,
+      circuits: true,
+      lighting: true,
+      bma: true,
+      notlicht: true,
+      cables: true,
+      klappen: true,
+    };
+  }, [mode]);
+
+  const [layers, setLayers] = useState<Record<SymbolCategory, boolean>>(initialLayers);
   const [showLayersModal, setShowLayersModal] = useState(false);
 
   // Selected Entity for Bottom Inspection Drawer
@@ -563,6 +594,30 @@ export default function InteractivePlanScreen() {
         );
         setFloors(floorRows || []);
       }
+
+      // 8. Fetch Aufmass markers if in aufmass mode
+      let loadedAufmass: AufmassMarkerPin[] = [];
+      if (token && (mode === 'aufmass' || aufmassId)) {
+        try {
+          const aUrl = aufmassId ? `${apiUrl}/api/aufmass/markers?sessionId=${aufmassId}` : `${apiUrl}/api/aufmass/markers?planId=${activePlanId}`;
+          const aRes = await fetch(aUrl, { headers });
+          if (aRes.ok) {
+            const aJson = await aRes.json();
+            const aList = Array.isArray(aJson) ? aJson : (aJson?.data || []);
+            loadedAufmass = aList.filter((m: any) => m.x_norm != null && m.y_norm != null).map((m: any) => ({
+              id: m.id,
+              session_id: m.session_id,
+              session_type: m.session_type || 'aufmass',
+              label: m.label,
+              color: m.color,
+              x_norm: m.x_norm,
+              y_norm: m.y_norm,
+              created_at: m.created_at,
+            }));
+          }
+        } catch {}
+      }
+      setAufmassMarkers(loadedAufmass);
     } catch (err) {
       console.error('[InteractivePlan] Load error:', err);
     } finally {
@@ -1449,11 +1504,24 @@ export default function InteractivePlanScreen() {
             }
           });
 
+          window.addAufmassMarker = function(am) {
+            if (!am) return;
+            const ll = normToLatLng(am.x_norm, am.y_norm);
+            const color = am.color || (am.session_type === 'baubehinderung' ? '#ef4444' : am.session_type === 'zusatz' ? '#f59e0b' : am.session_type === 'bestellung' ? '#8b5cf6' : am.session_type === 'fragen' ? '#ec4899' : '#3b82f6');
+            const prefix = am.session_type === 'zusatz' ? 'Z' : am.session_type === 'baubehinderung' ? 'B' : am.session_type === 'bestellung' ? 'Bs' : am.session_type === 'fragen' ? 'F' : 'A';
+            const label = escapeHtml(am.label || prefix);
+            const iconHtml = '<div style="background-color: ' + color + '; border: 2px solid white; border-radius: 12px; min-width: 24px; height: 24px; padding: 0 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 800; box-shadow: 0 2px 8px rgba(0,0,0,0.6); cursor: pointer;">' + label + '</div>';
+            const icon = L.divIcon({ className: '', html: iconHtml, iconSize: [24, 24], iconAnchor: [12, 12] });
+            const marker = L.marker(ll, { icon: icon }).addTo(map);
+            marker.bindTooltip('<b>Punkt Aufmaß ' + label + '</b><br/>Typ: ' + escapeHtml(am.session_type || 'Aufmaß'), { direction: 'top', className: 'plan-tooltip' });
+          };
+
           // Render Active Elements
           ${JSON.stringify(visibleTasks)}.forEach(function(t) { window.addTaskMarker(t); });
           ${JSON.stringify(visibleCircuits)}.forEach(function(c) { window.addCircuitMarker(c); });
           ${JSON.stringify(visibleSymbols)}.forEach(function(s) { window.addPlanSymbolMarker(s); });
           ${JSON.stringify(visibleCables)}.forEach(function(c) { window.addCablePolyline(c); });
+          ${JSON.stringify(aufmassMarkers)}.forEach(function(a) { window.addAufmassMarker(a); });
         </script>
       </body>
       </html>
