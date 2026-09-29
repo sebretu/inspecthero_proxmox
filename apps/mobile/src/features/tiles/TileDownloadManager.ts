@@ -101,7 +101,7 @@ class TileDownloadManagerClass {
   /**
    * Start downloading tiles for a single plan in the background
    */
-  public async startPlanDownload(planId: string, planName: string, maxZoom: number = 4): Promise<boolean> {
+  public async startPlanDownload(planId: string, planName: string, maxZoom: number = 5): Promise<boolean> {
     if (this.state.isDownloading) {
       console.warn('[TileDownloadManager] A download is already in progress');
       return false;

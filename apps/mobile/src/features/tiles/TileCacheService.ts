@@ -190,7 +190,7 @@ export class TileCacheService {
    */
   static async prefetchPlanTiles(
     planId: string,
-    targetMaxZoom: number = 4,
+    targetMaxZoom: number = 5,
     onProgress?: (p: TileCacheProgress) => void
   ): Promise<{ success: boolean; tileCount: number }> {
     try {
@@ -199,7 +199,9 @@ export class TileCacheService {
       const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
 
       // 1. Fetch Plan Metadata
-      const metaRes = await fetch(`${this.apiUrl}/api/tiles/${planId}/meta${tokenParam}`);
+      const metaRes = await fetch(`${this.apiUrl}/api/tiles/${planId}/meta${tokenParam}`, {
+        signal: AbortSignal.timeout(4000),
+      });
       if (!metaRes.ok) {
         throw new Error(`Failed to fetch plan metadata: HTTP ${metaRes.status}`);
       }
@@ -368,7 +370,7 @@ export class TileCacheService {
           });
         }
 
-        await this.prefetchPlanTiles(p.id, 4, (prog) => {
+        await this.prefetchPlanTiles(p.id, 5, (prog) => {
           if (onProgress) {
             onProgress({
               totalPlans: plans.length,
@@ -385,7 +387,7 @@ export class TileCacheService {
             totalPlans: plans.length,
             completedPlans,
             currentPlanName: p.name,
-            planProgress: { total: 100, completed: 100, currentZoom: 4, planId: p.id, planName: p.name },
+            planProgress: { total: 100, completed: 100, currentZoom: 5, planId: p.id, planName: p.name },
           });
         }
       }

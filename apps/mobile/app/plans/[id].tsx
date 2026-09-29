@@ -19,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { getDatabase } from '../../src/db/database';
 import { useLanguage } from '../../src/i18n/LanguageContext';
 import { useAuth } from '../../src/auth/useAuth';
+import * as FileSystem from 'expo-file-system';
 import { TileCacheService } from '../../src/features/tiles/TileCacheService';
 import { LEAFLET_OFFLINE_CSS, LEAFLET_OFFLINE_JS } from '../../src/features/tiles/leafletBundle';
 
@@ -391,7 +392,9 @@ export default function InteractivePlanScreen() {
 
       try {
         const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
-        const metaRes = await fetch(`${apiUrl}/api/tiles/${activePlanId}/meta${tokenParam}`);
+        const metaRes = await fetch(`${apiUrl}/api/tiles/${activePlanId}/meta${tokenParam}`, {
+          signal: AbortSignal.timeout(1500),
+        });
         if (metaRes.ok) {
           const meta = await metaRes.json();
           if (meta.tileSize) tileSize = meta.tileSize;
@@ -1639,14 +1642,18 @@ export default function InteractivePlanScreen() {
             }
           };
 
-          // Tile Layer with Local Cache First and Remote Fallback
+          // Tile Layer with 100% Robust Local Cache First and Remote Fallback
           if (planId) {
             const tokenParam = token ? '?token=' + encodeURIComponent(token) : '';
-            const localTileDir = "${isLocalTileCached ? TileCacheService.getPlanTilesDir(planId) : ''}";
+            const localTileDir = "${TileCacheService.getPlanTilesDir(planId)}";
+            const relativeTileDir = "tiles/" + planId + "/";
+            const directRelDir = planId + "/";
             const remoteUrl = apiUrl + '/api/tiles/' + planId + '/{z}/{x}/{y}.png' + tokenParam;
-            const tileUrl = localTileDir ? localTileDir + '{z}/{x}/{y}.png' : remoteUrl;
+            
+            // Primary URL: try local file URL
+            const primaryTileUrl = localTileDir + '{z}/{x}/{y}.png';
 
-            const tileLayer = L.tileLayer(tileUrl, {
+            const tileLayer = L.tileLayer(primaryTileUrl, {
               minZoom: minZoom,
               maxZoom: maxZoom + 1,
               maxNativeZoom: maxZoom,
@@ -1655,16 +1662,38 @@ export default function InteractivePlanScreen() {
               bounds: bounds,
               detectRetina: false,
               updateWhenZooming: false,
-              keepBuffer: 6,
+              keepBuffer: 8,
+              crossOrigin: false,
             }).addTo(map);
 
-            if (localTileDir) {
-              tileLayer.on('tileerror', function(error) {
-                if (navigator.onLine && error && error.tile && error.coords) {
-                  error.tile.src = apiUrl + '/api/tiles/' + planId + '/' + error.coords.z + '/' + error.coords.x + '/' + error.coords.y + '.png' + tokenParam;
+            tileLayer.on('tileerror', function(error) {
+              if (!error || !error.tile || !error.coords) return;
+              const coords = error.coords;
+              const cur = error.tile.src || '';
+
+              // 1. If absolute file:// failed, try relative path
+              if (cur.indexOf('file://') === 0 || cur.indexOf(localTileDir) === 0) {
+                const rel1 = relativeTileDir + coords.z + '/' + coords.x + '/' + coords.y + '.png';
+                if (cur !== rel1) {
+                  error.tile.src = rel1;
+                  return;
                 }
-              });
-            }
+              }
+
+              // 2. If relative failed, try direct planId/ path
+              if (cur.indexOf('tiles/') !== -1) {
+                const rel2 = directRelDir + coords.z + '/' + coords.x + '/' + coords.y + '.png';
+                if (cur !== rel2) {
+                  error.tile.src = rel2;
+                  return;
+                }
+              }
+
+              // 3. If local failed and we are online, fallback to remote server
+              if (navigator.onLine && cur.indexOf(apiUrl) === -1) {
+                error.tile.src = apiUrl + '/api/tiles/' + planId + '/' + coords.z + '/' + coords.x + '/' + coords.y + '.png' + tokenParam;
+              }
+            });
           }
 
           map.fitBounds(bounds);
@@ -1704,7 +1733,7 @@ export default function InteractivePlanScreen() {
     if (!plan?.id || downloadingOffline) return;
     try {
       setDownloadingOffline(true);
-      const res = await TileCacheService.prefetchPlanTiles(plan.id, 4);
+      const res = await TileCacheService.prefetchPlanTiles(plan.id, 5);
       if (res.success) {
         setIsLocalTileCached(true);
         const b = await TileCacheService.getPlanCacheSize(plan.id);
@@ -1901,7 +1930,7 @@ export default function InteractivePlanScreen() {
           <WebView
             ref={webViewRef}
             originWhitelist={['*']}
-            source={{ html: generateLeafletHtml(), baseUrl: 'file:///' }}
+            source={{ html: generateLeafletHtml(), baseUrl: FileSystem.documentDirectory || 'file:///' }}
             style={styles.webView}
             onMessage={handleWebViewMessage}
             javaScriptEnabled={true}
@@ -1909,6 +1938,7 @@ export default function InteractivePlanScreen() {
             allowFileAccess={true}
             allowFileAccessFromFileURLs={true}
             allowUniversalAccessFromFileURLs={true}
+            allowingReadAccessToURL={FileSystem.documentDirectory || undefined}
             scalesPageToFit={false}
             scrollEnabled={false}
             bounces={false}
