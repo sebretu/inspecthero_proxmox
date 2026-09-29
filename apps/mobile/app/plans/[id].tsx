@@ -277,6 +277,7 @@ export default function InteractivePlanScreen() {
   const [isLocalTileCached, setIsLocalTileCached] = useState(false);
   const [planCacheBytes, setPlanCacheBytes] = useState(0);
   const [downloadingOffline, setDownloadingOffline] = useState(false);
+  const [localHtmlUri, setLocalHtmlUri] = useState<string | null>(null);
   const [floors, setFloors] = useState<FloorOption[]>([]);
   const [currentFloorId, setCurrentFloorId] = useState<string | null>(null);
 
@@ -1660,11 +1661,10 @@ export default function InteractivePlanScreen() {
           if (planId) {
             const isCached = ${isLocalTileCached ? 'true' : 'false'};
             const tokenParam = token ? '?token=' + encodeURIComponent(token) : '';
-            const localTileDir = "${TileCacheService.getPlanTilesDir(planId)}";
             const remoteUrl = apiUrl + '/api/tiles/' + planId + '/{z}/{x}/{y}.png' + tokenParam;
             
-            // Primary URL: If cached, load from local file. If not, load from server.
-            const primaryTileUrl = isCached ? (localTileDir + '{z}/{x}/{y}.png') : remoteUrl;
+            // Primary URL: If cached, load from relative local file. If not, load from server.
+            const primaryTileUrl = isCached ? '{z}/{x}/{y}.png' : remoteUrl;
 
             const tileLayer = L.tileLayer(primaryTileUrl, {
               minZoom: minZoom,
@@ -1672,7 +1672,6 @@ export default function InteractivePlanScreen() {
               maxNativeZoom: maxZoom,
               tileSize: tileSize,
               noWrap: true,
-              bounds: bounds,
               detectRetina: false,
               updateWhenZooming: false,
               keepBuffer: 8,
@@ -1684,15 +1683,15 @@ export default function InteractivePlanScreen() {
               const coords = error.coords;
               const cur = error.tile.src || '';
 
-              // If local tile failed, attempt remote server
-              if (cur.indexOf('file:') === 0 || cur.indexOf('tiles/') !== -1) {
+              // If local relative tile failed, attempt remote server if connected
+              if (cur.indexOf('http') === -1) {
                 const fallbackRemote = apiUrl + '/api/tiles/' + planId + '/' + coords.z + '/' + coords.x + '/' + coords.y + '.png' + tokenParam;
                 if (cur !== fallbackRemote) {
                   error.tile.src = fallbackRemote;
                 }
               } else if (cur.indexOf(apiUrl) !== -1) {
-                // If remote server failed, attempt local file
-                const fallbackLocal = localTileDir + coords.z + '/' + coords.x + '/' + coords.y + '.png';
+                // If remote server failed (e.g. offline), attempt relative local tile
+                const fallbackLocal = coords.z + '/' + coords.x + '/' + coords.y + '.png';
                 if (cur !== fallbackLocal) {
                   error.tile.src = fallbackLocal;
                 }
@@ -1732,6 +1731,45 @@ export default function InteractivePlanScreen() {
       </html>
     `;
   };
+
+  const htmlContent = useMemo(() => {
+    return generateLeafletHtml();
+  }, [
+    plan,
+    tasks,
+    circuits,
+    cables,
+    symbols,
+    aufmassMarkers,
+    layers,
+    activeMode,
+    activeAufmassId,
+    isLocalTileCached,
+    session?.access_token,
+  ]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const saveHtmlToDisk = async () => {
+      const activePlanId = plan?.id || (typeof id === 'string' ? id : '');
+      if (!activePlanId) return;
+      try {
+        const planDir = TileCacheService.getPlanTilesDir(activePlanId);
+        await FileSystem.makeDirectoryAsync(planDir, { intermediates: true }).catch(() => {});
+        const htmlPath = `${planDir}index.html`;
+        await FileSystem.writeAsStringAsync(htmlPath, htmlContent);
+        if (isMounted) {
+          setLocalHtmlUri(htmlPath);
+        }
+      } catch (err) {
+        console.warn('Failed to write local index.html:', err);
+      }
+    };
+    saveHtmlToDisk();
+    return () => {
+      isMounted = false;
+    };
+  }, [htmlContent, plan?.id, id]);
 
   const handleDownloadOffline = async () => {
     if (!plan?.id || downloadingOffline) return;
@@ -1934,7 +1972,7 @@ export default function InteractivePlanScreen() {
           <WebView
             ref={webViewRef}
             originWhitelist={['*']}
-            source={{ html: generateLeafletHtml(), baseUrl: FileSystem.documentDirectory || 'file:///' }}
+            source={localHtmlUri ? { uri: localHtmlUri } : { html: htmlContent, baseUrl: FileSystem.documentDirectory || 'file:///' }}
             style={styles.webView}
             onMessage={handleWebViewMessage}
             javaScriptEnabled={true}

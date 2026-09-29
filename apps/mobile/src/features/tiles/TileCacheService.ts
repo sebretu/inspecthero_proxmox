@@ -61,16 +61,24 @@ export class TileCacheService {
   static async isPlanCachedLocally(planId: string): Promise<boolean> {
     try {
       const planDir = this.getPlanTilesDir(planId);
-      const testTile = `${planDir}1/0/0.png`;
-      const tileInfo = await FileSystem.getInfoAsync(testTile);
-      if (tileInfo.exists && (tileInfo.size || 0) > 100) return true;
-
       const metaPath = `${planDir}meta.json`;
       const metaInfo = await FileSystem.getInfoAsync(metaPath);
       if (metaInfo.exists) {
         const metaStr = await FileSystem.readAsStringAsync(metaPath);
         const parsed = JSON.parse(metaStr);
-        if (parsed.downloadedAt) return true;
+        if (parsed.downloadedAt || parsed.tileSize) return true;
+      }
+
+      const testTile = `${planDir}1/0/0.png`;
+      const tileInfo = await FileSystem.getInfoAsync(testTile);
+      if (tileInfo.exists && (tileInfo.size || 0) > 100) return true;
+
+      const dirInfo = await FileSystem.getInfoAsync(planDir);
+      if (dirInfo.exists && dirInfo.isDirectory) {
+        const entries = await FileSystem.readDirectoryAsync(planDir);
+        if (entries.some((e) => ['1', '2', '3', '4', '5'].includes(e))) {
+          return true;
+        }
       }
       return false;
     } catch {
