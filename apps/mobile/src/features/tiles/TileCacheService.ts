@@ -61,12 +61,18 @@ export class TileCacheService {
   static async isPlanCachedLocally(planId: string): Promise<boolean> {
     try {
       const planDir = this.getPlanTilesDir(planId);
+      const testTile = `${planDir}1/0/0.png`;
+      const tileInfo = await FileSystem.getInfoAsync(testTile);
+      if (tileInfo.exists && (tileInfo.size || 0) > 100) return true;
+
       const metaPath = `${planDir}meta.json`;
       const metaInfo = await FileSystem.getInfoAsync(metaPath);
-      if (metaInfo.exists) return true;
-
-      const info = await FileSystem.getInfoAsync(planDir);
-      return info.exists && info.isDirectory;
+      if (metaInfo.exists) {
+        const metaStr = await FileSystem.readAsStringAsync(metaPath);
+        const parsed = JSON.parse(metaStr);
+        if (parsed.downloadedAt) return true;
+      }
+      return false;
     } catch {
       return false;
     }
@@ -165,6 +171,8 @@ export class TileCacheService {
       const info = await FileSystem.getInfoAsync(planDir);
       if (info.exists) {
         await FileSystem.deleteAsync(planDir, { idempotent: true });
+        this.planSizeCache.delete(planId);
+        this.totalCacheBytesCached = 0;
       }
     } catch (err) {
       console.warn('[TileCacheService] Failed to clear plan cache:', err);
@@ -179,6 +187,8 @@ export class TileCacheService {
       const info = await FileSystem.getInfoAsync(TILES_BASE_DIR);
       if (info.exists) {
         await FileSystem.deleteAsync(TILES_BASE_DIR, { idempotent: true });
+        this.planSizeCache.clear();
+        this.totalCacheBytesCached = 0;
       }
     } catch (err) {
       console.warn('[TileCacheService] Failed to clear all tile cache:', err);
@@ -186,7 +196,7 @@ export class TileCacheService {
   }
 
   /**
-   * High-speed parallel prefetch of tiles for offline use with versioning & 20+ concurrent workers
+   * High-speed parallel prefetch of tiles for offline use with versioning & concurrent workers
    */
   static async prefetchPlanTiles(
     planId: string,
@@ -219,21 +229,7 @@ export class TileCacheService {
 
       const planDir = this.getPlanTilesDir(planId);
       await FileSystem.makeDirectoryAsync(planDir, { intermediates: true });
-
-      // Save local meta.json for version check
       const localMetaPath = `${planDir}meta.json`;
-      let needsDownload = true;
-      try {
-        const localMetaInfo = await FileSystem.getInfoAsync(localMetaPath);
-        if (localMetaInfo.exists) {
-          const localMetaContent = await FileSystem.readAsStringAsync(localMetaPath);
-          const parsed = JSON.parse(localMetaContent);
-          if (parsed.activeVersionId === activeVersionId && parsed.maxZoom >= maxZoom) {
-            // Version matches, check if complete
-            needsDownload = false;
-          }
-        }
-      } catch {}
 
       // 2. Build list of all tile jobs
       interface TileJob {
@@ -270,24 +266,17 @@ export class TileCacheService {
         return { success: true, tileCount: 0 };
       }
 
-      // If version already matches and directory exists, quick return
-      if (!needsDownload) {
-        if (onProgress) {
-          onProgress({ total: totalTiles, completed: totalTiles, currentZoom: maxZoom, planId });
-        }
-        return { success: true, tileCount: totalTiles };
-      }
-
       // 3. Pre-create all distinct directories in parallel
       await Promise.all(
         Array.from(distinctDirs).map((d) => FileSystem.makeDirectoryAsync(d, { intermediates: true }).catch(() => {}))
       );
 
       let completed = 0;
+      let downloadedCount = 0;
       let lastReportTime = Date.now();
 
-      // 4. Concurrency Worker Pool (20 parallel streams for 500Mbit saturation)
-      const CONCURRENCY = 20;
+      // 4. Concurrency Worker Pool (12 parallel streams)
+      const CONCURRENCY = 12;
       let jobIndex = 0;
 
       const worker = async () => {
@@ -297,13 +286,25 @@ export class TileCacheService {
           if (!job) break;
 
           try {
-            // Check if file exists to avoid re-downloading unchanged tile
             const fileInfo = await FileSystem.getInfoAsync(job.localPath);
-            if (!fileInfo.exists) {
-              await FileSystem.downloadAsync(job.remoteUrl, job.localPath, { headers });
+            if (!fileInfo.exists || (fileInfo.size && fileInfo.size < 100)) {
+              const dlRes = await FileSystem.downloadAsync(job.remoteUrl, job.localPath, { headers });
+              if (dlRes.status === 200) {
+                const checkInfo = await FileSystem.getInfoAsync(job.localPath);
+                if (checkInfo.exists && checkInfo.size && checkInfo.size < 100) {
+                  // Transparent 1x1 placeholder
+                  await FileSystem.deleteAsync(job.localPath, { idempotent: true }).catch(() => {});
+                } else {
+                  downloadedCount++;
+                }
+              } else {
+                await FileSystem.deleteAsync(job.localPath, { idempotent: true }).catch(() => {});
+              }
+            } else {
+              downloadedCount++;
             }
           } catch (dlErr) {
-            // Non-fatal, continue with next tile
+            // Non-fatal
           } finally {
             completed++;
             const now = Date.now();
@@ -324,7 +325,7 @@ export class TileCacheService {
 
       await Promise.all(workers);
 
-      // Save local meta.json indicating completed version
+      // Save local meta.json indicating completed download
       await FileSystem.writeAsStringAsync(localMetaPath, JSON.stringify({
         activeVersionId,
         maxZoom,
@@ -338,7 +339,10 @@ export class TileCacheService {
         downloadedAt: new Date().toISOString()
       })).catch(() => {});
 
-      return { success: true, tileCount: completed };
+      this.planSizeCache.delete(planId);
+      this.totalCacheBytesCached = 0;
+
+      return { success: true, tileCount: downloadedCount };
     } catch (err) {
       console.error('[TileCacheService] Prefetch error:', err);
       return { success: false, tileCount: 0 };
