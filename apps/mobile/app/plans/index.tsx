@@ -278,6 +278,14 @@ export default function PlansListScreen() {
     TileDownloadManager.startProjectDownload(group.id, group.name);
   };
 
+  const handleDownloadSinglePlan = async (plan: PlanItem) => {
+    if (downloadState.isDownloading) {
+      Alert.alert('Pobieranie w toku', 'Trwa już pobieranie planów w tle.');
+      return;
+    }
+    TileDownloadManager.startPlanDownload(plan.id, plan.name);
+  };
+
   const handleClearAllCache = async () => {
     Alert.alert(
       'Wyczyść pamięć podręczną',
@@ -599,6 +607,20 @@ export default function PlansListScreen() {
                                         <Text style={styles.bmaBadgeText}>🚨 {plan.bma_count}</Text>
                                       </View>
                                     ) : null}
+                                    <TouchableOpacity
+                                      style={[
+                                        styles.singlePlanOfflineBtn,
+                                        plan.isCached && styles.singlePlanOfflineBtnCached,
+                                      ]}
+                                      onPress={(e) => {
+                                        e.stopPropagation();
+                                        handleDownloadSinglePlan(plan);
+                                      }}
+                                    >
+                                      <Text style={styles.singlePlanOfflineBtnText}>
+                                        {plan.isCached ? '💾' : '⬇️'}
+                                      </Text>
+                                    </TouchableOpacity>
                                     <Text style={styles.arrowIcon}>➔</Text>
                                   </View>
                                 </TouchableOpacity>
@@ -901,6 +923,23 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   bmaBadgeText: { color: '#EF4444', fontSize: 10, fontWeight: '800' },
+  singlePlanOfflineBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    backgroundColor: '#1E293B',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  singlePlanOfflineBtnCached: {
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderColor: '#22C55E',
+  },
+  singlePlanOfflineBtnText: {
+    fontSize: 11,
+  },
   arrowIcon: { color: '#38BDF8', fontSize: 12, fontWeight: '900' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
   loadingText: { color: '#94A3B8', fontSize: 13, marginTop: 12 },
